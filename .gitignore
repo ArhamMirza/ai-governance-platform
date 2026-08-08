@@ -26,6 +26,9 @@ coverage/
 *.env
 !.env.example
 
+# --- Claude Code local state ---
+.claude/settings.local.json
+
 # --- Editor / OS ---
 .vscode/
 .idea/
