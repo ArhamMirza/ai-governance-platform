@@ -3,6 +3,7 @@ import { NavLink, Route, Routes } from "react-router-dom";
 import { AISystemInventoryPage } from "../pages/AISystemInventoryPage";
 import { DashboardPage } from "../pages/DashboardPage";
 import { PoliciesPage } from "../pages/PoliciesPage";
+import { PolicyDetailPage } from "../pages/PolicyDetailPage";
 import { ProceduresPage } from "../pages/ProceduresPage";
 import { RiskAssessmentsPage } from "../pages/RiskAssessmentsPage";
 
@@ -32,6 +33,7 @@ export function AppRoutes() {
         <Routes>
           <Route path="/" element={<DashboardPage />} />
           <Route path="/policies" element={<PoliciesPage />} />
+          <Route path="/policies/:policyId" element={<PolicyDetailPage />} />
           <Route path="/procedures" element={<ProceduresPage />} />
           <Route path="/ai-systems" element={<AISystemInventoryPage />} />
           <Route path="/risk-assessments" element={<RiskAssessmentsPage />} />
