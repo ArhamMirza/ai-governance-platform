@@ -52,9 +52,31 @@ cd frontend && npm test
 
 ## Git Workflow
 
-- `main` is always kept working.
+- `main` is protected and always kept working — changes land via Pull Request,
+  not direct pushes.
 - One feature branch per vertical slice: `feat/<short-name>` (or `fix/`, `chore/`,
-  `docs/`, `test/` for their respective purposes), merged back with `--no-ff`.
+  `docs/`, `test/` for their respective purposes). Push the branch and open a PR
+  rather than merging locally.
 - Commit messages follow [Conventional Commits](https://www.conventionalcommits.org/):
   `feat: add policy approval workflow`, `test: cover risk score edge cases`, etc.
 - Keep commits small and logically scoped — one concern per commit.
+- Work is tracked as GitHub Issues; PRs reference the issue they close
+  (`Closes #12`).
+
+## CI/CD
+
+- **CI** (`.github/workflows/ci.yml`): every PR and push to `main` runs backend
+  lint (`ruff`) + tests (`pytest`) and frontend lint (`oxlint`) + tests
+  (`vitest`) + production build. Branch protection requires these checks to
+  pass before a PR can merge.
+- **Releases** (`.github/workflows/release.yml`): pushing a tag matching
+  `v*.*.*` (e.g. `v0.1.0`) auto-creates a GitHub Release with notes generated
+  from the commit history since the last tag.
+  ```bash
+  git tag v0.1.0
+  git push origin v0.1.0
+  ```
+  There's no separate deployment step — this is a locally-run app, so a
+  "release" just marks a known-good, tagged snapshot of the code. A
+  Docker-based distribution path is a planned post-MVP extension
+  (see DESIGN.md §9).
