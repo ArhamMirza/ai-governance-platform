@@ -7,7 +7,6 @@ import { useCreatePolicy } from "../hooks";
 const policyFormSchema = z.object({
   title: z.string().min(1, "Title is required"),
   description: z.string().optional(),
-  content: z.string().optional(),
 });
 
 type PolicyFormValues = z.infer<typeof policyFormSchema>;
@@ -29,7 +28,6 @@ export function PolicyForm({ onCreated }: PolicyFormProps) {
     const policy = await createPolicy.mutateAsync({
       title: values.title,
       description: values.description || null,
-      content: values.content ?? "",
     });
     reset();
     onCreated?.(policy.id);
@@ -46,10 +44,7 @@ export function PolicyForm({ onCreated }: PolicyFormProps) {
         <label htmlFor="policy-description">Description</label>
         <textarea id="policy-description" {...register("description")} />
       </div>
-      <div>
-        <label htmlFor="policy-content">Content</label>
-        <textarea id="policy-content" {...register("content")} />
-      </div>
+      <p>Documents are added from the policy's detail page once it's created.</p>
       <button type="submit" disabled={createPolicy.isPending}>
         {createPolicy.isPending ? "Creating..." : "Create Policy"}
       </button>

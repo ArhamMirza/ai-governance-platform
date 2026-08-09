@@ -1,13 +1,19 @@
 import { StatusBadge } from "../../../shared/components/StatusBadge";
+import { DocumentBrowser } from "../../evidence/components/DocumentBrowser";
 import { useApprovePolicy, usePolicy, usePolicyVersions, useSubmitForReview } from "../hooks";
 
 interface PolicyDetailProps {
   policyId: number;
 }
 
+const HISTORY_ACTION_LABELS: Record<string, string> = {
+  document_added: "Document added",
+  document_removed: "Document removed",
+};
+
 export function PolicyDetail({ policyId }: PolicyDetailProps) {
   const { data: policy, isLoading, isError } = usePolicy(policyId);
-  const { data: versions } = usePolicyVersions(policyId);
+  const { data: history } = usePolicyVersions(policyId);
   const submitForReview = useSubmitForReview(policyId);
   const approve = useApprovePolicy(policyId);
 
@@ -19,7 +25,7 @@ export function PolicyDetail({ policyId }: PolicyDetailProps) {
       <h2>{policy.title}</h2>
       <StatusBadge status={policy.status} />
       <p>{policy.description}</p>
-      <pre>{policy.content}</pre>
+      <p>Version {policy.version}</p>
 
       <div>
         {policy.status === "draft" && (
@@ -34,11 +40,16 @@ export function PolicyDetail({ policyId }: PolicyDetailProps) {
         )}
       </div>
 
+      <h3>Documents</h3>
+      <DocumentBrowser entityType="Policy" entityId={policyId} />
+
       <h3>Version History</h3>
       <ul>
-        {versions?.map((version) => (
-          <li key={version.id}>
-            v{version.version_no} — {version.change_note ?? "No note"}
+        {history?.map((entry, index) => (
+          <li key={index}>
+            {HISTORY_ACTION_LABELS[entry.action] ?? entry.action}
+            {typeof entry.diff?.filename === "string" ? `: ${entry.diff.filename}` : ""} —{" "}
+            {new Date(entry.timestamp).toLocaleString()}
           </li>
         ))}
       </ul>

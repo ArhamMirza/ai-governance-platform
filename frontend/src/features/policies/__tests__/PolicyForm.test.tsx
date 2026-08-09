@@ -24,7 +24,6 @@ describe("PolicyForm", () => {
       status: "draft",
       version: 1,
       owner_id: null,
-      content: "",
       effective_date: null,
       created_at: "2026-01-01T00:00:00Z",
       updated_at: "2026-01-01T00:00:00Z",
@@ -42,7 +41,6 @@ describe("PolicyForm", () => {
       expect(policiesApi.create).toHaveBeenCalledWith({
         title: "New Policy",
         description: null,
-        content: "",
       });
       expect(onCreated).toHaveBeenCalledWith(42);
     });
