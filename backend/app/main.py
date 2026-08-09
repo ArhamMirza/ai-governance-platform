@@ -4,7 +4,15 @@ from fastapi.responses import JSONResponse
 
 from app.core.config import get_settings
 from app.core.exceptions import ConflictError, NotFoundError, ValidationError
-from app.routers import ai_system_inventory, evidence, folders, health, policies, procedures
+from app.routers import (
+    ai_system_inventory,
+    evidence,
+    folders,
+    health,
+    policies,
+    procedures,
+    risk_assessments,
+)
 
 settings = get_settings()
 
@@ -40,3 +48,4 @@ app.include_router(procedures.router, prefix="/api/v1")
 app.include_router(folders.router, prefix="/api/v1")
 app.include_router(evidence.router, prefix="/api/v1")
 app.include_router(ai_system_inventory.router, prefix="/api/v1")
+app.include_router(risk_assessments.router, prefix="/api/v1")
