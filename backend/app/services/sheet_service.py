@@ -11,6 +11,42 @@ from app.models.sheet import Sheet, SheetRow
 from app.repositories import sheet_repository
 from app.schemas.sheet import ColumnDef
 
+RISK_ASSESSMENT_ENTITY_TYPE = "RiskAssessment"
+
+# Reserved risk-scoring inputs: once a RiskAssessment sheet has these columns,
+# set_columns() refuses to drop them (see set_columns below).
+RESERVED_RISK_INPUT_COLUMNS = {"likelihood", "impact", "residual_likelihood", "residual_impact"}
+
+# score_key -> (likelihood_key, impact_key). Computed and overwritten on every
+# add_row/update_row for a RiskAssessment sheet -- never taken from caller input.
+SCORE_COLUMN_PAIRS = {
+    "inherent_risk_score": ("likelihood", "impact"),
+    "residual_risk_score": ("residual_likelihood", "residual_impact"),
+}
+
+
+def _to_number(value: object) -> float:
+    if isinstance(value, bool):
+        raise TypeError("booleans are not valid risk scoring inputs")
+    if isinstance(value, int | float):
+        return float(value)
+    return float(str(value))
+
+
+def _apply_computed_scores(entity_type: str, data: dict) -> dict:
+    if entity_type != RISK_ASSESSMENT_ENTITY_TYPE:
+        return data
+
+    result = dict(data)
+    for score_key, (likelihood_key, impact_key) in SCORE_COLUMN_PAIRS.items():
+        result.pop(score_key, None)
+        try:
+            score = _to_number(result[likelihood_key]) * _to_number(result[impact_key])
+        except (KeyError, TypeError, ValueError):
+            continue
+        result[score_key] = score
+    return result
+
 
 def _get_or_raise(db: Session, sheet_id: int) -> Sheet:
     sheet = sheet_repository.get(db, sheet_id)
@@ -57,6 +93,14 @@ def set_columns(db: Session, sheet_id: int, columns: list[ColumnDef]) -> Sheet:
 
     new_keys = set(keys)
     dropped_keys = _column_keys(sheet) - new_keys
+
+    if sheet.entity_type == RISK_ASSESSMENT_ENTITY_TYPE:
+        dropped_reserved = dropped_keys & RESERVED_RISK_INPUT_COLUMNS
+        if dropped_reserved:
+            raise ValidationError(
+                "Cannot remove reserved risk-scoring column(s): "
+                f"{', '.join(sorted(dropped_reserved))}"
+            )
     if dropped_keys:
         for row in sheet_repository.list_rows(db, sheet_id):
             if dropped_keys & row.data.keys():
@@ -78,7 +122,7 @@ def add_row(db: Session, sheet_id: int, data: dict) -> SheetRow:
     row = SheetRow(
         sheet_id=sheet_id,
         row_index=sheet_repository.next_row_index(db, sheet_id),
-        data=data,
+        data=_apply_computed_scores(sheet.entity_type, data),
     )
     return sheet_repository.create_row(db, row)
 
@@ -87,7 +131,8 @@ def update_row(db: Session, sheet_id: int, row_id: int, data: dict) -> SheetRow:
     sheet = _get_or_raise(db, sheet_id)
     row = _get_row_or_raise(db, sheet_id, row_id)
     _validate_row_keys(sheet, data)
-    row.data = {**row.data, **data}
+    merged = {**row.data, **data}
+    row.data = _apply_computed_scores(sheet.entity_type, merged)
     return sheet_repository.save_row(db, row)
 
 
@@ -177,6 +222,7 @@ def import_upload(db: Session, sheet_id: int, file: UploadFile) -> Sheet:
         # Ragged CSV/xlsx rows are tolerated -- extra/missing cells just mean
         # extra/missing keys in that row's data, not a hard error.
         row_data = {key: value for key, value in zip(keys, values, strict=False) if value != ""}
+        row_data = _apply_computed_scores(sheet.entity_type, row_data)
         sheet_repository.create_row(
             db, SheetRow(sheet_id=sheet_id, row_index=index, data=row_data)
         )
