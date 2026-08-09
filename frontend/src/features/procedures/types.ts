@@ -1,0 +1,35 @@
+export type ProcedureStatus = "draft" | "in_review" | "approved" | "retired";
+
+export interface Procedure {
+  id: number;
+  title: string;
+  description: string | null;
+  status: ProcedureStatus;
+  version: number;
+  owner_id: number | null;
+  policy_id: number | null;
+  effective_date: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ProcedureHistoryEntry {
+  action: string;
+  actor_id: number | null;
+  timestamp: string;
+  diff: Record<string, unknown> | null;
+}
+
+export interface ProcedureCreateInput {
+  title: string;
+  description?: string | null;
+  policy_id?: number | null;
+  effective_date?: string | null;
+}
+
+export interface ProcedureUpdateInput {
+  title?: string;
+  description?: string | null;
+  policy_id?: number | null;
+  effective_date?: string | null;
+}
