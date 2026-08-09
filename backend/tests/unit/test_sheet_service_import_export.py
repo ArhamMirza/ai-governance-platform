@@ -71,6 +71,14 @@ def test_import_replaces_existing_columns_and_rows(db_session: Session) -> None:
     assert rows[0].data == {"category": "Bias"}
 
 
+def test_import_rejects_empty_csv_file(db_session: Session) -> None:
+    sheet = sheet_service.create_sheet(db_session, "RiskAssessment", "Risk Items", [])
+    upload = make_upload_file("risks.csv", b"")
+
+    with pytest.raises(ValidationError):
+        sheet_service.import_upload(db_session, sheet.id, upload)
+
+
 def test_import_rejects_unsupported_file_type(db_session: Session) -> None:
     sheet = sheet_service.create_sheet(db_session, "RiskAssessment", "Risk Items", [])
     upload = make_upload_file("risks.txt", b"not a real sheet")

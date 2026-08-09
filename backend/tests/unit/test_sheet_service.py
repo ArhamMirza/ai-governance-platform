@@ -68,7 +68,7 @@ def test_set_columns_rejects_duplicate_keys(mock_repo, db) -> None:
 
 @patch("app.services.sheet_service.sheet_repository")
 def test_set_columns_strips_dropped_keys_from_existing_rows(mock_repo, db) -> None:
-    sheet = make_sheet()
+    sheet = make_sheet(entity_type="AISystemInventory")
     row = make_row(data={"category": "Bias", "likelihood": 3})
     mock_repo.get.return_value = sheet
     mock_repo.list_rows.return_value = [row]
@@ -79,6 +79,27 @@ def test_set_columns_strips_dropped_keys_from_existing_rows(mock_repo, db) -> No
 
     assert row.data == {"category": "Bias"}
     assert sheet.columns == [{"key": "category", "label": "Category", "data_type": "text"}]
+
+
+@patch("app.services.sheet_service.sheet_repository")
+def test_set_columns_rejects_dropping_reserved_risk_column(mock_repo, db) -> None:
+    sheet = make_sheet(entity_type="RiskAssessment")
+    mock_repo.get.return_value = sheet
+
+    with pytest.raises(ValidationError):
+        sheet_service.set_columns(db, 1, [ColumnDef(key="category", label="Category")])
+
+
+@patch("app.services.sheet_service.sheet_repository")
+def test_set_columns_allows_dropping_reserved_column_on_non_risk_sheet(mock_repo, db) -> None:
+    sheet = make_sheet(entity_type="AISystemInventory")
+    mock_repo.get.return_value = sheet
+    mock_repo.list_rows.return_value = []
+    mock_repo.save.side_effect = lambda _db, s: s
+
+    result = sheet_service.set_columns(db, 1, [ColumnDef(key="category", label="Category")])
+
+    assert result.columns == [{"key": "category", "label": "Category", "data_type": "text"}]
 
 
 @patch("app.services.sheet_service.sheet_repository")
@@ -101,6 +122,123 @@ def test_add_row_rejects_unknown_column(mock_repo, db) -> None:
 
     with pytest.raises(ValidationError):
         sheet_service.add_row(db, 1, {"not_a_real_column": "x"})
+
+
+def make_risk_sheet(**overrides) -> Sheet:
+    defaults = dict(
+        id=1,
+        entity_type="RiskAssessment",
+        title="Risk Items",
+        columns=[
+            {"key": "category", "label": "Category", "data_type": "text"},
+            {"key": "likelihood", "label": "Likelihood", "data_type": "number"},
+            {"key": "impact", "label": "Impact", "data_type": "number"},
+            {"key": "residual_likelihood", "label": "Residual Likelihood", "data_type": "number"},
+            {"key": "residual_impact", "label": "Residual Impact", "data_type": "number"},
+            {"key": "inherent_risk_score", "label": "Inherent Risk", "data_type": "number"},
+            {"key": "residual_risk_score", "label": "Residual Risk", "data_type": "number"},
+        ],
+    )
+    defaults.update(overrides)
+    return Sheet(**defaults)
+
+
+@patch("app.services.sheet_service.sheet_repository")
+def test_add_row_computes_inherent_risk_score(mock_repo, db) -> None:
+    sheet = make_risk_sheet()
+    mock_repo.get.return_value = sheet
+    mock_repo.next_row_index.return_value = 1
+    mock_repo.create_row.side_effect = lambda _db, row: row
+
+    result = sheet_service.add_row(db, 1, {"category": "Bias", "likelihood": 3, "impact": 4})
+
+    assert result.data["inherent_risk_score"] == 12.0
+
+
+@patch("app.services.sheet_service.sheet_repository")
+def test_add_row_computes_residual_risk_score_independently(mock_repo, db) -> None:
+    sheet = make_risk_sheet()
+    mock_repo.get.return_value = sheet
+    mock_repo.next_row_index.return_value = 1
+    mock_repo.create_row.side_effect = lambda _db, row: row
+
+    result = sheet_service.add_row(
+        db, 1, {"likelihood": 3, "impact": 4, "residual_likelihood": 1, "residual_impact": 2}
+    )
+
+    assert result.data["inherent_risk_score"] == 12.0
+    assert result.data["residual_risk_score"] == 2.0
+
+
+@patch("app.services.sheet_service.sheet_repository")
+def test_add_row_does_not_compute_score_when_pair_incomplete(mock_repo, db) -> None:
+    sheet = make_risk_sheet()
+    mock_repo.get.return_value = sheet
+    mock_repo.next_row_index.return_value = 1
+    mock_repo.create_row.side_effect = lambda _db, row: row
+
+    result = sheet_service.add_row(db, 1, {"likelihood": 3})
+
+    assert "inherent_risk_score" not in result.data
+
+
+@patch("app.services.sheet_service.sheet_repository")
+def test_add_row_coerces_numeric_strings_from_csv_import(mock_repo, db) -> None:
+    sheet = make_risk_sheet()
+    mock_repo.get.return_value = sheet
+    mock_repo.next_row_index.return_value = 1
+    mock_repo.create_row.side_effect = lambda _db, row: row
+
+    result = sheet_service.add_row(db, 1, {"likelihood": "3", "impact": "4"})
+
+    assert result.data["inherent_risk_score"] == 12.0
+
+
+@patch("app.services.sheet_service.sheet_repository")
+def test_add_row_ignores_caller_supplied_score_and_recomputes(mock_repo, db) -> None:
+    sheet = make_risk_sheet()
+    mock_repo.get.return_value = sheet
+    mock_repo.next_row_index.return_value = 1
+    mock_repo.create_row.side_effect = lambda _db, row: row
+
+    result = sheet_service.add_row(
+        db, 1, {"likelihood": 3, "impact": 4, "inherent_risk_score": 999}
+    )
+
+    assert result.data["inherent_risk_score"] == 12.0
+
+
+@patch("app.services.sheet_service.sheet_repository")
+def test_update_row_clears_stale_score_when_pair_becomes_incomplete(mock_repo, db) -> None:
+    sheet = make_risk_sheet()
+    row = make_row(data={"likelihood": 3, "impact": 4, "inherent_risk_score": 12.0})
+    mock_repo.get.return_value = sheet
+    mock_repo.get_row.return_value = row
+    mock_repo.save_row.side_effect = lambda _db, r: r
+
+    result = sheet_service.update_row(db, 1, 1, {"impact": None})
+
+    assert "inherent_risk_score" not in result.data
+
+
+@patch("app.services.sheet_service.sheet_repository")
+def test_add_row_does_not_compute_score_on_non_risk_sheet(mock_repo, db) -> None:
+    sheet = Sheet(
+        id=1,
+        entity_type="AISystemInventory",
+        title="Inventory",
+        columns=[
+            {"key": "likelihood", "label": "Likelihood", "data_type": "number"},
+            {"key": "impact", "label": "Impact", "data_type": "number"},
+        ],
+    )
+    mock_repo.get.return_value = sheet
+    mock_repo.next_row_index.return_value = 1
+    mock_repo.create_row.side_effect = lambda _db, row: row
+
+    result = sheet_service.add_row(db, 1, {"likelihood": 3, "impact": 4})
+
+    assert "inherent_risk_score" not in result.data
 
 
 @patch("app.services.sheet_service.sheet_repository")
@@ -145,3 +283,15 @@ def test_list_rows_raises_not_found_for_missing_sheet(mock_repo, db) -> None:
 
     with pytest.raises(NotFoundError):
         sheet_service.list_rows(db, 999)
+
+
+@patch("app.services.sheet_service.sheet_repository")
+def test_add_row_does_not_treat_booleans_as_valid_scoring_inputs(mock_repo, db) -> None:
+    sheet = make_risk_sheet()
+    mock_repo.get.return_value = sheet
+    mock_repo.next_row_index.return_value = 1
+    mock_repo.create_row.side_effect = lambda _db, row: row
+
+    result = sheet_service.add_row(db, 1, {"likelihood": True, "impact": 4})
+
+    assert "inherent_risk_score" not in result.data
