@@ -5,6 +5,15 @@ class NotFoundError(Exception):
         super().__init__(f"{entity} {entity_id} not found")
 
 
-class InvalidStatusTransitionError(Exception):
+class ConflictError(Exception):
+    def __init__(self, message: str) -> None:
+        super().__init__(message)
+
+
+class InvalidStatusTransitionError(ConflictError):
+    pass
+
+
+class ValidationError(Exception):
     def __init__(self, message: str) -> None:
         super().__init__(message)
