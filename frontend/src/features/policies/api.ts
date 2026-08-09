@@ -1,5 +1,5 @@
 import { httpClient } from "../../shared/api/httpClient";
-import type { Policy, PolicyCreateInput, PolicyUpdateInput, PolicyVersion } from "./types";
+import type { Policy, PolicyCreateInput, PolicyHistoryEntry, PolicyUpdateInput } from "./types";
 
 export const policiesApi = {
   list: () => httpClient.get<Policy[]>("/policies"),
@@ -10,5 +10,5 @@ export const policiesApi = {
   remove: (id: number) => httpClient.delete<void>(`/policies/${id}`),
   submitForReview: (id: number) => httpClient.post<Policy>(`/policies/${id}/submit-for-review`),
   approve: (id: number) => httpClient.post<Policy>(`/policies/${id}/approve`),
-  listVersions: (id: number) => httpClient.get<PolicyVersion[]>(`/policies/${id}/versions`),
+  listVersions: (id: number) => httpClient.get<PolicyHistoryEntry[]>(`/policies/${id}/versions`),
 };
