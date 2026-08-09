@@ -8,7 +8,13 @@ from app.core.config import get_settings
 from app.core.exceptions import NotFoundError, ValidationError
 from app.models.evidence import Evidence
 from app.repositories import evidence_repository, folder_repository
-from app.services import audit_service
+from app.services import audit_service, policy_service
+
+# Entity types whose "version" is a document-set change counter rather than a
+# content diff (see DESIGN.md 4.2) -- extended as Procedure etc. are added.
+_DOCUMENT_VERSION_BUMP_HOOKS = {
+    "Policy": policy_service.bump_version_if_draft,
+}
 
 ALLOWED_EXTENSIONS = {
     ".pdf",
@@ -100,18 +106,23 @@ def upload_evidence(
         actor_id,
         {"evidence_id": evidence.id, "filename": evidence.filename},
     )
+    if bump_hook := _DOCUMENT_VERSION_BUMP_HOOKS.get(entity_type):
+        bump_hook(db, entity_id)
     return evidence
 
 
 def delete_evidence(db: Session, evidence_id: int, actor_id: int | None) -> None:
     evidence = _get_or_raise(db, evidence_id)
+    entity_type, entity_id, filename = evidence.entity_type, evidence.entity_id, evidence.filename
     Path(evidence.storage_path).unlink(missing_ok=True)
     evidence_repository.delete(db, evidence)
     audit_service.log(
         db,
-        evidence.entity_type,
-        evidence.entity_id,
+        entity_type,
+        entity_id,
         "document_removed",
         actor_id,
-        {"evidence_id": evidence_id, "filename": evidence.filename},
+        {"evidence_id": evidence_id, "filename": filename},
     )
+    if bump_hook := _DOCUMENT_VERSION_BUMP_HOOKS.get(entity_type):
+        bump_hook(db, entity_id)

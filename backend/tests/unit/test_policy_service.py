@@ -13,7 +13,6 @@ def make_policy(**overrides) -> Policy:
         id=1,
         title="Test Policy",
         description=None,
-        content="v1 content",
         owner_id=None,
         effective_date=None,
         status=PolicyStatus.DRAFT,
@@ -33,55 +32,28 @@ def db() -> MagicMock:
 def test_create_policy_starts_as_draft_version_one(mock_repo, mock_audit, db) -> None:
     mock_repo.create.side_effect = lambda _db, policy: policy
 
-    result = policy_service.create_policy(
-        db, PolicyCreate(title="New Policy", content="body"), actor_id=7
-    )
+    result = policy_service.create_policy(db, PolicyCreate(title="New Policy"), actor_id=7)
 
     assert result.status == PolicyStatus.DRAFT
     assert result.version == 1
-    mock_repo.add_version.assert_called_once()
-    added_version = mock_repo.add_version.call_args[0][1]
-    assert added_version.version_no == 1
-    assert added_version.change_note == "Initial draft"
     mock_audit.log.assert_called_once()
 
 
 @patch("app.services.policy_service.audit_service")
 @patch("app.services.policy_service.policy_repository")
-def test_update_policy_bumps_version_when_content_changes(mock_repo, mock_audit, db) -> None:
-    policy = make_policy()
-    mock_repo.get.return_value = policy
-    mock_repo.save.side_effect = lambda _db, p: p
-
-    result = policy_service.update_policy(
-        db, 1, PolicyUpdate(content="v2 content", change_note="revised wording"), actor_id=3
-    )
-
-    assert result.version == 2
-    mock_repo.add_version.assert_called_once()
-    added_version = mock_repo.add_version.call_args[0][1]
-    assert added_version.version_no == 2
-    assert added_version.change_note == "revised wording"
-
-
-@patch("app.services.policy_service.audit_service")
-@patch("app.services.policy_service.policy_repository")
-def test_update_policy_does_not_bump_version_when_content_unchanged(
-    mock_repo, mock_audit, db
-) -> None:
+def test_update_policy_edits_metadata_without_bumping_version(mock_repo, mock_audit, db) -> None:
     policy = make_policy()
     mock_repo.get.return_value = policy
     mock_repo.save.side_effect = lambda _db, p: p
 
     result = policy_service.update_policy(db, 1, PolicyUpdate(title="Renamed"), actor_id=3)
 
+    assert result.title == "Renamed"
     assert result.version == 1
-    mock_repo.add_version.assert_not_called()
 
 
-@patch("app.services.policy_service.audit_service")
 @patch("app.services.policy_service.policy_repository")
-def test_update_policy_rejects_edit_when_not_draft(mock_repo, mock_audit, db) -> None:
+def test_update_policy_rejects_edit_when_not_draft(mock_repo, db) -> None:
     policy = make_policy(status=PolicyStatus.APPROVED)
     mock_repo.get.return_value = policy
 
@@ -157,3 +129,56 @@ def test_delete_policy_rejected_when_not_draft(mock_repo, db) -> None:
 
     with pytest.raises(InvalidStatusTransitionError):
         policy_service.delete_policy(db, 1, actor_id=1)
+
+
+@patch("app.services.policy_service.audit_log_repository")
+@patch("app.services.policy_service.policy_repository")
+def test_list_document_history_filters_to_document_actions(mock_repo, mock_audit_repo, db) -> None:
+    policy = make_policy()
+    mock_repo.get.return_value = policy
+    mock_audit_repo.list_for_entity.return_value = []
+
+    policy_service.list_document_history(db, 1)
+
+    mock_audit_repo.list_for_entity.assert_called_once_with(
+        db, "Policy", 1, ["document_added", "document_removed"]
+    )
+
+
+@patch("app.services.policy_service.policy_repository")
+def test_list_document_history_raises_not_found(mock_repo, db) -> None:
+    mock_repo.get.return_value = None
+
+    with pytest.raises(NotFoundError):
+        policy_service.list_document_history(db, 999)
+
+
+@patch("app.services.policy_service.policy_repository")
+def test_bump_version_if_draft_increments_when_draft(mock_repo, db) -> None:
+    policy = make_policy(status=PolicyStatus.DRAFT, version=1)
+    mock_repo.get.return_value = policy
+    mock_repo.save.side_effect = lambda _db, p: p
+
+    policy_service.bump_version_if_draft(db, 1)
+
+    assert policy.version == 2
+
+
+@patch("app.services.policy_service.policy_repository")
+def test_bump_version_if_draft_noop_when_not_draft(mock_repo, db) -> None:
+    policy = make_policy(status=PolicyStatus.APPROVED, version=1)
+    mock_repo.get.return_value = policy
+
+    policy_service.bump_version_if_draft(db, 1)
+
+    assert policy.version == 1
+    mock_repo.save.assert_not_called()
+
+
+@patch("app.services.policy_service.policy_repository")
+def test_bump_version_if_draft_noop_when_policy_missing(mock_repo, db) -> None:
+    mock_repo.get.return_value = None
+
+    policy_service.bump_version_if_draft(db, 999)
+
+    mock_repo.save.assert_not_called()

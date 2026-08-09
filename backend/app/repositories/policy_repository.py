@@ -1,7 +1,7 @@
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.models.policy import Policy, PolicyVersion
+from app.models.policy import Policy
 
 
 def get(db: Session, policy_id: int) -> Policy | None:
@@ -28,20 +28,3 @@ def save(db: Session, policy: Policy) -> Policy:
 def delete(db: Session, policy: Policy) -> None:
     db.delete(policy)
     db.commit()
-
-
-def add_version(db: Session, version: PolicyVersion) -> PolicyVersion:
-    db.add(version)
-    db.commit()
-    db.refresh(version)
-    return version
-
-
-def list_versions(db: Session, policy_id: int) -> list[PolicyVersion]:
-    return list(
-        db.scalars(
-            select(PolicyVersion)
-            .where(PolicyVersion.policy_id == policy_id)
-            .order_by(PolicyVersion.version_no)
-        )
-    )
