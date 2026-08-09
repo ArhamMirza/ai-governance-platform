@@ -25,6 +25,11 @@ def save(db: Session, sheet: Sheet) -> Sheet:
     return sheet
 
 
+def delete(db: Session, sheet: Sheet) -> None:
+    db.delete(sheet)
+    db.commit()
+
+
 def get_row(db: Session, row_id: int) -> SheetRow | None:
     return db.get(SheetRow, row_id)
 
