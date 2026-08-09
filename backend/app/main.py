@@ -4,7 +4,7 @@ from fastapi.responses import JSONResponse
 
 from app.core.config import get_settings
 from app.core.exceptions import ConflictError, NotFoundError, ValidationError
-from app.routers import evidence, folders, health, policies
+from app.routers import evidence, folders, health, policies, procedures
 
 settings = get_settings()
 
@@ -36,5 +36,6 @@ def validation_handler(request: Request, exc: ValidationError) -> JSONResponse:
 
 app.include_router(health.router, prefix="/api/v1")
 app.include_router(policies.router, prefix="/api/v1")
+app.include_router(procedures.router, prefix="/api/v1")
 app.include_router(folders.router, prefix="/api/v1")
 app.include_router(evidence.router, prefix="/api/v1")

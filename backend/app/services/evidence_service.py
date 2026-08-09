@@ -8,12 +8,13 @@ from app.core.config import get_settings
 from app.core.exceptions import NotFoundError, ValidationError
 from app.models.evidence import Evidence
 from app.repositories import evidence_repository, folder_repository
-from app.services import audit_service, policy_service
+from app.services import audit_service, policy_service, procedure_service
 
 # Entity types whose "version" is a document-set change counter rather than a
-# content diff (see DESIGN.md 4.2) -- extended as Procedure etc. are added.
+# content diff (see DESIGN.md 4.2).
 _DOCUMENT_VERSION_BUMP_HOOKS = {
     "Policy": policy_service.bump_version_if_draft,
+    "Procedure": procedure_service.bump_version_if_draft,
 }
 
 ALLOWED_EXTENSIONS = {

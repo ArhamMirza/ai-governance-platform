@@ -4,6 +4,7 @@ import { AISystemInventoryPage } from "../pages/AISystemInventoryPage";
 import { DashboardPage } from "../pages/DashboardPage";
 import { PoliciesPage } from "../pages/PoliciesPage";
 import { PolicyDetailPage } from "../pages/PolicyDetailPage";
+import { ProcedureDetailPage } from "../pages/ProcedureDetailPage";
 import { ProceduresPage } from "../pages/ProceduresPage";
 import { RiskAssessmentsPage } from "../pages/RiskAssessmentsPage";
 
@@ -35,6 +36,7 @@ export function AppRoutes() {
           <Route path="/policies" element={<PoliciesPage />} />
           <Route path="/policies/:policyId" element={<PolicyDetailPage />} />
           <Route path="/procedures" element={<ProceduresPage />} />
+          <Route path="/procedures/:procedureId" element={<ProcedureDetailPage />} />
           <Route path="/ai-systems" element={<AISystemInventoryPage />} />
           <Route path="/risk-assessments" element={<RiskAssessmentsPage />} />
         </Routes>
