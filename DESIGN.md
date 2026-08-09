@@ -276,12 +276,15 @@ GET/PUT/DELETE   /api/v1/policies/{id}          # PUT edits title/description/ef
 POST             /api/v1/policies/{id}/submit-for-review
 POST             /api/v1/policies/{id}/approve
 GET              /api/v1/policies/{id}/versions  # derived from audit log, see 4.2
-GET/POST         /api/v1/policies/{id}/folders
-GET/PUT/DELETE   /api/v1/policies/{id}/folders/{folder_id}
 
 GET/POST         /api/v1/procedures
 GET/PUT/DELETE   /api/v1/procedures/{id}
-... (same review/approve/version/folder pattern as policies)
+... (same review/approve/version pattern as policies)
+
+GET/POST         /api/v1/folders?entity_type=Policy&entity_id={id}&parent_folder_id={id?}
+GET/PUT/DELETE   /api/v1/folders/{folder_id}
+# Generic, not nested under /policies -- Procedure and any future document-bearing
+# entity reuses the same endpoints rather than duplicating a folders sub-route per entity.
 
 GET              /api/v1/ai-system-inventory                # the singleton Sheet + its rows
 PUT              /api/v1/ai-system-inventory/columns         # add/remove/reorder columns

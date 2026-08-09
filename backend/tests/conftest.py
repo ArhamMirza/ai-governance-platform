@@ -1,4 +1,5 @@
 from collections.abc import Generator
+from types import SimpleNamespace
 
 import pytest
 from fastapi.testclient import TestClient
@@ -8,8 +9,16 @@ from sqlalchemy.pool import StaticPool
 
 from app.core.database import Base, get_db
 from app.main import app
+from app.services import evidence_service
 
 TEST_DATABASE_URL = "sqlite:///:memory:"
+
+
+@pytest.fixture(autouse=True)
+def evidence_storage_dir(tmp_path, monkeypatch):
+    fake_settings = SimpleNamespace(evidence_storage_dir=str(tmp_path))
+    monkeypatch.setattr(evidence_service, "get_settings", lambda: fake_settings)
+    return tmp_path
 
 
 @pytest.fixture()
