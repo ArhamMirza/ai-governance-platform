@@ -8,6 +8,10 @@ def get(db: Session, sheet_id: int) -> Sheet | None:
     return db.get(Sheet, sheet_id)
 
 
+def get_by_entity_type(db: Session, entity_type: str) -> Sheet | None:
+    return db.scalar(select(Sheet).where(Sheet.entity_type == entity_type))
+
+
 def create(db: Session, sheet: Sheet) -> Sheet:
     db.add(sheet)
     db.commit()
