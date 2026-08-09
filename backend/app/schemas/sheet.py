@@ -31,6 +31,10 @@ class SheetRowRead(BaseModel):
     updated_at: datetime
 
 
+class SheetWithRowsRead(SheetRead):
+    rows: list[SheetRowRead]
+
+
 class ColumnsUpdate(BaseModel):
     columns: list[ColumnDef]
 
