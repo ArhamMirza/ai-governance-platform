@@ -1,0 +1,181 @@
+import { QueryClientProvider } from "@tanstack/react-query";
+import { render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { describe, expect, it, vi } from "vitest";
+
+import { ApiError } from "../../../shared/api/httpClient";
+import { createTestQueryClient } from "../../../test/testQueryClient";
+import { DataGrid } from "../components/DataGrid";
+import type { SheetApiAdapter, SheetWithRows } from "../types";
+
+const baseSheet: SheetWithRows = {
+  id: 1,
+  entity_type: "RiskAssessment",
+  title: "Risk Items",
+  columns: [
+    { key: "category", label: "Category", data_type: "text" },
+    { key: "likelihood", label: "Likelihood", data_type: "number" },
+    { key: "inherent_risk_score", label: "Inherent Risk Score", data_type: "number" },
+  ],
+  rows: [
+    {
+      id: 10,
+      sheet_id: 1,
+      row_index: 1,
+      data: { category: "Bias", likelihood: 3, inherent_risk_score: 12 },
+      created_at: "2026-01-01T00:00:00Z",
+      updated_at: "2026-01-01T00:00:00Z",
+    },
+  ],
+  created_at: "2026-01-01T00:00:00Z",
+  updated_at: "2026-01-01T00:00:00Z",
+};
+
+function makeAdapter(overrides: Partial<SheetApiAdapter> = {}): SheetApiAdapter {
+  return {
+    get: vi.fn().mockResolvedValue(baseSheet),
+    setColumns: vi.fn().mockResolvedValue(baseSheet),
+    addRow: vi.fn().mockResolvedValue(baseSheet.rows[0]),
+    updateRow: vi.fn().mockResolvedValue(baseSheet.rows[0]),
+    deleteRow: vi.fn().mockResolvedValue(undefined),
+    upload: vi.fn().mockResolvedValue(baseSheet),
+    exportUrl: vi.fn().mockReturnValue("http://localhost:8000/api/v1/export"),
+    ...overrides,
+  };
+}
+
+function renderGrid(adapter: SheetApiAdapter, readOnlyColumnKeys?: string[]) {
+  const queryClient = createTestQueryClient();
+  return render(
+    <QueryClientProvider client={queryClient}>
+      <DataGrid queryKey={["test-sheet"]} adapter={adapter} readOnlyColumnKeys={readOnlyColumnKeys} />
+    </QueryClientProvider>,
+  );
+}
+
+describe("DataGrid", () => {
+  it("renders columns and row data", async () => {
+    renderGrid(makeAdapter());
+
+    await waitFor(() => {
+      expect(screen.getByText("Category")).toBeInTheDocument();
+      expect(screen.getByLabelText("Category for row 10")).toHaveValue("Bias");
+    });
+  });
+
+  it("renders read-only columns as plain text, not editable inputs", async () => {
+    renderGrid(makeAdapter(), ["inherent_risk_score"]);
+
+    await waitFor(() => {
+      expect(screen.getByText("12")).toBeInTheDocument();
+    });
+    expect(
+      screen.queryByLabelText("Remove Inherent Risk Score"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("updates a cell on blur", async () => {
+    const adapter = makeAdapter();
+    const user = userEvent.setup();
+    renderGrid(adapter);
+
+    const input = await screen.findByLabelText("Category for row 10");
+    await user.clear(input);
+    await user.type(input, "Privacy");
+    await user.tab();
+
+    await waitFor(() => {
+      expect(adapter.updateRow).toHaveBeenCalledWith(10, { category: "Privacy" });
+    });
+  });
+
+  it("adds a new column", async () => {
+    const adapter = makeAdapter();
+    const user = userEvent.setup();
+    renderGrid(adapter);
+
+    await screen.findByText("Category");
+    await user.type(screen.getByLabelText("New column key"), "impact");
+    await user.type(screen.getByLabelText("New column label"), "Impact");
+    await user.click(screen.getByRole("button", { name: "Add Column" }));
+
+    await waitFor(() => {
+      expect(adapter.setColumns).toHaveBeenCalledWith([
+        ...baseSheet.columns,
+        { key: "impact", label: "Impact", data_type: "text" },
+      ]);
+    });
+  });
+
+  it("removes a column", async () => {
+    const adapter = makeAdapter();
+    const user = userEvent.setup();
+    renderGrid(adapter);
+
+    await user.click(await screen.findByLabelText("Remove Category"));
+
+    await waitFor(() => {
+      expect(adapter.setColumns).toHaveBeenCalledWith([
+        baseSheet.columns[1],
+        baseSheet.columns[2],
+      ]);
+    });
+  });
+
+  it("shows an error when removing a reserved column is rejected", async () => {
+    const adapter = makeAdapter({
+      setColumns: vi.fn().mockRejectedValue(new ApiError(400, "Cannot remove reserved column")),
+    });
+    const user = userEvent.setup();
+    renderGrid(adapter);
+
+    await user.click(await screen.findByLabelText("Remove Category"));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("Cannot remove reserved column");
+  });
+
+  it("adds a new row from the draft inputs", async () => {
+    const adapter = makeAdapter();
+    const user = userEvent.setup();
+    renderGrid(adapter);
+
+    await user.type(await screen.findByLabelText("New row Category"), "Privacy");
+    await user.click(screen.getByRole("button", { name: "Add Row" }));
+
+    await waitFor(() => {
+      expect(adapter.addRow).toHaveBeenCalledWith({ category: "Privacy" });
+    });
+  });
+
+  it("deletes a row", async () => {
+    const adapter = makeAdapter();
+    const user = userEvent.setup();
+    renderGrid(adapter);
+
+    await user.click(await screen.findByRole("button", { name: "Delete" }));
+
+    await waitFor(() => {
+      expect(adapter.deleteRow).toHaveBeenCalledWith(10);
+    });
+  });
+
+  it("uploads a file", async () => {
+    const adapter = makeAdapter();
+    const user = userEvent.setup();
+    renderGrid(adapter);
+
+    const file = new File(["a,b\n1,2"], "sheet.csv", { type: "text/csv" });
+    await user.upload(await screen.findByLabelText("Upload sheet"), file);
+
+    await waitFor(() => {
+      expect(adapter.upload).toHaveBeenCalledWith(file);
+    });
+  });
+
+  it("renders an export link using the adapter's export URL", async () => {
+    renderGrid(makeAdapter());
+
+    const link = await screen.findByRole("link", { name: "Export" });
+    expect(link).toHaveAttribute("href", "http://localhost:8000/api/v1/export");
+  });
+});
