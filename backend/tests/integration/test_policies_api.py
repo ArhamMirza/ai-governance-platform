@@ -2,9 +2,19 @@ from fastapi.testclient import TestClient
 
 
 def create_policy(client: TestClient, **overrides) -> dict:
-    payload = {"title": "Data Retention Policy", "content": "Initial text"}
+    payload = {"title": "Data Retention Policy"}
     payload.update(overrides)
     response = client.post("/api/v1/policies", json=payload)
+    assert response.status_code == 201
+    return response.json()
+
+
+def upload_document(client: TestClient, policy_id: int, filename: str = "policy.pdf") -> dict:
+    response = client.post(
+        "/api/v1/evidence",
+        data={"entity_type": "Policy", "entity_id": str(policy_id)},
+        files={"file": (filename, b"file-bytes", "application/pdf")},
+    )
     assert response.status_code == 201
     return response.json()
 
@@ -14,6 +24,7 @@ def test_create_and_get_policy(client: TestClient) -> None:
 
     assert created["status"] == "draft"
     assert created["version"] == 1
+    assert "content" not in created
 
     response = client.get(f"/api/v1/policies/{created['id']}")
     assert response.status_code == 200
@@ -36,21 +47,59 @@ def test_list_policies(client: TestClient) -> None:
     assert titles == {"Policy A", "Policy B"}
 
 
-def test_update_policy_creates_new_version(client: TestClient) -> None:
+def test_update_policy_metadata_does_not_bump_version(client: TestClient) -> None:
     created = create_policy(client)
     policy_id = created["id"]
 
-    response = client.put(
-        f"/api/v1/policies/{policy_id}",
-        json={"content": "Revised text", "change_note": "clarified scope"},
-    )
+    response = client.put(f"/api/v1/policies/{policy_id}", json={"title": "Renamed Policy"})
 
     assert response.status_code == 200
-    assert response.json()["version"] == 2
+    assert response.json()["title"] == "Renamed Policy"
+    assert response.json()["version"] == 1
 
-    versions = client.get(f"/api/v1/policies/{policy_id}/versions").json()
-    assert len(versions) == 2
-    assert versions[1]["change_note"] == "clarified scope"
+
+def test_uploading_a_document_bumps_version_and_appears_in_history(client: TestClient) -> None:
+    policy_id = create_policy(client)["id"]
+
+    upload_document(client, policy_id, filename="policy-draft.pdf")
+
+    updated = client.get(f"/api/v1/policies/{policy_id}").json()
+    assert updated["version"] == 2
+
+    history = client.get(f"/api/v1/policies/{policy_id}/versions").json()
+    assert len(history) == 1
+    assert history[0]["action"] == "document_added"
+    assert history[0]["diff"]["filename"] == "policy-draft.pdf"
+
+
+def test_deleting_a_document_bumps_version_and_appears_in_history(client: TestClient) -> None:
+    policy_id = create_policy(client)["id"]
+    uploaded = upload_document(client, policy_id)
+
+    client.delete(f"/api/v1/evidence/{uploaded['id']}")
+
+    updated = client.get(f"/api/v1/policies/{policy_id}").json()
+    assert updated["version"] == 3
+
+    history = client.get(f"/api/v1/policies/{policy_id}/versions").json()
+    actions = [entry["action"] for entry in history]
+    assert actions == ["document_added", "document_removed"]
+
+
+def test_uploading_a_document_does_not_bump_version_once_approved(client: TestClient) -> None:
+    policy_id = create_policy(client)["id"]
+    client.post(f"/api/v1/policies/{policy_id}/submit-for-review")
+    client.post(f"/api/v1/policies/{policy_id}/approve")
+
+    upload_document(client, policy_id)
+
+    updated = client.get(f"/api/v1/policies/{policy_id}").json()
+    assert updated["version"] == 1
+
+
+def test_versions_endpoint_for_missing_policy_returns_404(client: TestClient) -> None:
+    response = client.get("/api/v1/policies/999/versions")
+    assert response.status_code == 404
 
 
 def test_full_review_workflow(client: TestClient) -> None:
@@ -77,7 +126,7 @@ def test_cannot_edit_after_submitted_for_review(client: TestClient) -> None:
     policy_id = create_policy(client)["id"]
     client.post(f"/api/v1/policies/{policy_id}/submit-for-review")
 
-    response = client.put(f"/api/v1/policies/{policy_id}", json={"content": "sneaky edit"})
+    response = client.put(f"/api/v1/policies/{policy_id}", json={"title": "sneaky edit"})
 
     assert response.status_code == 409
 

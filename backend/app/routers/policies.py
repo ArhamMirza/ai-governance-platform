@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.dependencies import get_current_actor_id
-from app.schemas.policy import PolicyCreate, PolicyRead, PolicyUpdate, PolicyVersionRead
+from app.schemas.policy import PolicyCreate, PolicyHistoryEntry, PolicyRead, PolicyUpdate
 from app.services import policy_service
 
 router = APIRouter(prefix="/policies", tags=["policies"])
@@ -65,6 +65,8 @@ def approve_policy(
     return policy_service.approve_policy(db, policy_id, actor_id)
 
 
-@router.get("/{policy_id}/versions", response_model=list[PolicyVersionRead])
-def list_versions(policy_id: int, db: Session = Depends(get_db)) -> list[PolicyVersionRead]:
-    return policy_service.list_versions(db, policy_id)
+@router.get("/{policy_id}/versions", response_model=list[PolicyHistoryEntry])
+def list_document_history(
+    policy_id: int, db: Session = Depends(get_db)
+) -> list[PolicyHistoryEntry]:
+    return policy_service.list_document_history(db, policy_id)
