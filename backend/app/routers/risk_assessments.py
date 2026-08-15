@@ -10,7 +10,7 @@ from app.schemas.risk_assessment import (
     RiskAssessmentRead,
     RiskAssessmentUpdate,
 )
-from app.schemas.sheet import ColumnsUpdate, RowCreate, RowUpdate, SheetRowRead
+from app.schemas.sheet import ColumnsUpdate, RowCreate, RowUpdate, SheetRowRead, SheetWithRowsRead
 from app.services import risk_assessment_service
 
 router = APIRouter(prefix="/risk-assessments", tags=["risk-assessments"])
@@ -79,6 +79,21 @@ def delete_risk_assessment(
     actor_id: int | None = Depends(get_current_actor_id),
 ) -> None:
     risk_assessment_service.delete_risk_assessment(db, risk_assessment_id, actor_id)
+
+
+@router.get("/{risk_assessment_id}/sheet", response_model=SheetWithRowsRead)
+def get_sheet(risk_assessment_id: int, db: Session = Depends(get_db)) -> SheetWithRowsRead:
+    sheet = risk_assessment_service.get_sheet(db, risk_assessment_id)
+    rows = risk_assessment_service.list_rows(db, risk_assessment_id)
+    return SheetWithRowsRead(
+        id=sheet.id,
+        entity_type=sheet.entity_type,
+        title=sheet.title,
+        columns=sheet.columns,
+        created_at=sheet.created_at,
+        updated_at=sheet.updated_at,
+        rows=rows,
+    )
 
 
 @router.put("/{risk_assessment_id}/columns", response_model=RiskAssessmentRead)

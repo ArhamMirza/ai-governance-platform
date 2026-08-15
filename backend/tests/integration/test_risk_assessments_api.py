@@ -85,6 +85,40 @@ def test_set_columns_rejects_dropping_reserved_risk_columns(client: TestClient) 
     assert response.status_code == 400
 
 
+def test_get_sheet_returns_columns_and_rows(client: TestClient) -> None:
+    created = create_risk_assessment(client)
+    client.post(
+        f"/api/v1/risk-assessments/{created['id']}/rows",
+        json={"data": {"category": "Bias", "likelihood": 3, "impact": 4}},
+    )
+
+    response = client.get(f"/api/v1/risk-assessments/{created['id']}/sheet")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["entity_type"] == "RiskAssessment"
+    assert [c["key"] for c in body["columns"]] == [
+        "category",
+        "description",
+        "likelihood",
+        "impact",
+        "inherent_risk_score",
+        "mitigation",
+        "residual_likelihood",
+        "residual_impact",
+        "residual_risk_score",
+        "control_owner",
+        "status",
+    ]
+    assert len(body["rows"]) == 1
+    assert body["rows"][0]["data"]["inherent_risk_score"] == 12.0
+
+
+def test_get_sheet_for_missing_risk_assessment_returns_404(client: TestClient) -> None:
+    response = client.get("/api/v1/risk-assessments/999/sheet")
+    assert response.status_code == 404
+
+
 def test_create_risk_assessment_rejects_missing_ai_system_row(client: TestClient) -> None:
     response = client.post("/api/v1/risk-assessments", json={"ai_system_row_id": 999})
 

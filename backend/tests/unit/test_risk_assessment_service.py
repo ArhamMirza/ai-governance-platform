@@ -86,6 +86,27 @@ def test_get_risk_assessment_raises_not_found(mock_repo, db) -> None:
         risk_assessment_service.get_risk_assessment(db, 999)
 
 
+@patch("app.services.risk_assessment_service.sheet_service")
+@patch("app.services.risk_assessment_service.risk_assessment_repository")
+def test_get_sheet_delegates_to_sheet_service(mock_repo, mock_sheet_service, db) -> None:
+    risk_assessment = make_risk_assessment(sheet_id=5)
+    mock_repo.get.return_value = risk_assessment
+    mock_sheet_service.get_sheet.return_value = MagicMock(id=5)
+
+    result = risk_assessment_service.get_sheet(db, 1)
+
+    mock_sheet_service.get_sheet.assert_called_once_with(db, 5)
+    assert result.id == 5
+
+
+@patch("app.services.risk_assessment_service.risk_assessment_repository")
+def test_get_sheet_raises_not_found_for_missing_risk_assessment(mock_repo, db) -> None:
+    mock_repo.get.return_value = None
+
+    with pytest.raises(NotFoundError):
+        risk_assessment_service.get_sheet(db, 999)
+
+
 @patch("app.services.risk_assessment_service.audit_service")
 @patch("app.services.risk_assessment_service.risk_assessment_repository")
 def test_update_risk_assessment(mock_repo, mock_audit, db) -> None:

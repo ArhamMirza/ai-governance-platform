@@ -105,6 +105,11 @@ def delete_risk_assessment(db: Session, risk_assessment_id: int, actor_id: int |
     audit_service.log(db, "RiskAssessment", risk_assessment_id, "deleted", actor_id)
 
 
+def get_sheet(db: Session, risk_assessment_id: int) -> Sheet:
+    risk_assessment = _get_or_raise(db, risk_assessment_id)
+    return sheet_service.get_sheet(db, risk_assessment.sheet_id)
+
+
 def list_rows(db: Session, risk_assessment_id: int) -> list[SheetRow]:
     risk_assessment = _get_or_raise(db, risk_assessment_id)
     return sheet_service.list_rows(db, risk_assessment.sheet_id)
