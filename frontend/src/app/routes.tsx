@@ -6,6 +6,7 @@ import { PoliciesPage } from "../pages/PoliciesPage";
 import { PolicyDetailPage } from "../pages/PolicyDetailPage";
 import { ProcedureDetailPage } from "../pages/ProcedureDetailPage";
 import { ProceduresPage } from "../pages/ProceduresPage";
+import { RiskAssessmentDetailPage } from "../pages/RiskAssessmentDetailPage";
 import { RiskAssessmentsPage } from "../pages/RiskAssessmentsPage";
 
 const navItems = [
@@ -39,6 +40,10 @@ export function AppRoutes() {
           <Route path="/procedures/:procedureId" element={<ProcedureDetailPage />} />
           <Route path="/ai-systems" element={<AISystemInventoryPage />} />
           <Route path="/risk-assessments" element={<RiskAssessmentsPage />} />
+          <Route
+            path="/risk-assessments/:riskAssessmentId"
+            element={<RiskAssessmentDetailPage />}
+          />
         </Routes>
       </main>
     </div>
