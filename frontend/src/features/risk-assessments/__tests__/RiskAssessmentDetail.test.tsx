@@ -2,6 +2,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
+import { auditLogApi } from "../../audit-log/api";
 import { createTestQueryClient } from "../../../test/testQueryClient";
 import type { SheetWithRows } from "../../sheets/types";
 import { makeRiskAssessmentSheetAdapter } from "../api";
@@ -14,6 +15,7 @@ vi.mock("../hooks", async (importOriginal) => {
   return { ...actual, useRiskAssessment: vi.fn(), useAISystemInventoryRows: vi.fn() };
 });
 vi.mock("../api");
+vi.mock("../../audit-log/api");
 
 const riskAssessment: RiskAssessment = {
   id: 1,
@@ -88,6 +90,7 @@ describe("RiskAssessmentDetail", () => {
       upload: vi.fn(),
       exportUrl: vi.fn().mockReturnValue("http://localhost:8000/api/v1/risk-assessments/1/export"),
     });
+    vi.mocked(auditLogApi.list).mockResolvedValue([]);
     const queryClient = createTestQueryClient();
 
     render(

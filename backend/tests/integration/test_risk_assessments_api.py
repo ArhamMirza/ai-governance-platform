@@ -254,3 +254,23 @@ def test_export_returns_xlsx(client: TestClient) -> None:
 
     assert response.status_code == 200
     assert response.content[:2] == b"PK"
+
+
+def test_row_and_column_changes_are_audit_logged(client: TestClient) -> None:
+    created = create_risk_assessment(client)
+    ra_id = created["id"]
+
+    row = client.post(
+        f"/api/v1/risk-assessments/{ra_id}/rows", json={"data": {"category": "Bias"}}
+    ).json()
+    client.put(
+        f"/api/v1/risk-assessments/{ra_id}/rows/{row['id']}", json={"data": {"likelihood": 3}}
+    )
+    client.delete(f"/api/v1/risk-assessments/{ra_id}/rows/{row['id']}")
+
+    history = client.get(
+        "/api/v1/audit-log", params={"entity_type": "RiskAssessment", "entity_id": ra_id}
+    ).json()
+
+    actions = [entry["action"] for entry in history]
+    assert actions == ["created", "row_added", "row_updated", "row_deleted"]

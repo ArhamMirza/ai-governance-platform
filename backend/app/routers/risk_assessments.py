@@ -98,37 +98,55 @@ def get_sheet(risk_assessment_id: int, db: Session = Depends(get_db)) -> SheetWi
 
 @router.put("/{risk_assessment_id}/columns", response_model=RiskAssessmentRead)
 def set_columns(
-    risk_assessment_id: int, data: ColumnsUpdate, db: Session = Depends(get_db)
+    risk_assessment_id: int,
+    data: ColumnsUpdate,
+    db: Session = Depends(get_db),
+    actor_id: int | None = Depends(get_current_actor_id),
 ) -> RiskAssessmentRead:
-    risk_assessment_service.set_columns(db, risk_assessment_id, data.columns)
+    risk_assessment_service.set_columns(db, risk_assessment_id, data.columns, actor_id)
     risk_assessment = risk_assessment_service.get_risk_assessment(db, risk_assessment_id)
     return _to_read(db, risk_assessment)
 
 
 @router.post("/{risk_assessment_id}/rows", response_model=SheetRowRead, status_code=201)
 def add_row(
-    risk_assessment_id: int, data: RowCreate, db: Session = Depends(get_db)
+    risk_assessment_id: int,
+    data: RowCreate,
+    db: Session = Depends(get_db),
+    actor_id: int | None = Depends(get_current_actor_id),
 ) -> SheetRowRead:
-    return risk_assessment_service.add_row(db, risk_assessment_id, data.data)
+    return risk_assessment_service.add_row(db, risk_assessment_id, data.data, actor_id)
 
 
 @router.put("/{risk_assessment_id}/rows/{row_id}", response_model=SheetRowRead)
 def update_row(
-    risk_assessment_id: int, row_id: int, data: RowUpdate, db: Session = Depends(get_db)
+    risk_assessment_id: int,
+    row_id: int,
+    data: RowUpdate,
+    db: Session = Depends(get_db),
+    actor_id: int | None = Depends(get_current_actor_id),
 ) -> SheetRowRead:
-    return risk_assessment_service.update_row(db, risk_assessment_id, row_id, data.data)
+    return risk_assessment_service.update_row(db, risk_assessment_id, row_id, data.data, actor_id)
 
 
 @router.delete("/{risk_assessment_id}/rows/{row_id}", status_code=204)
-def delete_row(risk_assessment_id: int, row_id: int, db: Session = Depends(get_db)) -> None:
-    risk_assessment_service.delete_row(db, risk_assessment_id, row_id)
+def delete_row(
+    risk_assessment_id: int,
+    row_id: int,
+    db: Session = Depends(get_db),
+    actor_id: int | None = Depends(get_current_actor_id),
+) -> None:
+    risk_assessment_service.delete_row(db, risk_assessment_id, row_id, actor_id)
 
 
 @router.post("/{risk_assessment_id}/upload", response_model=RiskAssessmentRead)
 def upload(
-    risk_assessment_id: int, file: UploadFile = File(...), db: Session = Depends(get_db)
+    risk_assessment_id: int,
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    actor_id: int | None = Depends(get_current_actor_id),
 ) -> RiskAssessmentRead:
-    risk_assessment_service.import_upload(db, risk_assessment_id, file)
+    risk_assessment_service.import_upload(db, risk_assessment_id, file, actor_id)
     risk_assessment = risk_assessment_service.get_risk_assessment(db, risk_assessment_id)
     return _to_read(db, risk_assessment)
 

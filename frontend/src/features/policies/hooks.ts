@@ -6,6 +6,7 @@ import type { PolicyCreateInput, PolicyUpdateInput } from "./types";
 const policiesKey = ["policies"] as const;
 const policyKey = (id: number) => ["policies", id] as const;
 const policyVersionsKey = (id: number) => ["policies", id, "versions"] as const;
+const policyAuditLogKey = (id: number) => ["audit-log", "Policy", id] as const;
 
 export function usePolicies() {
   return useQuery({ queryKey: policiesKey, queryFn: policiesApi.list });
@@ -38,6 +39,7 @@ export function useUpdatePolicy(id: number) {
       queryClient.invalidateQueries({ queryKey: policiesKey });
       queryClient.invalidateQueries({ queryKey: policyKey(id) });
       queryClient.invalidateQueries({ queryKey: policyVersionsKey(id) });
+      queryClient.invalidateQueries({ queryKey: policyAuditLogKey(id) });
     },
   });
 }
@@ -57,6 +59,7 @@ export function useSubmitForReview(id: number) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: policiesKey });
       queryClient.invalidateQueries({ queryKey: policyKey(id) });
+      queryClient.invalidateQueries({ queryKey: policyAuditLogKey(id) });
     },
   });
 }
@@ -68,6 +71,7 @@ export function useApprovePolicy(id: number) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: policiesKey });
       queryClient.invalidateQueries({ queryKey: policyKey(id) });
+      queryClient.invalidateQueries({ queryKey: policyAuditLogKey(id) });
     },
   });
 }

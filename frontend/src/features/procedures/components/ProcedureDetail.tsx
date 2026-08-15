@@ -1,4 +1,5 @@
 import { StatusBadge } from "../../../shared/components/StatusBadge";
+import { AuditLogViewer } from "../../audit-log/components/AuditLogViewer";
 import { DocumentBrowser } from "../../evidence/components/DocumentBrowser";
 import {
   useApproveProcedure,
@@ -58,6 +59,9 @@ export function ProcedureDetail({ procedureId }: ProcedureDetailProps) {
           </li>
         ))}
       </ul>
+
+      <h3>Audit Log</h3>
+      <AuditLogViewer entityType="Procedure" entityId={procedureId} />
     </article>
   );
 }

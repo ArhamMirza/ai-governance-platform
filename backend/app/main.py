@@ -6,6 +6,7 @@ from app.core.config import get_settings
 from app.core.exceptions import ConflictError, NotFoundError, ValidationError
 from app.routers import (
     ai_system_inventory,
+    audit_log,
     evidence,
     folders,
     health,
@@ -49,3 +50,4 @@ app.include_router(folders.router, prefix="/api/v1")
 app.include_router(evidence.router, prefix="/api/v1")
 app.include_router(ai_system_inventory.router, prefix="/api/v1")
 app.include_router(risk_assessments.router, prefix="/api/v1")
+app.include_router(audit_log.router, prefix="/api/v1")
