@@ -1,3 +1,4 @@
+import { DashboardSummaryView } from "../features/dashboard/components/DashboardSummaryView";
 import { useHealthCheck } from "../shared/hooks/useHealthCheck";
 
 export function DashboardPage() {
@@ -10,6 +11,8 @@ export function DashboardPage() {
         Backend status:{" "}
         {isLoading ? "checking..." : isError ? "unreachable" : data?.status}
       </p>
+
+      <DashboardSummaryView />
     </section>
   );
 }
