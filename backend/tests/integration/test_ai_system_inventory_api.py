@@ -110,3 +110,20 @@ def test_export_returns_xlsx(client: TestClient) -> None:
         "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
     assert response.content[:2] == b"PK"  # xlsx files are zip archives
+
+
+def test_row_and_column_changes_are_audit_logged(client: TestClient) -> None:
+    sheet_id = client.get("/api/v1/ai-system-inventory").json()["id"]
+    row = client.post(
+        "/api/v1/ai-system-inventory/rows", json={"data": {"name": "Resume Screener"}}
+    ).json()
+    client.put(
+        f"/api/v1/ai-system-inventory/rows/{row['id']}", json={"data": {"risk_tier": "high"}}
+    )
+    client.delete(f"/api/v1/ai-system-inventory/rows/{row['id']}")
+
+    history = client.get(
+        "/api/v1/audit-log", params={"entity_type": "AISystemInventory", "entity_id": sheet_id}
+    ).json()
+
+    assert [entry["action"] for entry in history] == ["row_added", "row_updated", "row_deleted"]

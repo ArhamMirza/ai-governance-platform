@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 
+import { AuditLogViewer } from "../../audit-log/components/AuditLogViewer";
 import { DataGrid } from "../../sheets/components/DataGrid";
 import { makeRiskAssessmentSheetAdapter } from "../api";
 import { riskAssessmentSheetKey, useAISystemInventoryRows, useRiskAssessment } from "../hooks";
@@ -45,6 +46,9 @@ export function RiskAssessmentDetail({ riskAssessmentId }: RiskAssessmentDetailP
 
       <h3>Risk Matrix</h3>
       <RiskMatrix rows={sheet?.rows ?? []} />
+
+      <h3>Audit Log</h3>
+      <AuditLogViewer entityType="RiskAssessment" entityId={riskAssessmentId} />
     </article>
   );
 }

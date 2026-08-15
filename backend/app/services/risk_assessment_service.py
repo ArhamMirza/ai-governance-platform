@@ -116,24 +116,43 @@ def list_rows(db: Session, risk_assessment_id: int) -> list[SheetRow]:
     return sheet_service.list_rows(db, risk_assessment.sheet_id)
 
 
-def set_columns(db: Session, risk_assessment_id: int, columns: list[ColumnDef]) -> Sheet:
+def set_columns(
+    db: Session, risk_assessment_id: int, columns: list[ColumnDef], actor_id: int | None
+) -> Sheet:
     risk_assessment = _get_or_raise(db, risk_assessment_id)
-    return sheet_service.set_columns(db, risk_assessment.sheet_id, columns)
+    result = sheet_service.set_columns(db, risk_assessment.sheet_id, columns)
+    audit_service.log(db, ENTITY_TYPE, risk_assessment_id, "columns_updated", actor_id)
+    return result
 
 
-def add_row(db: Session, risk_assessment_id: int, data: dict) -> SheetRow:
+def add_row(db: Session, risk_assessment_id: int, data: dict, actor_id: int | None) -> SheetRow:
     risk_assessment = _get_or_raise(db, risk_assessment_id)
-    return sheet_service.add_row(db, risk_assessment.sheet_id, data)
+    row = sheet_service.add_row(db, risk_assessment.sheet_id, data)
+    audit_service.log(
+        db, ENTITY_TYPE, risk_assessment_id, "row_added", actor_id, {"row_id": row.id}
+    )
+    return row
 
 
-def update_row(db: Session, risk_assessment_id: int, row_id: int, data: dict) -> SheetRow:
+def update_row(
+    db: Session, risk_assessment_id: int, row_id: int, data: dict, actor_id: int | None
+) -> SheetRow:
     risk_assessment = _get_or_raise(db, risk_assessment_id)
-    return sheet_service.update_row(db, risk_assessment.sheet_id, row_id, data)
+    row = sheet_service.update_row(db, risk_assessment.sheet_id, row_id, data)
+    audit_service.log(
+        db, ENTITY_TYPE, risk_assessment_id, "row_updated", actor_id, {"row_id": row_id}
+    )
+    return row
 
 
-def delete_row(db: Session, risk_assessment_id: int, row_id: int) -> None:
+def delete_row(
+    db: Session, risk_assessment_id: int, row_id: int, actor_id: int | None
+) -> None:
     risk_assessment = _get_or_raise(db, risk_assessment_id)
     sheet_service.delete_row(db, risk_assessment.sheet_id, row_id)
+    audit_service.log(
+        db, ENTITY_TYPE, risk_assessment_id, "row_deleted", actor_id, {"row_id": row_id}
+    )
 
 
 def export_xlsx(db: Session, risk_assessment_id: int) -> bytes:
@@ -141,6 +160,10 @@ def export_xlsx(db: Session, risk_assessment_id: int) -> bytes:
     return sheet_service.export_xlsx(db, risk_assessment.sheet_id)
 
 
-def import_upload(db: Session, risk_assessment_id: int, file: UploadFile) -> Sheet:
+def import_upload(
+    db: Session, risk_assessment_id: int, file: UploadFile, actor_id: int | None
+) -> Sheet:
     risk_assessment = _get_or_raise(db, risk_assessment_id)
-    return sheet_service.import_upload(db, risk_assessment.sheet_id, file)
+    result = sheet_service.import_upload(db, risk_assessment.sheet_id, file)
+    audit_service.log(db, ENTITY_TYPE, risk_assessment_id, "sheet_uploaded", actor_id)
+    return result

@@ -3,6 +3,7 @@ from fastapi.responses import Response
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
+from app.dependencies import get_current_actor_id
 from app.schemas.sheet import (
     ColumnsUpdate,
     RowCreate,
@@ -33,29 +34,50 @@ def get_inventory(db: Session = Depends(get_db)) -> SheetWithRowsRead:
 
 
 @router.put("/columns", response_model=SheetWithRowsRead)
-def set_columns(data: ColumnsUpdate, db: Session = Depends(get_db)) -> SheetWithRowsRead:
-    ai_system_inventory_service.set_columns(db, data.columns)
+def set_columns(
+    data: ColumnsUpdate,
+    db: Session = Depends(get_db),
+    actor_id: int | None = Depends(get_current_actor_id),
+) -> SheetWithRowsRead:
+    ai_system_inventory_service.set_columns(db, data.columns, actor_id)
     return get_inventory(db)
 
 
 @router.post("/rows", response_model=SheetRowRead, status_code=201)
-def add_row(data: RowCreate, db: Session = Depends(get_db)) -> SheetRowRead:
-    return ai_system_inventory_service.add_row(db, data.data)
+def add_row(
+    data: RowCreate,
+    db: Session = Depends(get_db),
+    actor_id: int | None = Depends(get_current_actor_id),
+) -> SheetRowRead:
+    return ai_system_inventory_service.add_row(db, data.data, actor_id)
 
 
 @router.put("/rows/{row_id}", response_model=SheetRowRead)
-def update_row(row_id: int, data: RowUpdate, db: Session = Depends(get_db)) -> SheetRowRead:
-    return ai_system_inventory_service.update_row(db, row_id, data.data)
+def update_row(
+    row_id: int,
+    data: RowUpdate,
+    db: Session = Depends(get_db),
+    actor_id: int | None = Depends(get_current_actor_id),
+) -> SheetRowRead:
+    return ai_system_inventory_service.update_row(db, row_id, data.data, actor_id)
 
 
 @router.delete("/rows/{row_id}", status_code=204)
-def delete_row(row_id: int, db: Session = Depends(get_db)) -> None:
-    ai_system_inventory_service.delete_row(db, row_id)
+def delete_row(
+    row_id: int,
+    db: Session = Depends(get_db),
+    actor_id: int | None = Depends(get_current_actor_id),
+) -> None:
+    ai_system_inventory_service.delete_row(db, row_id, actor_id)
 
 
 @router.post("/upload", response_model=SheetWithRowsRead)
-def upload(file: UploadFile = File(...), db: Session = Depends(get_db)) -> SheetWithRowsRead:
-    ai_system_inventory_service.import_upload(db, file)
+def upload(
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    actor_id: int | None = Depends(get_current_actor_id),
+) -> SheetWithRowsRead:
+    ai_system_inventory_service.import_upload(db, file, actor_id)
     return get_inventory(db)
 
 

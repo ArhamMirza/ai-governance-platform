@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from app.models.sheet import Sheet, SheetRow
 from app.repositories import sheet_repository
 from app.schemas.sheet import ColumnDef
-from app.services import sheet_service
+from app.services import audit_service, sheet_service
 
 ENTITY_TYPE = "AISystemInventory"
 
@@ -29,24 +29,31 @@ def list_rows(db: Session) -> list[SheetRow]:
     return sheet_service.list_rows(db, sheet.id)
 
 
-def set_columns(db: Session, columns: list[ColumnDef]) -> Sheet:
+def set_columns(db: Session, columns: list[ColumnDef], actor_id: int | None) -> Sheet:
     sheet = get_or_create_sheet(db)
-    return sheet_service.set_columns(db, sheet.id, columns)
+    result = sheet_service.set_columns(db, sheet.id, columns)
+    audit_service.log(db, ENTITY_TYPE, sheet.id, "columns_updated", actor_id)
+    return result
 
 
-def add_row(db: Session, data: dict) -> SheetRow:
+def add_row(db: Session, data: dict, actor_id: int | None) -> SheetRow:
     sheet = get_or_create_sheet(db)
-    return sheet_service.add_row(db, sheet.id, data)
+    row = sheet_service.add_row(db, sheet.id, data)
+    audit_service.log(db, ENTITY_TYPE, sheet.id, "row_added", actor_id, {"row_id": row.id})
+    return row
 
 
-def update_row(db: Session, row_id: int, data: dict) -> SheetRow:
+def update_row(db: Session, row_id: int, data: dict, actor_id: int | None) -> SheetRow:
     sheet = get_or_create_sheet(db)
-    return sheet_service.update_row(db, sheet.id, row_id, data)
+    row = sheet_service.update_row(db, sheet.id, row_id, data)
+    audit_service.log(db, ENTITY_TYPE, sheet.id, "row_updated", actor_id, {"row_id": row_id})
+    return row
 
 
-def delete_row(db: Session, row_id: int) -> None:
+def delete_row(db: Session, row_id: int, actor_id: int | None) -> None:
     sheet = get_or_create_sheet(db)
     sheet_service.delete_row(db, sheet.id, row_id)
+    audit_service.log(db, ENTITY_TYPE, sheet.id, "row_deleted", actor_id, {"row_id": row_id})
 
 
 def export_xlsx(db: Session) -> bytes:
@@ -54,6 +61,8 @@ def export_xlsx(db: Session) -> bytes:
     return sheet_service.export_xlsx(db, sheet.id)
 
 
-def import_upload(db: Session, file: UploadFile) -> Sheet:
+def import_upload(db: Session, file: UploadFile, actor_id: int | None) -> Sheet:
     sheet = get_or_create_sheet(db)
-    return sheet_service.import_upload(db, sheet.id, file)
+    result = sheet_service.import_upload(db, sheet.id, file)
+    audit_service.log(db, ENTITY_TYPE, sheet.id, "sheet_uploaded", actor_id)
+    return result

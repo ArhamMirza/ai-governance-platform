@@ -2,6 +2,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
+import { auditLogApi } from "../../audit-log/api";
 import { evidenceApi, folderApi } from "../../evidence/api";
 import { createTestQueryClient } from "../../../test/testQueryClient";
 import { proceduresApi } from "../api";
@@ -10,6 +11,7 @@ import type { Procedure, ProcedureHistoryEntry } from "../types";
 
 vi.mock("../api");
 vi.mock("../../evidence/api");
+vi.mock("../../audit-log/api");
 
 const mockProcedure: Procedure = {
   id: 1,
@@ -44,6 +46,7 @@ describe("ProcedureDetail", () => {
     vi.mocked(proceduresApi.listVersions).mockResolvedValue(mockHistory);
     vi.mocked(folderApi.list).mockResolvedValue([]);
     vi.mocked(evidenceApi.list).mockResolvedValue([]);
+    vi.mocked(auditLogApi.list).mockResolvedValue([]);
 
     renderWithProviders(<ProcedureDetail procedureId={1} />);
 
