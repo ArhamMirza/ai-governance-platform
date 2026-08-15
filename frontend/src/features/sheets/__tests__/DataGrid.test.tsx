@@ -178,4 +178,27 @@ describe("DataGrid", () => {
     const link = await screen.findByRole("link", { name: "Export" });
     expect(link).toHaveAttribute("href", "http://localhost:8000/api/v1/export");
   });
+
+  it("shows the flagged label for rows the caller flags", async () => {
+    const queryClient = createTestQueryClient();
+    render(
+      <QueryClientProvider client={queryClient}>
+        <DataGrid
+          queryKey={["test-sheet"]}
+          adapter={makeAdapter()}
+          isRowFlagged={(row) => row.id === 10}
+          flaggedLabel="Overdue"
+        />
+      </QueryClientProvider>,
+    );
+
+    expect(await screen.findByText("Overdue")).toBeInTheDocument();
+  });
+
+  it("does not show a flagged label when isRowFlagged is omitted", async () => {
+    renderGrid(makeAdapter());
+
+    await screen.findByLabelText("Category for row 10");
+    expect(screen.queryByText("Overdue")).not.toBeInTheDocument();
+  });
 });

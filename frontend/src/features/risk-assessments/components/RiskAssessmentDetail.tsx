@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { DataGrid } from "../../sheets/components/DataGrid";
 import { makeRiskAssessmentSheetAdapter } from "../api";
 import { riskAssessmentSheetKey, useAISystemInventoryRows, useRiskAssessment } from "../hooks";
+import { isRiskItemOverdue } from "../riskMonitoring";
 import { RiskAssessmentHeader } from "./RiskAssessmentHeader";
 import { RiskMatrix } from "./RiskMatrix";
 
@@ -34,7 +35,13 @@ export function RiskAssessmentDetail({ riskAssessmentId }: RiskAssessmentDetailP
       <RiskAssessmentHeader riskAssessment={riskAssessment} aiSystemName={aiSystemName} />
 
       <h3>Risk Items</h3>
-      <DataGrid queryKey={[...queryKey]} adapter={adapter} readOnlyColumnKeys={COMPUTED_COLUMNS} />
+      <DataGrid
+        queryKey={[...queryKey]}
+        adapter={adapter}
+        readOnlyColumnKeys={COMPUTED_COLUMNS}
+        isRowFlagged={isRiskItemOverdue}
+        flaggedLabel="Overdue"
+      />
 
       <h3>Risk Matrix</h3>
       <RiskMatrix rows={sheet?.rows ?? []} />

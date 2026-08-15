@@ -2,19 +2,27 @@ import { useRef, useState } from "react";
 
 import { ApiError } from "../../../shared/api/httpClient";
 import { useAddRow, useDeleteRow, useSetColumns, useSheet, useUpdateRow, useUploadSheet } from "../hooks";
-import type { SheetApiAdapter } from "../types";
+import type { SheetApiAdapter, SheetRow } from "../types";
 
 interface DataGridProps {
   queryKey: unknown[];
   adapter: SheetApiAdapter;
   readOnlyColumnKeys?: string[];
+  isRowFlagged?: (row: SheetRow) => boolean;
+  flaggedLabel?: string;
 }
 
 function cellText(value: unknown): string {
   return value !== undefined && value !== null ? String(value) : "";
 }
 
-export function DataGrid({ queryKey, adapter, readOnlyColumnKeys = [] }: DataGridProps) {
+export function DataGrid({
+  queryKey,
+  adapter,
+  readOnlyColumnKeys = [],
+  isRowFlagged,
+  flaggedLabel = "Flagged",
+}: DataGridProps) {
   const { data: sheet, isLoading, isError } = useSheet(queryKey, adapter);
   const setColumns = useSetColumns(queryKey, adapter);
   const addRow = useAddRow(queryKey, adapter);
@@ -130,29 +138,33 @@ export function DataGrid({ queryKey, adapter, readOnlyColumnKeys = [] }: DataGri
           </tr>
         </thead>
         <tbody>
-          {sheet.rows.map((row) => (
-            <tr key={row.id}>
-              {sheet.columns.map((column) => {
-                const isReadOnly = readOnlyColumnKeys.includes(column.key);
-                return (
-                  <td key={column.key}>
-                    {isReadOnly ? (
-                      <span>{cellText(row.data[column.key])}</span>
-                    ) : (
-                      <input
-                        aria-label={`${column.label} for row ${row.id}`}
-                        defaultValue={cellText(row.data[column.key])}
-                        onBlur={(e) => handleCellBlur(row.id, column.key, e.target.value)}
-                      />
-                    )}
-                  </td>
-                );
-              })}
-              <td>
-                <button onClick={() => handleDeleteRow(row.id)}>Delete</button>
-              </td>
-            </tr>
-          ))}
+          {sheet.rows.map((row) => {
+            const flagged = isRowFlagged?.(row) ?? false;
+            return (
+              <tr key={row.id} style={flagged ? { backgroundColor: "#ffe5e5" } : undefined}>
+                {sheet.columns.map((column) => {
+                  const isReadOnly = readOnlyColumnKeys.includes(column.key);
+                  return (
+                    <td key={column.key}>
+                      {isReadOnly ? (
+                        <span>{cellText(row.data[column.key])}</span>
+                      ) : (
+                        <input
+                          aria-label={`${column.label} for row ${row.id}`}
+                          defaultValue={cellText(row.data[column.key])}
+                          onBlur={(e) => handleCellBlur(row.id, column.key, e.target.value)}
+                        />
+                      )}
+                    </td>
+                  );
+                })}
+                <td>
+                  {flagged && <span>{flaggedLabel} </span>}
+                  <button onClick={() => handleDeleteRow(row.id)}>Delete</button>
+                </td>
+              </tr>
+            );
+          })}
           <tr>
             {sheet.columns.map((column) => (
               <td key={column.key}>
