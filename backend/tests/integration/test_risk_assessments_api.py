@@ -37,7 +37,8 @@ def test_create_risk_assessment_creates_sheet_with_default_columns(client: TestC
                 "mitigation": "Add fairness testing",
                 "residual_likelihood": 1,
                 "residual_impact": 2,
-                "control_owner": "ML Team",
+                "risk_owner": "ML Team",
+                "treatment_deadline": "2026-12-31",
                 "status": "open",
             }
         },
@@ -107,7 +108,8 @@ def test_get_sheet_returns_columns_and_rows(client: TestClient) -> None:
         "residual_likelihood",
         "residual_impact",
         "residual_risk_score",
-        "control_owner",
+        "risk_owner",
+        "treatment_deadline",
         "status",
     ]
     assert len(body["rows"]) == 1
