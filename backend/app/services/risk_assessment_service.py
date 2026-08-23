@@ -1,13 +1,27 @@
+from collections import Counter
+
 from fastapi import UploadFile
 from sqlalchemy.orm import Session
 
+from app.core import risk_scoring
 from app.core.exceptions import NotFoundError
 from app.models.risk_assessment import RiskAssessment
 from app.models.sheet import Sheet, SheetRow
 from app.repositories import risk_assessment_repository, sheet_repository
-from app.schemas.risk_assessment import RiskAssessmentCreate, RiskAssessmentUpdate
+from app.schemas.risk_assessment import (
+    RiskAssessmentCreate,
+    RiskAssessmentStats,
+    RiskAssessmentUpdate,
+    RiskPortfolioSummary,
+)
 from app.schemas.sheet import ColumnDef
-from app.services import ai_system_inventory_service, audit_service, sheet_service
+from app.services import (
+    ai_system_inventory_service,
+    audit_service,
+    risk_analytics_service,
+    risk_criteria_service,
+    sheet_service,
+)
 
 ENTITY_TYPE = "RiskAssessment"
 
@@ -43,12 +57,54 @@ def _validate_ai_system_row(db: Session, ai_system_row_id: int) -> None:
 
 def compute_overall_risk_rating(db: Session, sheet_id: int) -> float | None:
     rows = sheet_repository.list_rows(db, sheet_id)
-    scores = [
-        row.data["inherent_risk_score"]
-        for row in rows
-        if isinstance(row.data.get("inherent_risk_score"), int | float)
-    ]
-    return max(scores) if scores else None
+    return risk_analytics_service.overall_rating(rows)
+
+
+def get_portfolio_summary(db: Session) -> RiskPortfolioSummary:
+    """Portfolio-wide roll-up for the risk assessments landing page."""
+    risk_assessments = risk_assessment_repository.list_all(db)
+    rows_by_sheet = sheet_repository.list_rows_for_sheets(
+        db, [risk_assessment.sheet_id for risk_assessment in risk_assessments]
+    )
+    all_rows = [row for rows in rows_by_sheet.values() for row in rows]
+
+    bands = risk_criteria_service.get_bands(db)
+
+    stats: list[RiskAssessmentStats] = []
+    high_risk_count = 0
+    for risk_assessment in risk_assessments:
+        rows = rows_by_sheet.get(risk_assessment.sheet_id, [])
+        summary = risk_analytics_service.summarize_rows(rows, bands)
+        rating = risk_analytics_service.overall_rating(rows)
+        if rating is not None and risk_scoring.is_high_risk(rating, bands):
+            high_risk_count += 1
+
+        stats.append(
+            RiskAssessmentStats(
+                id=risk_assessment.id,
+                ai_system_row_id=risk_assessment.ai_system_row_id,
+                status=risk_assessment.status,
+                overall_risk_rating=rating,
+                item_count=summary.total,
+                high_count=summary.by_severity[risk_scoring.SEVERITY_HIGH],
+                medium_count=summary.by_severity[risk_scoring.SEVERITY_MEDIUM],
+                low_count=summary.by_severity[risk_scoring.SEVERITY_LOW],
+                overdue_count=summary.overdue_count,
+            )
+        )
+
+    # Worst first: unrated assessments sort last.
+    stats.sort(key=lambda s: (s.overall_risk_rating is None, -(s.overall_risk_rating or 0)))
+
+    return RiskPortfolioSummary(
+        total_assessments=len(risk_assessments),
+        by_status=dict(Counter(ra.status for ra in risk_assessments)),
+        high_risk_count=high_risk_count,
+        risk_items=risk_analytics_service.summarize_rows(all_rows, bands),
+        matrix=risk_analytics_service.matrix_cells(all_rows),
+        assessments=stats,
+        criteria=risk_criteria_service.get_criteria(db),
+    )
 
 
 def list_risk_assessments(db: Session) -> list[RiskAssessment]:

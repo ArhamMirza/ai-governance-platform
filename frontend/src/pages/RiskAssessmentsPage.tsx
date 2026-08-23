@@ -2,6 +2,8 @@ import { useState } from "react";
 
 import { RiskAssessmentForm } from "../features/risk-assessments/components/RiskAssessmentForm";
 import { RiskAssessmentList } from "../features/risk-assessments/components/RiskAssessmentList";
+import { RiskPortfolioSummaryView } from "../features/risk-assessments/components/RiskPortfolioSummaryView";
+import { RiskCriteriaEditor } from "../features/risk-criteria/components/RiskCriteriaEditor";
 
 export function RiskAssessmentsPage() {
   const [showForm, setShowForm] = useState(false);
@@ -19,6 +21,11 @@ export function RiskAssessmentsPage() {
       </div>
       {showForm && <RiskAssessmentForm onCreated={() => setShowForm(false)} />}
 
+      <RiskPortfolioSummaryView />
+
+      <RiskCriteriaEditor />
+
+      <h3>All Assessments</h3>
       <RiskAssessmentList />
     </section>
   );

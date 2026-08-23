@@ -9,6 +9,7 @@ from app.schemas.risk_assessment import (
     RiskAssessmentCreate,
     RiskAssessmentRead,
     RiskAssessmentUpdate,
+    RiskPortfolioSummary,
 )
 from app.schemas.sheet import ColumnsUpdate, RowCreate, RowUpdate, SheetRowRead, SheetWithRowsRead
 from app.services import risk_assessment_service
@@ -49,6 +50,12 @@ def create_risk_assessment(
 ) -> RiskAssessmentRead:
     risk_assessment = risk_assessment_service.create_risk_assessment(db, data, actor_id)
     return _to_read(db, risk_assessment)
+
+
+# Declared before /{risk_assessment_id} so the path param does not swallow it.
+@router.get("/summary", response_model=RiskPortfolioSummary)
+def get_portfolio_summary(db: Session = Depends(get_db)) -> RiskPortfolioSummary:
+    return risk_assessment_service.get_portfolio_summary(db)
 
 
 @router.get("/{risk_assessment_id}", response_model=RiskAssessmentRead)

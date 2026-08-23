@@ -1,7 +1,20 @@
 import type { SheetRow } from "../../sheets/types";
+import { type Bands, DEFAULT_BANDS, severityForScore } from "../riskSeverity";
+
+export interface MatrixCell {
+  likelihood: number;
+  impact: number;
+  count: number;
+}
 
 interface RiskMatrixProps {
-  rows: SheetRow[];
+  /** Raw rows to aggregate client-side (detail page). */
+  rows?: SheetRow[];
+  /** Pre-aggregated cells from a summary endpoint (dashboard, portfolio). */
+  cells?: MatrixCell[];
+  /** Severity bands to shade with; defaults to the built-in bands. */
+  bands?: Bands;
+  caption?: string;
 }
 
 const LEVELS = [1, 2, 3, 4, 5];
@@ -12,14 +25,13 @@ function toLevel(value: unknown): number | null {
   return Math.min(5, Math.max(1, Math.round(num)));
 }
 
-function scoreColor(score: number): string {
-  if (score <= 4) return "#c6efce";
-  if (score <= 12) return "#ffeb9c";
-  return "#ffc7ce";
-}
-
-export function RiskMatrix({ rows }: RiskMatrixProps) {
+function countsFrom(rows: SheetRow[], cells: MatrixCell[]): Map<string, number> {
   const counts = new Map<string, number>();
+
+  for (const cell of cells) {
+    counts.set(`${cell.likelihood}-${cell.impact}`, cell.count);
+  }
+
   for (const row of rows) {
     const likelihood = toLevel(row.data.likelihood);
     const impact = toLevel(row.data.impact);
@@ -28,9 +40,20 @@ export function RiskMatrix({ rows }: RiskMatrixProps) {
     counts.set(key, (counts.get(key) ?? 0) + 1);
   }
 
+  return counts;
+}
+
+export function RiskMatrix({
+  rows = [],
+  cells = [],
+  bands = DEFAULT_BANDS,
+  caption = "Risk Matrix (Likelihood × Impact)",
+}: RiskMatrixProps) {
+  const counts = countsFrom(rows, cells);
+
   return (
-    <table aria-label="Risk matrix">
-      <caption>Risk Matrix (Likelihood × Impact)</caption>
+    <table className="risk-matrix" aria-label="Risk matrix">
+      <caption>{caption}</caption>
       <thead>
         <tr>
           <th>Likelihood \ Impact</th>
@@ -50,7 +73,8 @@ export function RiskMatrix({ rows }: RiskMatrixProps) {
                 <td
                   key={impact}
                   aria-label={`Likelihood ${likelihood}, Impact ${impact}, ${count} risk(s)`}
-                  style={{ backgroundColor: scoreColor(score) }}
+                  data-severity={severityForScore(score, bands)}
+                  data-empty={count === 0 ? "true" : undefined}
                 >
                   {count > 0 ? count : ""}
                 </td>
