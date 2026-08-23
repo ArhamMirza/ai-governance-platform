@@ -3,6 +3,8 @@ from datetime import date, datetime
 from pydantic import BaseModel, ConfigDict
 
 from app.models.risk_assessment import RiskAssessmentStatus
+from app.schemas.dashboard import MatrixCell, RiskItemSummary
+from app.schemas.risk_criteria import RiskCriteriaRead
 
 
 class RiskAssessmentCreate(BaseModel):
@@ -32,3 +34,28 @@ class RiskAssessmentRead(BaseModel):
     overall_risk_rating: float | None
     created_at: datetime
     updated_at: datetime
+
+
+class RiskAssessmentStats(BaseModel):
+    """Per-assessment roll-up used by the portfolio table."""
+
+    id: int
+    ai_system_row_id: int
+    status: RiskAssessmentStatus
+    overall_risk_rating: float | None
+    item_count: int
+    high_count: int
+    medium_count: int
+    low_count: int
+    overdue_count: int
+
+
+class RiskPortfolioSummary(BaseModel):
+    total_assessments: int
+    by_status: dict[str, int]
+    high_risk_count: int
+    risk_items: RiskItemSummary
+    matrix: list[MatrixCell]
+    assessments: list[RiskAssessmentStats]
+    # Bundled so the client shades the matrix with the same bands used to count.
+    criteria: RiskCriteriaRead

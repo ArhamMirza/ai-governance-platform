@@ -4,6 +4,7 @@ from app.models.folder import Folder
 from app.models.policy import Policy
 from app.models.procedure import Procedure
 from app.models.risk_assessment import RiskAssessment
+from app.models.risk_criteria import RiskCriteria
 from app.models.sheet import Sheet, SheetRow
 
 __all__ = [
@@ -13,6 +14,7 @@ __all__ = [
     "Policy",
     "Procedure",
     "RiskAssessment",
+    "RiskCriteria",
     "Sheet",
     "SheetRow",
 ]

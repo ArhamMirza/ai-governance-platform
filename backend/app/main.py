@@ -14,6 +14,7 @@ from app.routers import (
     policies,
     procedures,
     risk_assessments,
+    risk_criteria,
 )
 
 settings = get_settings()
@@ -51,5 +52,6 @@ app.include_router(folders.router, prefix="/api/v1")
 app.include_router(evidence.router, prefix="/api/v1")
 app.include_router(ai_system_inventory.router, prefix="/api/v1")
 app.include_router(risk_assessments.router, prefix="/api/v1")
+app.include_router(risk_criteria.router, prefix="/api/v1")
 app.include_router(audit_log.router, prefix="/api/v1")
 app.include_router(dashboard.router, prefix="/api/v1")

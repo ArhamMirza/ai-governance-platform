@@ -42,6 +42,22 @@ def list_rows(db: Session, sheet_id: int) -> list[SheetRow]:
     )
 
 
+def list_rows_for_sheets(db: Session, sheet_ids: list[int]) -> dict[int, list[SheetRow]]:
+    """Fetch rows for many sheets in one query, keyed by sheet id."""
+    grouped: dict[int, list[SheetRow]] = {sheet_id: [] for sheet_id in sheet_ids}
+    if not sheet_ids:
+        return grouped
+
+    rows = db.scalars(
+        select(SheetRow)
+        .where(SheetRow.sheet_id.in_(sheet_ids))
+        .order_by(SheetRow.sheet_id, SheetRow.row_index)
+    )
+    for row in rows:
+        grouped[row.sheet_id].append(row)
+    return grouped
+
+
 def next_row_index(db: Session, sheet_id: int) -> int:
     max_index = db.scalar(
         select(func.max(SheetRow.row_index)).where(SheetRow.sheet_id == sheet_id)

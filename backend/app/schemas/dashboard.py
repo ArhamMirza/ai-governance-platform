@@ -1,5 +1,7 @@
 from pydantic import BaseModel
 
+from app.schemas.risk_criteria import RiskCriteriaRead
+
 
 class StatusCounts(BaseModel):
     total: int
@@ -17,8 +19,49 @@ class RiskAssessmentSummary(BaseModel):
     high_risk_count: int
 
 
+class RiskItemSummary(BaseModel):
+    """Aggregates across every individual risk item in every assessment."""
+
+    total: int
+    by_severity: dict[str, int]
+    overdue_count: int
+    untreated_count: int
+    average_inherent_score: float | None
+    average_residual_score: float | None
+
+
+class MatrixCell(BaseModel):
+    likelihood: int
+    impact: int
+    count: int
+
+
+class CoverageSummary(BaseModel):
+    """Governance coverage ratios, expressed as assessed/total pairs."""
+
+    ai_systems_total: int
+    ai_systems_assessed: int
+    policies_total: int
+    policies_approved: int
+    procedures_total: int
+    procedures_approved: int
+
+
+class AttentionItem(BaseModel):
+    key: str
+    label: str
+    count: int
+    severity: str
+
+
 class DashboardSummary(BaseModel):
     policies: StatusCounts
     procedures: StatusCounts
     ai_systems: AISystemSummary
     risk_assessments: RiskAssessmentSummary
+    risk_items: RiskItemSummary
+    coverage: CoverageSummary
+    attention: list[AttentionItem]
+    matrix: list[MatrixCell]
+    # Bundled so the client shades the matrix with the same bands used to count.
+    criteria: RiskCriteriaRead
