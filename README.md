@@ -40,6 +40,18 @@ npm run dev
 
 App available at `http://localhost:5173`.
 
+## Demo Data
+
+```bash
+cd backend
+python -m app.seed
+```
+
+Populates a few policies, procedures, AI systems, and risk assessments
+through the real service layer (so audit history, computed risk scores,
+etc. all come out correctly). Safe to run more than once — it skips if
+the database already has policies in it.
+
 ## Testing
 
 ```bash
