@@ -15,6 +15,13 @@ export function useRiskAssessments() {
   return useQuery({ queryKey: riskAssessmentsKey, queryFn: riskAssessmentsApi.list });
 }
 
+export function useRiskPortfolioSummary() {
+  return useQuery({
+    queryKey: ["risk-portfolio-summary"],
+    queryFn: riskAssessmentsApi.summary,
+  });
+}
+
 export function useRiskAssessment(id: number) {
   return useQuery({ queryKey: riskAssessmentKey(id), queryFn: () => riskAssessmentsApi.get(id) });
 }

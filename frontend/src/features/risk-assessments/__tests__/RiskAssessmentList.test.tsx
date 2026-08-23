@@ -3,23 +3,50 @@ import { MemoryRouter } from "react-router-dom";
 import { describe, expect, it, vi } from "vitest";
 
 import { RiskAssessmentList } from "../components/RiskAssessmentList";
-import { useAISystemInventoryRows, useRiskAssessments } from "../hooks";
-import type { RiskAssessment } from "../types";
+import { useAISystemInventoryRows, useRiskPortfolioSummary } from "../hooks";
+import type { RiskAssessmentStats, RiskPortfolioSummary } from "../types";
 
 vi.mock("../hooks");
 
-const mockRiskAssessment: RiskAssessment = {
+const criteria = {
+  medium_min_score: 5,
+  high_min_score: 13,
+  is_default: true,
+  min_score: 1,
+  max_score: 25,
+  updated_at: null,
+};
+
+const stats: RiskAssessmentStats = {
   id: 1,
   ai_system_row_id: 5,
-  sheet_id: 2,
-  framework_tags: [],
   status: "draft",
-  assessor_id: null,
-  assessment_date: null,
   overall_risk_rating: 12,
-  created_at: "2026-01-01T00:00:00Z",
-  updated_at: "2026-01-01T00:00:00Z",
+  item_count: 3,
+  high_count: 0,
+  medium_count: 2,
+  low_count: 1,
+  overdue_count: 0,
 };
+
+function makeSummary(assessments: RiskAssessmentStats[]): RiskPortfolioSummary {
+  return {
+    total_assessments: assessments.length,
+    by_status: {},
+    high_risk_count: 0,
+    risk_items: {
+      total: 0,
+      by_severity: { high: 0, medium: 0, low: 0 },
+      overdue_count: 0,
+      untreated_count: 0,
+      average_inherent_score: null,
+      average_residual_score: null,
+    },
+    matrix: [],
+    assessments,
+    criteria,
+  };
+}
 
 const mockInventory = {
   id: 1,
@@ -40,6 +67,15 @@ const mockInventory = {
   updated_at: "2026-01-01T00:00:00Z",
 };
 
+function mockHooks(summary: RiskPortfolioSummary, inventory: unknown = mockInventory) {
+  vi.mocked(useRiskPortfolioSummary).mockReturnValue({
+    data: summary,
+    isLoading: false,
+    isError: false,
+  } as never);
+  vi.mocked(useAISystemInventoryRows).mockReturnValue({ data: inventory } as never);
+}
+
 function renderList() {
   return render(
     <MemoryRouter>
@@ -50,12 +86,7 @@ function renderList() {
 
 describe("RiskAssessmentList", () => {
   it("resolves and renders the linked AI system's name", async () => {
-    vi.mocked(useRiskAssessments).mockReturnValue({
-      data: [mockRiskAssessment],
-      isLoading: false,
-      isError: false,
-    } as never);
-    vi.mocked(useAISystemInventoryRows).mockReturnValue({ data: mockInventory } as never);
+    mockHooks(makeSummary([stats]));
 
     renderList();
 
@@ -66,14 +97,7 @@ describe("RiskAssessmentList", () => {
   });
 
   it("falls back to a placeholder name when the AI system row can't be resolved", async () => {
-    vi.mocked(useRiskAssessments).mockReturnValue({
-      data: [mockRiskAssessment],
-      isLoading: false,
-      isError: false,
-    } as never);
-    vi.mocked(useAISystemInventoryRows).mockReturnValue({
-      data: { ...mockInventory, rows: [] },
-    } as never);
+    mockHooks(makeSummary([stats]), { ...mockInventory, rows: [] });
 
     renderList();
 
@@ -82,13 +106,44 @@ describe("RiskAssessmentList", () => {
     });
   });
 
+  it("shows the item count and highlights high-risk items", async () => {
+    mockHooks(makeSummary([{ ...stats, item_count: 4, high_count: 2 }]));
+
+    renderList();
+
+    await waitFor(() => {
+      expect(screen.getByText("4")).toBeInTheDocument();
+      expect(screen.getByText("2 high")).toBeInTheDocument();
+    });
+  });
+
+  it("flags rows that have overdue treatments", async () => {
+    // item_count stays 3, so use a distinct overdue count to keep the query unambiguous.
+    mockHooks(makeSummary([{ ...stats, overdue_count: 7 }]));
+
+    const { container } = renderList();
+
+    await waitFor(() => {
+      expect(screen.getByText("7")).toBeInTheDocument();
+    });
+    expect(container.querySelector("tr.row-flagged")).not.toBeNull();
+  });
+
+  it("scores the rating pill against the configured criteria", async () => {
+    const summary = makeSummary([stats]);
+    // A rating of 12 is medium by default, but high once the band drops to 9.
+    summary.criteria = { ...criteria, high_min_score: 9, is_default: false };
+    mockHooks(summary);
+
+    const { container } = renderList();
+
+    await waitFor(() => {
+      expect(container.querySelector('[data-severity="high"]')).not.toBeNull();
+    });
+  });
+
   it("shows an empty state when there are no risk assessments", async () => {
-    vi.mocked(useRiskAssessments).mockReturnValue({
-      data: [],
-      isLoading: false,
-      isError: false,
-    } as never);
-    vi.mocked(useAISystemInventoryRows).mockReturnValue({ data: mockInventory } as never);
+    mockHooks(makeSummary([]));
 
     renderList();
 

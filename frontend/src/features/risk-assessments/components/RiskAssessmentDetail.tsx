@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 
 import { AuditLogViewer } from "../../audit-log/components/AuditLogViewer";
+import { useRiskCriteria } from "../../risk-criteria/hooks";
 import { DataGrid } from "../../sheets/components/DataGrid";
 import { makeRiskAssessmentSheetAdapter } from "../api";
 import { riskAssessmentSheetKey, useAISystemInventoryRows, useRiskAssessment } from "../hooks";
@@ -17,6 +18,7 @@ interface RiskAssessmentDetailProps {
 export function RiskAssessmentDetail({ riskAssessmentId }: RiskAssessmentDetailProps) {
   const { data: riskAssessment, isLoading, isError } = useRiskAssessment(riskAssessmentId);
   const { data: inventory } = useAISystemInventoryRows();
+  const { data: criteria } = useRiskCriteria();
   const adapter = makeRiskAssessmentSheetAdapter(riskAssessmentId);
   const queryKey = riskAssessmentSheetKey(riskAssessmentId);
   const { data: sheet } = useQuery({ queryKey, queryFn: adapter.get });
@@ -45,7 +47,7 @@ export function RiskAssessmentDetail({ riskAssessmentId }: RiskAssessmentDetailP
       />
 
       <h3>Risk Matrix</h3>
-      <RiskMatrix rows={sheet?.rows ?? []} />
+      <RiskMatrix rows={sheet?.rows ?? []} bands={criteria} />
 
       <h3>Audit Log</h3>
       <AuditLogViewer entityType="RiskAssessment" entityId={riskAssessmentId} />

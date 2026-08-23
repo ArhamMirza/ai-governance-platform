@@ -4,10 +4,12 @@ import type {
   RiskAssessment,
   RiskAssessmentCreateInput,
   RiskAssessmentUpdateInput,
+  RiskPortfolioSummary,
 } from "./types";
 
 export const riskAssessmentsApi = {
   list: () => httpClient.get<RiskAssessment[]>("/risk-assessments"),
+  summary: () => httpClient.get<RiskPortfolioSummary>("/risk-assessments/summary"),
   get: (id: number) => httpClient.get<RiskAssessment>(`/risk-assessments/${id}`),
   create: (data: RiskAssessmentCreateInput) =>
     httpClient.post<RiskAssessment>("/risk-assessments", data),
