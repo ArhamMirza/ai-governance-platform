@@ -91,7 +91,7 @@ export function DataGrid({
     <div>
       {error && <p role="alert">{error}</p>}
 
-      <div>
+      <div className="grid-toolbar">
         <label htmlFor="grid-upload">Upload sheet</label>
         <input
           id="grid-upload"
@@ -102,7 +102,7 @@ export function DataGrid({
         <a href={adapter.exportUrl()}>Export</a>
       </div>
 
-      <div>
+      <div className="grid-toolbar">
         <input
           value={newColumnKey}
           onChange={(e) => setNewColumnKey(e.target.value)}
@@ -141,7 +141,7 @@ export function DataGrid({
           {sheet.rows.map((row) => {
             const flagged = isRowFlagged?.(row) ?? false;
             return (
-              <tr key={row.id} style={flagged ? { backgroundColor: "#ffe5e5" } : undefined}>
+              <tr key={row.id} className={flagged ? "row-flagged" : undefined}>
                 {sheet.columns.map((column) => {
                   const isReadOnly = readOnlyColumnKeys.includes(column.key);
                   return (
@@ -159,7 +159,7 @@ export function DataGrid({
                   );
                 })}
                 <td>
-                  {flagged && <span>{flaggedLabel} </span>}
+                  {flagged && <span className="flag-chip">{flaggedLabel}</span>}
                   <button onClick={() => handleDeleteRow(row.id)}>Delete</button>
                 </td>
               </tr>

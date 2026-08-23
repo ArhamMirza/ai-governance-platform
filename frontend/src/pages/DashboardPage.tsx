@@ -6,11 +6,15 @@ export function DashboardPage() {
 
   return (
     <section>
-      <h1>Dashboard</h1>
-      <p>
-        Backend status:{" "}
-        {isLoading ? "checking..." : isError ? "unreachable" : data?.status}
-      </p>
+      <div className="page-header">
+        <div>
+          <h1>Dashboard</h1>
+          <p>
+            Backend status:{" "}
+            {isLoading ? "checking..." : isError ? "unreachable" : data?.status}
+          </p>
+        </div>
+      </div>
 
       <DashboardSummaryView />
     </section>

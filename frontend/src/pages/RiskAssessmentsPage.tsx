@@ -8,12 +8,15 @@ export function RiskAssessmentsPage() {
 
   return (
     <section>
-      <h1>Risk Assessments</h1>
-      <p>Risk assessments for a selected AI System appear here.</p>
-
-      <button onClick={() => setShowForm((prev) => !prev)}>
-        {showForm ? "Cancel" : "New Risk Assessment"}
-      </button>
+      <div className="page-header">
+        <div>
+          <h1>Risk Assessments</h1>
+          <p>Risk assessments for a selected AI System appear here.</p>
+        </div>
+        <button onClick={() => setShowForm((prev) => !prev)}>
+          {showForm ? "Cancel" : "New Risk Assessment"}
+        </button>
+      </div>
       {showForm && <RiskAssessmentForm onCreated={() => setShowForm(false)} />}
 
       <RiskAssessmentList />

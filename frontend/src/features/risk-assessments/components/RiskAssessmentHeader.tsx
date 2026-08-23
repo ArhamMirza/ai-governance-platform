@@ -10,9 +10,9 @@ export function RiskAssessmentHeader({ riskAssessment, aiSystemName }: RiskAsses
   const updateRiskAssessment = useUpdateRiskAssessment(riskAssessment.id);
 
   return (
-    <div>
+    <div className="risk-header">
       <p>AI System: {aiSystemName}</p>
-      <p>
+      <div className="risk-header-row">
         <label htmlFor="risk-assessment-status">Status</label>
         <select
           id="risk-assessment-status"
@@ -25,9 +25,9 @@ export function RiskAssessmentHeader({ riskAssessment, aiSystemName }: RiskAsses
           <option value="in_progress">In Progress</option>
           <option value="completed">Completed</option>
         </select>
-      </p>
+      </div>
       <p>Framework Tags: {riskAssessment.framework_tags.join(", ") || "None"}</p>
-      <p>
+      <p className="risk-rating">
         Overall Risk Rating:{" "}
         {riskAssessment.overall_risk_rating !== null
           ? riskAssessment.overall_risk_rating

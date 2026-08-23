@@ -22,7 +22,7 @@ export function DashboardSummaryView() {
   if (isError || !summary) return <p>Failed to load dashboard.</p>;
 
   return (
-    <div>
+    <div className="dashboard-summary">
       <section>
         <h2>Policies</h2>
         <p>Total: {summary.policies.total}</p>
