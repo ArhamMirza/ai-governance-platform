@@ -86,7 +86,7 @@ export function DocumentBrowser({ entityType, entityId }: DocumentBrowserProps) 
   };
 
   return (
-    <div>
+    <div className="document-browser">
       <nav aria-label="breadcrumb">
         <button onClick={() => setPath([])} disabled={path.length === 0}>
           Root
@@ -101,7 +101,7 @@ export function DocumentBrowser({ entityType, entityId }: DocumentBrowserProps) 
 
       {error && <p role="alert">{error}</p>}
 
-      <div>
+      <div className="document-browser-toolbar">
         <input
           value={newFolderName}
           onChange={(e) => setNewFolderName(e.target.value)}
@@ -113,7 +113,7 @@ export function DocumentBrowser({ entityType, entityId }: DocumentBrowserProps) 
         </button>
       </div>
 
-      <div>
+      <div className="document-browser-toolbar">
         <label htmlFor="document-upload">Upload document</label>
         <input
           id="document-upload"
@@ -127,10 +127,13 @@ export function DocumentBrowser({ entityType, entityId }: DocumentBrowserProps) 
       {foldersLoading ? (
         <p>Loading folders...</p>
       ) : (
-        <ul>
+        <ul className="document-browser-list">
           {folders?.map((folder) => (
             <li key={folder.id}>
-              <button onClick={() => setPath([...path, { id: folder.id, name: folder.name }])}>
+              <button
+                className="document-browser-row-name"
+                onClick={() => setPath([...path, { id: folder.id, name: folder.name }])}
+              >
                 📁 {folder.name}
               </button>
               <button onClick={() => handleDeleteFolder(folder.id)}>Delete</button>
@@ -144,10 +147,15 @@ export function DocumentBrowser({ entityType, entityId }: DocumentBrowserProps) 
       ) : documents && documents.length === 0 && (!folders || folders.length === 0) ? (
         <p>No documents yet.</p>
       ) : (
-        <ul>
+        <ul className="document-browser-list">
           {documents?.map((doc) => (
             <li key={doc.id}>
-              <a href={evidenceApi.downloadUrl(doc.id)} target="_blank" rel="noreferrer">
+              <a
+                className="document-browser-row-name"
+                href={evidenceApi.downloadUrl(doc.id)}
+                target="_blank"
+                rel="noreferrer"
+              >
                 {doc.filename}
               </a>
               <button onClick={() => handleDeleteEvidence(doc.id)}>Delete</button>

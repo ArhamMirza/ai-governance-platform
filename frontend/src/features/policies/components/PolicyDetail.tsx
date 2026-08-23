@@ -28,7 +28,7 @@ export function PolicyDetail({ policyId }: PolicyDetailProps) {
       <p>{policy.description}</p>
       <p>Version {policy.version}</p>
 
-      <div>
+      <div className="detail-actions">
         {policy.status === "draft" && (
           <button onClick={() => submitForReview.mutate()} disabled={submitForReview.isPending}>
             Submit for Review

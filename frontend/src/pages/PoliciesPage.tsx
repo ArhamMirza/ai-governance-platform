@@ -8,12 +8,15 @@ export function PoliciesPage() {
 
   return (
     <section>
-      <h1>Policies</h1>
-      <p>Organization-wide policies are managed here.</p>
-
-      <button onClick={() => setShowForm((prev) => !prev)}>
-        {showForm ? "Cancel" : "New Policy"}
-      </button>
+      <div className="page-header">
+        <div>
+          <h1>Policies</h1>
+          <p>Organization-wide policies are managed here.</p>
+        </div>
+        <button onClick={() => setShowForm((prev) => !prev)}>
+          {showForm ? "Cancel" : "New Policy"}
+        </button>
+      </div>
       {showForm && <PolicyForm onCreated={() => setShowForm(false)} />}
 
       <PolicyList />

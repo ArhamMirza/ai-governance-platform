@@ -12,8 +12,12 @@ export function AISystemInventoryPage() {
 
   return (
     <section>
-      <h1>AI System Inventory</h1>
-      <p>Registered AI systems are managed here.</p>
+      <div className="page-header">
+        <div>
+          <h1>AI System Inventory</h1>
+          <p>Registered AI systems are managed here.</p>
+        </div>
+      </div>
       <AISystemInventoryGrid />
 
       {sheet && (

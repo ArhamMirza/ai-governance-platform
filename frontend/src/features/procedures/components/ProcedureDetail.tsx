@@ -33,7 +33,7 @@ export function ProcedureDetail({ procedureId }: ProcedureDetailProps) {
       <p>{procedure.description}</p>
       <p>Version {procedure.version}</p>
 
-      <div>
+      <div className="detail-actions">
         {procedure.status === "draft" && (
           <button onClick={() => submitForReview.mutate()} disabled={submitForReview.isPending}>
             Submit for Review
