@@ -5,7 +5,7 @@ from app.models.audit_log import AuditLogEntry
 from app.models.policy import Policy, PolicyStatus
 from app.repositories import audit_log_repository, policy_repository
 from app.schemas.policy import PolicyCreate, PolicyUpdate
-from app.services import audit_service
+from app.services import audit_service, framework_service
 
 DOCUMENT_HISTORY_ACTIONS = ["document_added", "document_removed"]
 
@@ -92,6 +92,7 @@ def delete_policy(db: Session, policy_id: int, actor_id: int | None) -> None:
             "only draft policies can be deleted"
         )
     policy_repository.delete(db, policy)
+    framework_service.delete_tags(db, "Policy", policy_id)
     audit_service.log(db, "Policy", policy_id, "deleted", actor_id)
 
 

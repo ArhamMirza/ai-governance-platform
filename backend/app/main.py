@@ -10,6 +10,8 @@ from app.routers import (
     dashboard,
     evidence,
     folders,
+    framework_controls,
+    framework_tags,
     health,
     policies,
     procedures,
@@ -53,5 +55,7 @@ app.include_router(evidence.router, prefix="/api/v1")
 app.include_router(ai_system_inventory.router, prefix="/api/v1")
 app.include_router(risk_assessments.router, prefix="/api/v1")
 app.include_router(risk_criteria.router, prefix="/api/v1")
+app.include_router(framework_controls.router, prefix="/api/v1")
+app.include_router(framework_tags.router, prefix="/api/v1")
 app.include_router(audit_log.router, prefix="/api/v1")
 app.include_router(dashboard.router, prefix="/api/v1")

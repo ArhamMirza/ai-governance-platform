@@ -5,7 +5,7 @@ from app.models.audit_log import AuditLogEntry
 from app.models.procedure import Procedure, ProcedureStatus
 from app.repositories import audit_log_repository, policy_repository, procedure_repository
 from app.schemas.procedure import ProcedureCreate, ProcedureUpdate
-from app.services import audit_service
+from app.services import audit_service, framework_service
 
 DOCUMENT_HISTORY_ACTIONS = ["document_added", "document_removed"]
 
@@ -103,6 +103,7 @@ def delete_procedure(db: Session, procedure_id: int, actor_id: int | None) -> No
             "only draft procedures can be deleted"
         )
     procedure_repository.delete(db, procedure)
+    framework_service.delete_tags(db, "Procedure", procedure_id)
     audit_service.log(db, "Procedure", procedure_id, "deleted", actor_id)
 
 

@@ -52,7 +52,6 @@ def make_risk_assessment(**overrides) -> RiskAssessment:
         id=1,
         ai_system_row_id=1,
         sheet_id=1,
-        framework_tags=[],
         status=RiskAssessmentStatus.DRAFT,
         assessor_id=None,
         assessment_date=None,

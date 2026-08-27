@@ -4,18 +4,17 @@ from pydantic import BaseModel, ConfigDict
 
 from app.models.risk_assessment import RiskAssessmentStatus
 from app.schemas.dashboard import MatrixCell, RiskItemSummary
+from app.schemas.framework_control import FrameworkControlRead
 from app.schemas.risk_criteria import RiskCriteriaRead
 
 
 class RiskAssessmentCreate(BaseModel):
     ai_system_row_id: int
-    framework_tags: list[str] = []
     assessor_id: int | None = None
     assessment_date: date | None = None
 
 
 class RiskAssessmentUpdate(BaseModel):
-    framework_tags: list[str] | None = None
     status: RiskAssessmentStatus | None = None
     assessor_id: int | None = None
     assessment_date: date | None = None
@@ -27,7 +26,9 @@ class RiskAssessmentRead(BaseModel):
     id: int
     ai_system_row_id: int
     sheet_id: int
-    framework_tags: list[str]
+    # Framework tags are looked up separately (see framework_service) --
+    # not a real ORM attribute, so from_attributes can't populate it.
+    framework_tags: list[FrameworkControlRead]
     status: RiskAssessmentStatus
     assessor_id: int | None
     assessment_date: date | None
