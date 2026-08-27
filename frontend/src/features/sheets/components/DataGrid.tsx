@@ -22,6 +22,10 @@ interface DataGridProps {
   /** Extra per-row controls in the Actions cell, alongside Delete -- e.g. a
    * "Manage evidence" button. DataGrid stays unaware of what it does. */
   rowActions?: (row: SheetRow) => ReactNode;
+  /** Columns holding a sentence rather than a label. These render as a
+   * wrapping textarea so the whole value is readable -- a single-line input
+   * silently truncates anything longer than the column. */
+  longTextColumnKeys?: string[];
 }
 
 function cellText(value: unknown): string {
@@ -36,6 +40,7 @@ export function DataGrid({
   flaggedLabel = "Flagged",
   selectOptions,
   rowActions,
+  longTextColumnKeys = [],
 }: DataGridProps) {
   const { data: sheet, isLoading, isError } = useSheet(queryKey, adapter);
   const setColumns = useSetColumns(queryKey, adapter);
@@ -102,7 +107,7 @@ export function DataGrid({
   };
 
   return (
-    <div>
+    <div className="data-grid">
       {error && <p role="alert">{error}</p>}
 
       <div className="grid-toolbar">
@@ -132,106 +137,132 @@ export function DataGrid({
         <button onClick={handleAddColumn}>Add Column</button>
       </div>
 
-      <table>
-        <thead>
-          <tr>
-            {sheet.columns.map((column) => (
-              <th key={column.key}>
-                {column.label}
-                {!readOnlyColumnKeys.includes(column.key) && (
-                  <button
-                    onClick={() => handleRemoveColumn(column.key)}
-                    aria-label={`Remove ${column.label}`}
-                  >
-                    ×
-                  </button>
-                )}
-              </th>
-            ))}
-            <th>Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {sheet.rows.map((row) => {
-            const flagged = isRowFlagged?.(row) ?? false;
-            return (
-              <tr key={row.id} className={flagged ? "row-flagged" : undefined}>
-                {sheet.columns.map((column) => {
-                  const isReadOnly = readOnlyColumnKeys.includes(column.key);
-                  const options = selectOptions?.[column.key];
-                  const currentValue = cellText(row.data[column.key]);
+      {/* A wide sheet scrolls in here rather than widening the whole page. */}
+      <div className="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              {sheet.columns.map((column) => (
+                <th key={column.key}>
+                  {column.label}
+                  {!readOnlyColumnKeys.includes(column.key) && (
+                    <button
+                      onClick={() => handleRemoveColumn(column.key)}
+                      aria-label={`Remove ${column.label}`}
+                    >
+                      ×
+                    </button>
+                  )}
+                </th>
+              ))}
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {sheet.rows.map((row) => {
+              const flagged = isRowFlagged?.(row) ?? false;
+              return (
+                <tr key={row.id} className={flagged ? "row-flagged" : undefined}>
+                  {sheet.columns.map((column) => {
+                    const isReadOnly = readOnlyColumnKeys.includes(column.key);
+                    const options = selectOptions?.[column.key];
+                    const currentValue = cellText(row.data[column.key]);
 
-                  if (isReadOnly) {
-                    return (
-                      <td key={column.key}>
-                        <span>{currentValue}</span>
-                      </td>
-                    );
-                  }
-
-                  if (options) {
-                    const knownValues = new Set(["", ...options.map((o) => o.value)]);
-                    return (
-                      <td key={column.key}>
-                        <select
-                          aria-label={`${column.label} for row ${row.id}`}
-                          value={currentValue}
-                          onChange={(e) => updateCell(row.id, column.key, e.target.value)}
+                    if (isReadOnly) {
+                      return (
+                        <td
+                          key={column.key}
+                          data-column={column.key}
+                          data-type={column.data_type}
                         >
-                          <option value="">Unassigned</option>
-                          {!knownValues.has(currentValue) && (
-                            <option value={currentValue} disabled>
-                              {currentValue} (unrecognized)
-                            </option>
-                          )}
-                          {options.map((option) => (
-                            <option key={option.value} value={option.value}>
-                              {option.label}
-                            </option>
-                          ))}
-                        </select>
+                          <span>{currentValue}</span>
+                        </td>
+                      );
+                    }
+
+                    if (options) {
+                      const knownValues = new Set(["", ...options.map((o) => o.value)]);
+                      return (
+                        <td
+                          key={column.key}
+                          data-column={column.key}
+                          data-type={column.data_type}
+                        >
+                          <select
+                            aria-label={`${column.label} for row ${row.id}`}
+                            value={currentValue}
+                            onChange={(e) => updateCell(row.id, column.key, e.target.value)}
+                          >
+                            <option value="">Unassigned</option>
+                            {!knownValues.has(currentValue) && (
+                              <option value={currentValue} disabled>
+                                {currentValue} (unrecognized)
+                              </option>
+                            )}
+                            {options.map((option) => (
+                              <option key={option.value} value={option.value}>
+                                {option.label}
+                              </option>
+                            ))}
+                          </select>
+                        </td>
+                      );
+                    }
+
+                    const isLongText = longTextColumnKeys.includes(column.key);
+                    return (
+                      <td
+                        key={column.key}
+                        data-column={column.key}
+                        data-type={column.data_type}
+                        data-long-text={isLongText ? "true" : undefined}
+                      >
+                        {isLongText ? (
+                          <textarea
+                            aria-label={`${column.label} for row ${row.id}`}
+                            defaultValue={currentValue}
+                            rows={2}
+                            onBlur={(e) => updateCell(row.id, column.key, e.target.value)}
+                          />
+                        ) : (
+                          <input
+                            aria-label={`${column.label} for row ${row.id}`}
+                            defaultValue={currentValue}
+                            onBlur={(e) => updateCell(row.id, column.key, e.target.value)}
+                          />
+                        )}
                       </td>
                     );
-                  }
-
-                  return (
-                    <td key={column.key}>
-                      <input
-                        aria-label={`${column.label} for row ${row.id}`}
-                        defaultValue={currentValue}
-                        onBlur={(e) => updateCell(row.id, column.key, e.target.value)}
-                      />
-                    </td>
-                  );
-                })}
-                <td>
-                  {flagged && <span className="flag-chip">{flaggedLabel}</span>}
-                  {rowActions?.(row)}
-                  <button onClick={() => handleDeleteRow(row.id)}>Delete</button>
+                  })}
+                  <td>
+                    {flagged && <span className="flag-chip">{flaggedLabel}</span>}
+                    {rowActions?.(row)}
+                    <button onClick={() => handleDeleteRow(row.id)}>Delete</button>
+                  </td>
+                </tr>
+              );
+            })}
+            <tr>
+              {sheet.columns.map((column) => (
+                <td key={column.key} data-column={column.key} data-type={column.data_type}>
+                  {!readOnlyColumnKeys.includes(column.key) && (
+                    <input
+                      aria-label={`New row ${column.label}`}
+                      value={newRowDraft[column.key] ?? ""}
+                      onChange={(e) =>
+                        setNewRowDraft({ ...newRowDraft, [column.key]: e.target.value })
+                      }
+                    />
+                  )}
                 </td>
-              </tr>
-            );
-          })}
-          <tr>
-            {sheet.columns.map((column) => (
-              <td key={column.key}>
-                {!readOnlyColumnKeys.includes(column.key) && (
-                  <input
-                    aria-label={`New row ${column.label}`}
-                    value={newRowDraft[column.key] ?? ""}
-                    onChange={(e) =>
-                      setNewRowDraft({ ...newRowDraft, [column.key]: e.target.value })
-                    }
-                  />
-                )}
+              ))}
+              <td>
+                <button onClick={handleAddRow}>Add Row</button>
               </td>
-            ))}
-            <td>
-              <button onClick={handleAddRow}>Add Row</button>
-            </td>
-          </tr>
-        </tbody>
-      </table>
+            </tr>
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
