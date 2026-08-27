@@ -48,3 +48,18 @@ export function useUpdateRiskAssessment(id: number) {
 export function useAISystemInventoryRows() {
   return useQuery({ queryKey: ["ai-system-inventory"], queryFn: aiSystemInventoryAdapter.get });
 }
+
+export function useCloseRiskItem(riskAssessmentId: number) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (rowId: number) => riskAssessmentsApi.closeRiskItem(riskAssessmentId, rowId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: riskAssessmentSheetKey(riskAssessmentId) });
+      queryClient.invalidateQueries({ queryKey: ["risk-portfolio-summary"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard-summary"] });
+      queryClient.invalidateQueries({
+        queryKey: ["audit-log", "RiskAssessment", riskAssessmentId],
+      });
+    },
+  });
+}

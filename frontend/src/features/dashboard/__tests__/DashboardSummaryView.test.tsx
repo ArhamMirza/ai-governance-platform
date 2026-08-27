@@ -45,6 +45,17 @@ const summary: DashboardSummary = {
   ],
   matrix: [{ likelihood: 4, impact: 4, count: 2 }],
   criteria,
+  my_risk_items: [
+    {
+      risk_assessment_id: 7,
+      row_id: 42,
+      category: "Bias",
+      description: "Model may rank candidates unevenly.",
+      status: "open",
+      treatment_deadline: "2026-01-01",
+      overdue: true,
+    },
+  ],
 };
 
 const emptySummary: DashboardSummary = {
@@ -71,6 +82,7 @@ const emptySummary: DashboardSummary = {
   attention: [],
   matrix: [],
   criteria,
+  my_risk_items: [],
 };
 
 function renderView() {
@@ -141,6 +153,30 @@ describe("DashboardSummaryView", () => {
     await waitFor(() => {
       expect(screen.getByLabelText("AI systems assessed: 1 of 2 (50%)")).toBeInTheDocument();
     });
+  });
+
+  it("shows my open risk items, linking to their assessment", async () => {
+    vi.mocked(dashboardApi.getSummary).mockResolvedValue(summary);
+
+    renderView();
+
+    await waitFor(() => {
+      expect(screen.getByText("My Risk Items")).toBeInTheDocument();
+    });
+    const link = screen.getByRole("link", { name: "Bias" });
+    expect(link).toHaveAttribute("href", "/risk-assessments/7");
+    expect(screen.getByText("Overdue")).toBeInTheDocument();
+  });
+
+  it("hides the My Risk Items panel when there are none", async () => {
+    vi.mocked(dashboardApi.getSummary).mockResolvedValue(emptySummary);
+
+    renderView();
+
+    await waitFor(() => {
+      expect(screen.getByText("Nothing needs attention")).toBeInTheDocument();
+    });
+    expect(screen.queryByText("My Risk Items")).not.toBeInTheDocument();
   });
 
   it("shows an all-clear state when nothing needs attention", async () => {

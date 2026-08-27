@@ -1,8 +1,14 @@
 import { useRef, useState } from "react";
+import type { ReactNode } from "react";
 
 import { ApiError } from "../../../shared/api/httpClient";
 import { useAddRow, useDeleteRow, useSetColumns, useSheet, useUpdateRow, useUploadSheet } from "../hooks";
 import type { SheetApiAdapter, SheetRow } from "../types";
+
+export interface SelectOption {
+  value: string;
+  label: string;
+}
 
 interface DataGridProps {
   queryKey: unknown[];
@@ -10,6 +16,12 @@ interface DataGridProps {
   readOnlyColumnKeys?: string[];
   isRowFlagged?: (row: SheetRow) => boolean;
   flaggedLabel?: string;
+  /** Render a specific column as a <select> instead of a free-text input --
+   * e.g. a risk owner picked from real users rather than typed free text. */
+  selectOptions?: Record<string, SelectOption[]>;
+  /** Extra per-row controls in the Actions cell, alongside Delete -- e.g. a
+   * "Manage evidence" button. DataGrid stays unaware of what it does. */
+  rowActions?: (row: SheetRow) => ReactNode;
 }
 
 function cellText(value: unknown): string {
@@ -22,6 +34,8 @@ export function DataGrid({
   readOnlyColumnKeys = [],
   isRowFlagged,
   flaggedLabel = "Flagged",
+  selectOptions,
+  rowActions,
 }: DataGridProps) {
   const { data: sheet, isLoading, isError } = useSheet(queryKey, adapter);
   const setColumns = useSetColumns(queryKey, adapter);
@@ -77,7 +91,7 @@ export function DataGrid({
   const handleDeleteRow = (rowId: number) =>
     runMutation(() => deleteRow.mutateAsync(rowId), "Failed to delete row");
 
-  const handleCellBlur = (rowId: number, key: string, value: string) =>
+  const updateCell = (rowId: number, key: string, value: string) =>
     runMutation(() => updateRow.mutateAsync({ rowId, data: { [key]: value } }), "Failed to update cell");
 
   const handleUpload = (files: FileList | null) => {
@@ -144,22 +158,55 @@ export function DataGrid({
               <tr key={row.id} className={flagged ? "row-flagged" : undefined}>
                 {sheet.columns.map((column) => {
                   const isReadOnly = readOnlyColumnKeys.includes(column.key);
+                  const options = selectOptions?.[column.key];
+                  const currentValue = cellText(row.data[column.key]);
+
+                  if (isReadOnly) {
+                    return (
+                      <td key={column.key}>
+                        <span>{currentValue}</span>
+                      </td>
+                    );
+                  }
+
+                  if (options) {
+                    const knownValues = new Set(["", ...options.map((o) => o.value)]);
+                    return (
+                      <td key={column.key}>
+                        <select
+                          aria-label={`${column.label} for row ${row.id}`}
+                          value={currentValue}
+                          onChange={(e) => updateCell(row.id, column.key, e.target.value)}
+                        >
+                          <option value="">Unassigned</option>
+                          {!knownValues.has(currentValue) && (
+                            <option value={currentValue} disabled>
+                              {currentValue} (unrecognized)
+                            </option>
+                          )}
+                          {options.map((option) => (
+                            <option key={option.value} value={option.value}>
+                              {option.label}
+                            </option>
+                          ))}
+                        </select>
+                      </td>
+                    );
+                  }
+
                   return (
                     <td key={column.key}>
-                      {isReadOnly ? (
-                        <span>{cellText(row.data[column.key])}</span>
-                      ) : (
-                        <input
-                          aria-label={`${column.label} for row ${row.id}`}
-                          defaultValue={cellText(row.data[column.key])}
-                          onBlur={(e) => handleCellBlur(row.id, column.key, e.target.value)}
-                        />
-                      )}
+                      <input
+                        aria-label={`${column.label} for row ${row.id}`}
+                        defaultValue={currentValue}
+                        onBlur={(e) => updateCell(row.id, column.key, e.target.value)}
+                      />
                     </td>
                   );
                 })}
                 <td>
                   {flagged && <span className="flag-chip">{flaggedLabel}</span>}
+                  {rowActions?.(row)}
                   <button onClick={() => handleDeleteRow(row.id)}>Delete</button>
                 </td>
               </tr>

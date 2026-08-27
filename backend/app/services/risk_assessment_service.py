@@ -1,13 +1,14 @@
 from collections import Counter
+from datetime import UTC, datetime
 
 from fastapi import UploadFile
 from sqlalchemy.orm import Session
 
 from app.core import risk_scoring
-from app.core.exceptions import NotFoundError
+from app.core.exceptions import ConflictError, NotFoundError, ValidationError
 from app.models.risk_assessment import RiskAssessment
 from app.models.sheet import Sheet, SheetRow
-from app.repositories import risk_assessment_repository, sheet_repository
+from app.repositories import evidence_repository, risk_assessment_repository, sheet_repository
 from app.schemas.risk_assessment import (
     RiskAssessmentCreate,
     RiskAssessmentStats,
@@ -18,11 +19,14 @@ from app.schemas.sheet import ColumnDef
 from app.services import (
     ai_system_inventory_service,
     audit_service,
+    evidence_service,
     framework_service,
     risk_analytics_service,
     risk_criteria_service,
     sheet_service,
 )
+
+RISK_ITEM_ENTITY_TYPE = "RiskItem"
 
 ENTITY_TYPE = "RiskAssessment"
 
@@ -155,6 +159,9 @@ def update_risk_assessment(
 def delete_risk_assessment(db: Session, risk_assessment_id: int, actor_id: int | None) -> None:
     risk_assessment = _get_or_raise(db, risk_assessment_id)
     sheet = sheet_repository.get(db, risk_assessment.sheet_id)
+    if sheet is not None:
+        for row in sheet_repository.list_rows(db, sheet.id):
+            evidence_service.delete_all_for_entity(db, RISK_ITEM_ENTITY_TYPE, row.id)
     risk_assessment_repository.delete(db, risk_assessment)
     if sheet is not None:
         sheet_repository.delete_all_rows(db, sheet.id)
@@ -206,10 +213,43 @@ def delete_row(
     db: Session, risk_assessment_id: int, row_id: int, actor_id: int | None
 ) -> None:
     risk_assessment = _get_or_raise(db, risk_assessment_id)
+    evidence_service.delete_all_for_entity(db, RISK_ITEM_ENTITY_TYPE, row_id)
     sheet_service.delete_row(db, risk_assessment.sheet_id, row_id)
     audit_service.log(
         db, ENTITY_TYPE, risk_assessment_id, "row_deleted", actor_id, {"row_id": row_id}
     )
+
+
+def close_risk_item(
+    db: Session, risk_assessment_id: int, row_id: int, actor_id: int | None
+) -> SheetRow:
+    """Marks a risk item treated. Requires at least one piece of evidence
+    already attached (see evidence entity_type=RiskItem) -- a risk can't be
+    closed on say-so alone."""
+    risk_assessment = _get_or_raise(db, risk_assessment_id)
+    row = sheet_repository.get_row(db, row_id)
+    if row is None or row.sheet_id != risk_assessment.sheet_id:
+        raise NotFoundError("SheetRow", row_id)
+
+    if risk_scoring.is_treated(row.data.get("status")):
+        raise ConflictError(f"Risk item {row_id} is already closed.")
+
+    if not evidence_repository.list_at_level(db, RISK_ITEM_ENTITY_TYPE, row_id, None):
+        raise ValidationError(
+            "Attach at least one piece of evidence before closing this risk item."
+        )
+
+    row.data = {
+        **row.data,
+        "status": "closed",
+        "closed_at": datetime.now(UTC).isoformat(),
+        "closed_by": actor_id,
+    }
+    row = sheet_repository.save_row(db, row)
+    audit_service.log(
+        db, ENTITY_TYPE, risk_assessment_id, "risk_item_closed", actor_id, {"row_id": row_id}
+    )
+    return row
 
 
 def export_xlsx(db: Session, risk_assessment_id: int) -> bytes:

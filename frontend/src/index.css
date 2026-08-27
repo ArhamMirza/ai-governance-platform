@@ -1276,6 +1276,114 @@ article h3 + p {
   font-size: 13px;
 }
 
+/* ---------- My risk items ---------- */
+
+.my-risk-items-list li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 9px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 13px;
+}
+
+.my-risk-items-list li:last-child {
+  border-bottom: none;
+}
+
+.my-risk-item-desc {
+  color: var(--text-faint);
+  font-size: 12px;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.my-risk-item-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11.5px;
+  color: var(--text-faint);
+  white-space: nowrap;
+}
+
+.my-risk-items-list li[data-overdue="true"] {
+  background: var(--danger-subtle);
+  margin: 0 -20px;
+  padding: 9px 20px;
+}
+
+/* ---------- Modal ---------- */
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: oklch(20% 0.02 258 / 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  padding: 24px;
+}
+
+.modal-panel {
+  background: var(--bg-surface);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+  padding: 22px 24px;
+  width: 100%;
+  max-width: 560px;
+  max-height: 85vh;
+  overflow-y: auto;
+}
+
+.modal-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+
+.modal-header h3 {
+  margin: 0 0 4px;
+}
+
+.modal-header p {
+  margin: 0;
+  font-size: 13px;
+}
+
+.modal-header button {
+  border: none;
+  background: none;
+  font-size: 20px;
+  line-height: 1;
+  padding: 2px 6px;
+  color: var(--text-faint);
+  flex-shrink: 0;
+}
+
+.modal-header button:hover {
+  color: var(--text);
+  background: var(--bg-page);
+}
+
+.modal-panel h4 {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-faint);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  margin: 0 0 10px;
+}
+
+.modal-panel .approval-note {
+  margin-top: 10px;
+}
+
 /* ---------- Misc ---------- */
 
 .status-badge + p,

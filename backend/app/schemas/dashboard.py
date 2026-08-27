@@ -54,6 +54,20 @@ class AttentionItem(BaseModel):
     severity: str
 
 
+class MyRiskItem(BaseModel):
+    """One open risk item owned by the requesting user, for the "My Risk
+    Items" dashboard panel -- lets an owner see what they're on the hook
+    for without opening every assessment."""
+
+    risk_assessment_id: int
+    row_id: int
+    category: str | None
+    description: str | None
+    status: str | None
+    treatment_deadline: str | None
+    overdue: bool
+
+
 class DashboardSummary(BaseModel):
     policies: StatusCounts
     procedures: StatusCounts
@@ -65,3 +79,4 @@ class DashboardSummary(BaseModel):
     matrix: list[MatrixCell]
     # Bundled so the client shades the matrix with the same bands used to count.
     criteria: RiskCriteriaRead
+    my_risk_items: list[MyRiskItem]

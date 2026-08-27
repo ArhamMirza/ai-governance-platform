@@ -18,3 +18,8 @@ export interface UpdateUserInput {
   role?: string;
   is_active?: boolean;
 }
+
+export interface DirectoryUser {
+  id: number;
+  name: string;
+}
