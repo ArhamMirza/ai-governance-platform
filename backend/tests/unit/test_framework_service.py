@@ -52,6 +52,22 @@ def test_set_tags_replaces_the_previous_set(db_session: Session) -> None:
     assert [c.id for c in tags] == [eu_id]
 
 
+def test_set_tags_with_an_overlapping_id_does_not_violate_the_unique_constraint(
+    db_session: Session,
+) -> None:
+    """Regression: re-saving a set that keeps one existing tag and adds
+    another used to hit the (entity_type, entity_id, control_id) unique
+    constraint, because the new inserts could flush before the old rows'
+    deletes."""
+    iso_id = iso_control_id(db_session)
+    eu_id = eu_control_id(db_session)
+    framework_service.set_tags(db_session, "Policy", 1, [iso_id], actor_id=None)
+
+    result = framework_service.set_tags(db_session, "Policy", 1, [iso_id, eu_id], actor_id=None)
+
+    assert {c.id for c in result} == {iso_id, eu_id}
+
+
 def test_set_tags_to_empty_list_clears_them(db_session: Session) -> None:
     control_id = iso_control_id(db_session)
     framework_service.set_tags(db_session, "Policy", 1, [control_id], actor_id=None)

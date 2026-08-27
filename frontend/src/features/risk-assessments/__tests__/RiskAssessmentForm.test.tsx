@@ -31,7 +31,7 @@ const createdRiskAssessment: RiskAssessment = {
   id: 42,
   ai_system_row_id: 5,
   sheet_id: 2,
-  framework_tags: ["ISO42001:8.4"],
+  framework_tags: [],
   status: "draft",
   assessor_id: null,
   assessment_date: null,
@@ -41,7 +41,7 @@ const createdRiskAssessment: RiskAssessment = {
 };
 
 describe("RiskAssessmentForm", () => {
-  it("submits the selected AI system and parsed framework tags", async () => {
+  it("submits the selected AI system", async () => {
     vi.mocked(useAISystemInventoryRows).mockReturnValue({ data: mockInventory } as never);
     const mutateAsync = vi.fn().mockResolvedValue(createdRiskAssessment);
     vi.mocked(useCreateRiskAssessment).mockReturnValue({
@@ -54,16 +54,9 @@ describe("RiskAssessmentForm", () => {
     render(<RiskAssessmentForm onCreated={onCreated} />);
 
     await user.selectOptions(screen.getByLabelText("AI System"), "Resume Screener");
-    await user.type(
-      screen.getByLabelText("Framework Tags (comma-separated)"),
-      "ISO42001:8.4, EU_AI_ACT:Art.9",
-    );
     await user.click(screen.getByRole("button", { name: "Create Risk Assessment" }));
 
-    expect(mutateAsync).toHaveBeenCalledWith({
-      ai_system_row_id: 5,
-      framework_tags: ["ISO42001:8.4", "EU_AI_ACT:Art.9"],
-    });
+    expect(mutateAsync).toHaveBeenCalledWith({ ai_system_row_id: 5 });
     expect(onCreated).toHaveBeenCalledWith(42);
   });
 

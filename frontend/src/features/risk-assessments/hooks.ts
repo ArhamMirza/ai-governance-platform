@@ -5,7 +5,7 @@ import { riskAssessmentsApi } from "./api";
 import type { RiskAssessmentCreateInput, RiskAssessmentUpdateInput } from "./types";
 
 const riskAssessmentsKey = ["risk-assessments"] as const;
-const riskAssessmentKey = (id: number) => ["risk-assessments", id] as const;
+export const riskAssessmentKey = (id: number) => ["risk-assessments", id] as const;
 
 export function riskAssessmentSheetKey(id: number) {
   return ["risk-assessments", id, "sheet"] as const;

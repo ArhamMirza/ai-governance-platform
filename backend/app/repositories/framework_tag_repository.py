@@ -30,6 +30,10 @@ def replace_for_entity(
     )
     for tag in existing:
         db.delete(tag)
+    # Without this, the unit of work can flush the new inserts before these
+    # deletes, tripping the (entity_type, entity_id, framework_control_id)
+    # unique constraint whenever a control id is re-tagged.
+    db.flush()
 
     for control_id in control_ids:
         db.add(

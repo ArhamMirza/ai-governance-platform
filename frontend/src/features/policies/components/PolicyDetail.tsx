@@ -1,6 +1,7 @@
 import { StatusBadge } from "../../../shared/components/StatusBadge";
 import { AuditLogViewer } from "../../audit-log/components/AuditLogViewer";
 import { DocumentBrowser } from "../../evidence/components/DocumentBrowser";
+import { FrameworkTagPicker } from "../../framework-tags/components/FrameworkTagPicker";
 import { useApprovePolicy, usePolicy, usePolicyVersions, useSubmitForReview } from "../hooks";
 
 interface PolicyDetailProps {
@@ -40,6 +41,9 @@ export function PolicyDetail({ policyId }: PolicyDetailProps) {
           </button>
         )}
       </div>
+
+      <h3>Framework Tags</h3>
+      <FrameworkTagPicker entityType="Policy" entityId={policyId} />
 
       <h3>Documents</h3>
       <DocumentBrowser entityType="Policy" entityId={policyId} />

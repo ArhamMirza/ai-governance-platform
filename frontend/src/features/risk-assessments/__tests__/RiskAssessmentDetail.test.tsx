@@ -21,7 +21,7 @@ const riskAssessment: RiskAssessment = {
   id: 1,
   ai_system_row_id: 5,
   sheet_id: 2,
-  framework_tags: ["ISO42001:8.4"],
+  framework_tags: [],
   status: "draft",
   assessor_id: null,
   assessment_date: null,

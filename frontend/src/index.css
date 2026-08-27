@@ -1047,6 +1047,109 @@ nav[aria-label="breadcrumb"] button:hover {
   margin-left: auto;
 }
 
+/* ---------- Framework tag picker ---------- */
+
+.framework-tag-picker {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.framework-tag-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  flex: 1;
+}
+
+.framework-tags-empty {
+  font-size: 12.5px;
+  color: var(--text-faint);
+}
+
+.framework-tag-chip {
+  display: inline-block;
+  font-size: 11.5px;
+  font-weight: 700;
+  padding: 4px 11px;
+  border-radius: 999px;
+  background: var(--primary-subtle);
+  color: var(--primary);
+  white-space: nowrap;
+}
+
+.framework-tag-picker.is-editing {
+  flex-direction: column;
+  background: var(--bg-page);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 14px 16px;
+}
+
+.framework-tag-group {
+  border: none;
+  padding: 0 0 12px;
+  margin: 0 0 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.framework-tag-group:last-of-type {
+  border-bottom: none;
+  padding-bottom: 0;
+  margin-bottom: 0;
+}
+
+.framework-tag-group legend {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-faint);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  padding: 0 0 8px;
+}
+
+.framework-tag-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 5px 0;
+  font-size: 12.5px;
+  color: var(--text-muted);
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.framework-tag-option input {
+  width: auto;
+  margin-top: 2px;
+}
+
+.framework-tag-option strong {
+  color: var(--text);
+  font-weight: 700;
+  margin-right: 4px;
+}
+
+.framework-tag-picker-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.risk-header-tags {
+  margin: 10px 0;
+}
+
+.risk-header-tags-label {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-faint);
+  margin-bottom: 6px;
+}
+
 /* ---------- Detail pages ---------- */
 
 .detail-actions {
