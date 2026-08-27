@@ -3,7 +3,13 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from app.core.config import get_settings
-from app.core.exceptions import AuthenticationError, ConflictError, NotFoundError, ValidationError
+from app.core.exceptions import (
+    AuthenticationError,
+    AuthorizationError,
+    ConflictError,
+    NotFoundError,
+    ValidationError,
+)
 from app.dependencies import get_current_user
 from app.routers import (
     ai_system_inventory,
@@ -19,6 +25,7 @@ from app.routers import (
     procedures,
     risk_assessments,
     risk_criteria,
+    users,
 )
 
 settings = get_settings()
@@ -54,6 +61,11 @@ def authentication_handler(request: Request, exc: AuthenticationError) -> JSONRe
     return JSONResponse(status_code=401, content={"detail": str(exc)})
 
 
+@app.exception_handler(AuthorizationError)
+def authorization_handler(request: Request, exc: AuthorizationError) -> JSONResponse:
+    return JSONResponse(status_code=403, content={"detail": str(exc)})
+
+
 # Every business router requires a logged-in session (reads included, not
 # just writes) via this shared dependency. health and auth stay public --
 # auth obviously so, since it's how you get a session in the first place.
@@ -72,3 +84,4 @@ app.include_router(dashboard.router, prefix="/api/v1", dependencies=_protected)
 app.include_router(risk_criteria.router, prefix="/api/v1", dependencies=_protected)
 app.include_router(framework_controls.router, prefix="/api/v1", dependencies=_protected)
 app.include_router(framework_tags.router, prefix="/api/v1", dependencies=_protected)
+app.include_router(users.router, prefix="/api/v1", dependencies=_protected)

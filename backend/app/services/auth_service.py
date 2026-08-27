@@ -58,6 +58,8 @@ def authenticate(db: DbSession, data: LoginRequest) -> User:
     valid = verify_password(data.password, password_hash)
     if user is None or not valid:
         raise AuthenticationError("Incorrect email or password.")
+    if not user.is_active:
+        raise AuthenticationError("This account has been deactivated.")
     return user
 
 

@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.dependencies import get_current_actor_id
+from app.dependencies import get_current_actor_id, get_current_approver_id
 from app.schemas.procedure import (
     ProcedureCreate,
     ProcedureHistoryEntry,
@@ -65,7 +65,7 @@ def submit_for_review(
 def approve_procedure(
     procedure_id: int,
     db: Session = Depends(get_db),
-    actor_id: int | None = Depends(get_current_actor_id),
+    actor_id: int = Depends(get_current_approver_id),
 ) -> ProcedureRead:
     return procedure_service.approve_procedure(db, procedure_id, actor_id)
 

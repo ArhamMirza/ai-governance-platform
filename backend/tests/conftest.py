@@ -1,4 +1,4 @@
-from collections.abc import Generator
+from collections.abc import Callable, Generator
 from types import SimpleNamespace
 
 import pytest
@@ -13,7 +13,7 @@ from app.core.security import hash_password
 from app.dependencies import get_current_user
 from app.main import app
 from app.models.framework_control import FrameworkControl
-from app.models.user import User
+from app.models.user import User, UserRole
 from app.services import evidence_service
 
 TEST_DATABASE_URL = "sqlite:///:memory:"
@@ -48,15 +48,59 @@ def db_session() -> Generator[Session, None, None]:
         Base.metadata.drop_all(bind=engine)
 
 
-@pytest.fixture()
-def test_user(db_session: Session) -> User:
-    user = User(
-        name="Test User", email="test@example.com", password_hash=hash_password("password123")
+def _make_user(db_session: Session, **overrides) -> User:
+    defaults = dict(
+        name="Test User",
+        email="test@example.com",
+        password_hash=hash_password("password123"),
+        role=UserRole.ADMIN,
     )
+    defaults.update(overrides)
+    user = User(**defaults)
     db_session.add(user)
     db_session.commit()
     db_session.refresh(user)
     return user
+
+
+@pytest.fixture()
+def test_user(db_session: Session) -> User:
+    return _make_user(db_session)
+
+
+@pytest.fixture()
+def second_user(db_session: Session) -> User:
+    """A distinct admin, for segregation-of-duties tests: whoever submits a
+    Policy/Procedure for review can't be the one who approves it, so those
+    flows need a second real user to switch to mid-test."""
+    return _make_user(db_session, name="Second User", email="second@example.com")
+
+
+@pytest.fixture()
+def make_user(db_session: Session) -> Callable[..., User]:
+    """Factory for role-specific users in RBAC tests, e.g.
+    make_user(role=UserRole.VIEWER). Emails auto-increment so callers don't
+    need to pick unique ones."""
+    counter = {"n": 0}
+
+    def _make(**overrides) -> User:
+        counter["n"] += 1
+        overrides.setdefault("name", f"User {counter['n']}")
+        overrides.setdefault("email", f"user{counter['n']}@example.com")
+        return _make_user(db_session, **overrides)
+
+    return _make
+
+
+@pytest.fixture()
+def login_as() -> Callable[[User], None]:
+    """Switches the identity `client` authenticates as, for tests that need
+    more than one user (e.g. submit as test_user, approve as second_user)."""
+
+    def _login_as(user: User) -> None:
+        app.dependency_overrides[get_current_user] = lambda: user
+
+    return _login_as
 
 
 @pytest.fixture()

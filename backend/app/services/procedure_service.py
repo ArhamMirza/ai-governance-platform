@@ -89,6 +89,7 @@ def approve_procedure(db: Session, procedure_id: int, actor_id: int | None) -> P
             f"Procedure {procedure_id} must be in 'in_review' status to approve, "
             f"currently '{procedure.status}'"
         )
+    audit_service.require_different_approver(db, "Procedure", procedure_id, actor_id)
     procedure.status = ProcedureStatus.APPROVED
     procedure = procedure_repository.save(db, procedure)
     audit_service.log(db, "Procedure", procedure.id, "approved", actor_id)

@@ -8,6 +8,7 @@ import { ProcedureDetailPage } from "../pages/ProcedureDetailPage";
 import { ProceduresPage } from "../pages/ProceduresPage";
 import { RiskAssessmentDetailPage } from "../pages/RiskAssessmentDetailPage";
 import { RiskAssessmentsPage } from "../pages/RiskAssessmentsPage";
+import { UsersPage } from "../pages/UsersPage";
 import { Layout } from "./Layout";
 
 export function AppRoutes() {
@@ -25,6 +26,7 @@ export function AppRoutes() {
           path="/risk-assessments/:riskAssessmentId"
           element={<RiskAssessmentDetailPage />}
         />
+        <Route path="/users" element={<UsersPage />} />
       </Routes>
     </Layout>
   );

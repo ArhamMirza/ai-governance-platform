@@ -2,8 +2,29 @@ import type { ReactNode } from "react";
 import { NavLink } from "react-router-dom";
 
 import { useCurrentUser, useLogout } from "../features/auth/hooks";
+import { hasPermission } from "../features/auth/permissions";
 
-const navItems = [
+interface NavItem {
+  to: string;
+  label: string;
+  end?: boolean;
+  icon: ReactNode;
+}
+
+const usersNavItem: NavItem = {
+  to: "/users",
+  label: "Users",
+  icon: (
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+      <circle cx="9" cy="7" r="4" />
+      <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+      <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+    </svg>
+  ),
+};
+
+const navItems: NavItem[] = [
   {
     to: "/",
     label: "Dashboard",
@@ -65,6 +86,9 @@ const navItems = [
 export function Layout({ children }: { children: ReactNode }) {
   const { data: user } = useCurrentUser();
   const logout = useLogout();
+  const items = hasPermission(user?.role, "manage_users")
+    ? [...navItems, usersNavItem]
+    : navItems;
 
   return (
     <div className="app-shell">
@@ -81,7 +105,7 @@ export function Layout({ children }: { children: ReactNode }) {
           </div>
         </div>
         <nav>
-          {navItems.map((item) => (
+          {items.map((item) => (
             <NavLink
               key={item.to}
               to={item.to}
@@ -96,6 +120,7 @@ export function Layout({ children }: { children: ReactNode }) {
         {user && (
           <div className="sidebar-account">
             <div className="sidebar-account-name">{user.name}</div>
+            <div className="sidebar-account-role">{user.role}</div>
             <button onClick={() => logout.mutate()} disabled={logout.isPending}>
               {logout.isPending ? "Signing out..." : "Sign out"}
             </button>
