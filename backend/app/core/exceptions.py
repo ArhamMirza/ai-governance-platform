@@ -17,3 +17,12 @@ class InvalidStatusTransitionError(ConflictError):
 class ValidationError(Exception):
     def __init__(self, message: str) -> None:
         super().__init__(message)
+
+
+class AuthenticationError(Exception):
+    """Bad credentials, or a missing/expired/invalid session -- always
+    surfaced as 401, and deliberately vague to callers (never reveals
+    whether an email exists)."""
+
+    def __init__(self, message: str = "Not authenticated") -> None:
+        super().__init__(message)

@@ -7,7 +7,9 @@ from app.models.policy import Policy
 from app.models.procedure import Procedure
 from app.models.risk_assessment import RiskAssessment
 from app.models.risk_criteria import RiskCriteria
+from app.models.session import Session
 from app.models.sheet import Sheet, SheetRow
+from app.models.user import User
 
 __all__ = [
     "AuditLogEntry",
@@ -19,6 +21,8 @@ __all__ = [
     "Procedure",
     "RiskAssessment",
     "RiskCriteria",
+    "Session",
     "Sheet",
     "SheetRow",
+    "User",
 ]
