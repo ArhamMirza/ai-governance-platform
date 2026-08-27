@@ -201,4 +201,82 @@ describe("DataGrid", () => {
     await screen.findByLabelText("Category for row 10");
     expect(screen.queryByText("Overdue")).not.toBeInTheDocument();
   });
+
+  it("renders a mapped column as a select and updates on change", async () => {
+    const adapter = makeAdapter({
+      get: vi.fn().mockResolvedValue({
+        ...baseSheet,
+        columns: [...baseSheet.columns, { key: "risk_owner", label: "Owner", data_type: "text" }],
+        rows: [{ ...baseSheet.rows[0], data: { ...baseSheet.rows[0].data, risk_owner: "2" } }],
+      }),
+    });
+    const user = userEvent.setup();
+    const queryClient = createTestQueryClient();
+    render(
+      <QueryClientProvider client={queryClient}>
+        <DataGrid
+          queryKey={["test-sheet"]}
+          adapter={adapter}
+          selectOptions={{
+            risk_owner: [
+              { value: "1", label: "Ada" },
+              { value: "2", label: "Bob" },
+            ],
+          }}
+        />
+      </QueryClientProvider>,
+    );
+
+    const select = await screen.findByLabelText("Owner for row 10");
+    expect(select).toHaveValue("2");
+
+    await user.selectOptions(select, "1");
+
+    await waitFor(() => {
+      expect(adapter.updateRow).toHaveBeenCalledWith(10, { risk_owner: "1" });
+    });
+  });
+
+  it("shows an unrecognized-value option rather than silently reassigning it", async () => {
+    const adapter = makeAdapter({
+      get: vi.fn().mockResolvedValue({
+        ...baseSheet,
+        columns: [...baseSheet.columns, { key: "risk_owner", label: "Owner", data_type: "text" }],
+        rows: [{ ...baseSheet.rows[0], data: { ...baseSheet.rows[0].data, risk_owner: "ML Team" } }],
+      }),
+    });
+    const queryClient = createTestQueryClient();
+    render(
+      <QueryClientProvider client={queryClient}>
+        <DataGrid
+          queryKey={["test-sheet"]}
+          adapter={adapter}
+          selectOptions={{ risk_owner: [{ value: "1", label: "Ada" }] }}
+        />
+      </QueryClientProvider>,
+    );
+
+    const select = await screen.findByLabelText("Owner for row 10");
+    expect(select).toHaveValue("ML Team");
+    expect(screen.getByText("ML Team (unrecognized)")).toBeInTheDocument();
+  });
+
+  it("renders caller-provided row actions", async () => {
+    renderGridWithRowActions(makeAdapter());
+
+    expect(await screen.findByRole("button", { name: "Manage row 10" })).toBeInTheDocument();
+  });
 });
+
+function renderGridWithRowActions(adapter: SheetApiAdapter) {
+  const queryClient = createTestQueryClient();
+  return render(
+    <QueryClientProvider client={queryClient}>
+      <DataGrid
+        queryKey={["test-sheet"]}
+        adapter={adapter}
+        rowActions={(row) => <button>Manage row {row.id}</button>}
+      />
+    </QueryClientProvider>,
+  );
+}

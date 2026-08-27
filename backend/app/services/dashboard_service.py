@@ -3,6 +3,7 @@ from collections import Counter
 from sqlalchemy.orm import Session
 
 from app.core import risk_scoring
+from app.models.risk_assessment import RiskAssessment
 from app.models.sheet import SheetRow
 from app.repositories import (
     policy_repository,
@@ -15,6 +16,7 @@ from app.schemas.dashboard import (
     AttentionItem,
     CoverageSummary,
     DashboardSummary,
+    MyRiskItem,
     RiskAssessmentSummary,
     StatusCounts,
 )
@@ -67,7 +69,40 @@ def _attention(
     return [item for item in candidates if item.count > 0]
 
 
-def get_summary(db: Session) -> DashboardSummary:
+def _my_risk_items(
+    risk_assessments: list[RiskAssessment],
+    rows_by_sheet: dict[int, list[SheetRow]],
+    actor_id: int,
+) -> list[MyRiskItem]:
+    """Open risk items whose risk_owner cell matches the requesting user.
+    risk_owner is stored as a stringified user id (see the DataGrid owner
+    picker on RiskAssessment sheets) -- unassigned or legacy free-text
+    owners (pre-dating real user accounts) simply never match."""
+    owner_key = str(actor_id)
+    items: list[MyRiskItem] = []
+    for risk_assessment in risk_assessments:
+        for row in rows_by_sheet.get(risk_assessment.sheet_id, []):
+            if str(row.data.get("risk_owner", "")) != owner_key:
+                continue
+            if risk_scoring.is_treated(row.data.get("status")):
+                continue
+            items.append(
+                MyRiskItem(
+                    risk_assessment_id=risk_assessment.id,
+                    row_id=row.id,
+                    category=row.data.get("category"),
+                    description=row.data.get("description"),
+                    status=row.data.get("status"),
+                    treatment_deadline=row.data.get("treatment_deadline"),
+                    overdue=risk_scoring.is_overdue(row.data),
+                )
+            )
+    # Overdue first, otherwise oldest deadline first (None sorts last).
+    items.sort(key=lambda item: (not item.overdue, item.treatment_deadline or "9999-99-99"))
+    return items
+
+
+def get_summary(db: Session, actor_id: int) -> DashboardSummary:
     policies = policy_repository.list_all(db)
     procedures = procedure_repository.list_all(db)
     ai_system_rows = ai_system_inventory_service.list_rows(db)
@@ -136,4 +171,5 @@ def get_summary(db: Session) -> DashboardSummary:
         ),
         matrix=risk_analytics_service.matrix_cells(all_risk_rows),
         criteria=risk_criteria_service.get_criteria(db),
+        my_risk_items=_my_risk_items(risk_assessments, rows_by_sheet, actor_id),
     )

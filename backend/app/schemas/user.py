@@ -13,3 +13,11 @@ class UserCreate(BaseModel):
 class UserUpdate(BaseModel):
     role: UserRole | None = None
     is_active: bool | None = None
+
+
+class UserDirectoryEntry(BaseModel):
+    """Minimal, non-admin-gated user info -- enough to populate an owner
+    picker without exposing email/role/active-status to non-admins."""
+
+    id: int
+    name: str

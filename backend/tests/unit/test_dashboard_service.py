@@ -99,7 +99,7 @@ def test_get_summary_counts_by_status(
     ]
     mock_sheet_repo.list_rows_for_sheets.return_value = {1: []}
 
-    result = dashboard_service.get_summary(db)
+    result = dashboard_service.get_summary(db, actor_id=99)
 
     assert result.policies.total == 3
     assert result.policies.by_status == {"draft": 2, "approved": 1}
@@ -141,7 +141,7 @@ def test_get_summary_counts_high_risk_assessments(
         3: [],  # unrated
     }
 
-    result = dashboard_service.get_summary(db)
+    result = dashboard_service.get_summary(db, actor_id=99)
 
     assert result.risk_assessments.high_risk_count == 1
 
@@ -173,7 +173,7 @@ def test_get_summary_uses_configured_bands(
         1: [make_risk_row(4, 2, sheet_id=1)],  # score 8
     }
 
-    result = dashboard_service.get_summary(db)
+    result = dashboard_service.get_summary(db, actor_id=99)
 
     assert result.risk_assessments.high_risk_count == 1
     assert result.risk_items.by_severity["high"] == 1
@@ -212,7 +212,7 @@ def test_get_summary_reports_risk_items_and_coverage(
         ]
     }
 
-    result = dashboard_service.get_summary(db)
+    result = dashboard_service.get_summary(db, actor_id=99)
 
     assert result.risk_items.total == 3
     assert result.risk_items.by_severity == {"high": 1, "medium": 1, "low": 1}
@@ -246,7 +246,7 @@ def test_get_summary_attention_lists_only_nonzero_items(
     mock_ra_repo.list_all.return_value = []
     mock_sheet_repo.list_rows_for_sheets.return_value = {}
 
-    result = dashboard_service.get_summary(db)
+    result = dashboard_service.get_summary(db, actor_id=99)
 
     keys = {item.key: item.count for item in result.attention}
     assert keys == {"unassessed_ai_systems": 1}
@@ -274,7 +274,7 @@ def test_get_summary_handles_empty_data(
     mock_ra_repo.list_all.return_value = []
     mock_sheet_repo.list_rows_for_sheets.return_value = {}
 
-    result = dashboard_service.get_summary(db)
+    result = dashboard_service.get_summary(db, actor_id=99)
 
     assert result.policies.total == 0
     assert result.policies.by_status == {}
@@ -284,3 +284,47 @@ def test_get_summary_handles_empty_data(
     assert result.risk_items.average_inherent_score is None
     assert result.attention == []
     assert result.matrix == []
+    assert result.my_risk_items == []
+
+
+@patch("app.services.dashboard_service.risk_criteria_service")
+@patch("app.services.dashboard_service.sheet_repository")
+@patch("app.services.dashboard_service.risk_assessment_repository")
+@patch("app.services.dashboard_service.ai_system_inventory_service")
+@patch("app.services.dashboard_service.procedure_repository")
+@patch("app.services.dashboard_service.policy_repository")
+def test_get_summary_my_risk_items_matches_owner_and_excludes_closed(
+    mock_policy_repo,
+    mock_procedure_repo,
+    mock_inventory,
+    mock_ra_repo,
+    mock_sheet_repo,
+    mock_criteria,
+    db,
+) -> None:
+    mock_criteria.get_bands.return_value = risk_scoring.DEFAULT_BANDS
+    mock_policy_repo.list_all.return_value = []
+    mock_procedure_repo.list_all.return_value = []
+    mock_inventory.list_rows.return_value = []
+    mock_ra_repo.list_all.return_value = [make_risk_assessment(id=1, sheet_id=1)]
+    mock_sheet_repo.list_rows_for_sheets.return_value = {
+        1: [
+            # Owned by me, overdue and open -- should appear.
+            make_risk_row(
+                4, 4, id=1, sheet_id=1, risk_owner="99",
+                treatment_deadline=PAST_DEADLINE, status="open",
+            ),
+            # Owned by me but already closed -- should be excluded.
+            make_risk_row(2, 2, id=2, sheet_id=1, risk_owner="99", status="closed"),
+            # Owned by someone else -- should be excluded.
+            make_risk_row(3, 3, id=3, sheet_id=1, risk_owner="1", status="open"),
+            # Unassigned -- should be excluded.
+            make_risk_row(1, 1, id=4, sheet_id=1, status="open"),
+        ]
+    }
+
+    result = dashboard_service.get_summary(db, actor_id=99)
+
+    assert [item.row_id for item in result.my_risk_items] == [1]
+    assert result.my_risk_items[0].risk_assessment_id == 1
+    assert result.my_risk_items[0].overdue is True

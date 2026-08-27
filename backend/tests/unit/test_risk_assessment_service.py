@@ -2,7 +2,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from app.core.exceptions import NotFoundError
+from app.core.exceptions import ConflictError, NotFoundError, ValidationError
 from app.models.risk_assessment import RiskAssessment, RiskAssessmentStatus
 from app.models.sheet import SheetRow
 from app.schemas.risk_assessment import RiskAssessmentCreate, RiskAssessmentUpdate
@@ -137,6 +137,122 @@ def test_delete_risk_assessment_also_deletes_its_sheet(
     mock_repo.delete.assert_called_once_with(db, risk_assessment)
     mock_sheet_repo.delete_all_rows.assert_called_once_with(db, 5)
     mock_sheet_repo.delete.assert_called_once_with(db, sheet)
+
+
+@patch("app.services.risk_assessment_service.audit_service")
+@patch("app.services.risk_assessment_service.evidence_repository")
+@patch("app.services.risk_assessment_service.sheet_repository")
+@patch("app.services.risk_assessment_service.risk_assessment_repository")
+def test_close_risk_item_requires_evidence(
+    mock_repo, mock_sheet_repo, mock_evidence_repo, mock_audit, db
+) -> None:
+    risk_assessment = make_risk_assessment(sheet_id=5)
+    row = SheetRow(id=10, sheet_id=5, row_index=1, data={"status": "open"})
+    mock_repo.get.return_value = risk_assessment
+    mock_sheet_repo.get_row.return_value = row
+    mock_evidence_repo.list_at_level.return_value = []
+
+    with pytest.raises(ValidationError):
+        risk_assessment_service.close_risk_item(db, 1, 10, actor_id=1)
+
+    mock_sheet_repo.save_row.assert_not_called()
+
+
+@patch("app.services.risk_assessment_service.audit_service")
+@patch("app.services.risk_assessment_service.evidence_repository")
+@patch("app.services.risk_assessment_service.sheet_repository")
+@patch("app.services.risk_assessment_service.risk_assessment_repository")
+def test_close_risk_item_succeeds_with_evidence(
+    mock_repo, mock_sheet_repo, mock_evidence_repo, mock_audit, db
+) -> None:
+    risk_assessment = make_risk_assessment(sheet_id=5)
+    row = SheetRow(id=10, sheet_id=5, row_index=1, data={"status": "open", "category": "Bias"})
+    mock_repo.get.return_value = risk_assessment
+    mock_sheet_repo.get_row.return_value = row
+    mock_evidence_repo.list_at_level.return_value = [MagicMock()]
+    mock_sheet_repo.save_row.side_effect = lambda _db, r: r
+
+    result = risk_assessment_service.close_risk_item(db, 1, 10, actor_id=7)
+
+    assert result.data["status"] == "closed"
+    assert result.data["closed_by"] == 7
+    assert result.data["category"] == "Bias"
+    assert "closed_at" in result.data
+    mock_audit.log.assert_called_once_with(
+        db, "RiskAssessment", 1, "risk_item_closed", 7, {"row_id": 10}
+    )
+
+
+@patch("app.services.risk_assessment_service.audit_service")
+@patch("app.services.risk_assessment_service.evidence_repository")
+@patch("app.services.risk_assessment_service.sheet_repository")
+@patch("app.services.risk_assessment_service.risk_assessment_repository")
+def test_close_risk_item_rejects_an_already_closed_item(
+    mock_repo, mock_sheet_repo, mock_evidence_repo, mock_audit, db
+) -> None:
+    risk_assessment = make_risk_assessment(sheet_id=5)
+    row = SheetRow(id=10, sheet_id=5, row_index=1, data={"status": "closed"})
+    mock_repo.get.return_value = risk_assessment
+    mock_sheet_repo.get_row.return_value = row
+
+    with pytest.raises(ConflictError):
+        risk_assessment_service.close_risk_item(db, 1, 10, actor_id=1)
+
+    mock_evidence_repo.list_at_level.assert_not_called()
+
+
+@patch("app.services.risk_assessment_service.sheet_repository")
+@patch("app.services.risk_assessment_service.risk_assessment_repository")
+def test_close_risk_item_raises_not_found_for_a_row_from_another_sheet(
+    mock_repo, mock_sheet_repo, db
+) -> None:
+    risk_assessment = make_risk_assessment(sheet_id=5)
+    other_sheet_row = SheetRow(id=10, sheet_id=999, row_index=1, data={})
+    mock_repo.get.return_value = risk_assessment
+    mock_sheet_repo.get_row.return_value = other_sheet_row
+
+    with pytest.raises(NotFoundError):
+        risk_assessment_service.close_risk_item(db, 1, 10, actor_id=1)
+
+
+@patch("app.services.risk_assessment_service.audit_service")
+@patch("app.services.risk_assessment_service.evidence_service")
+@patch("app.services.risk_assessment_service.sheet_service")
+@patch("app.services.risk_assessment_service.risk_assessment_repository")
+def test_delete_row_also_deletes_the_rows_evidence(
+    mock_repo, mock_sheet_service, mock_evidence_service, mock_audit, db
+) -> None:
+    risk_assessment = make_risk_assessment(sheet_id=5)
+    mock_repo.get.return_value = risk_assessment
+
+    risk_assessment_service.delete_row(db, 1, 10, actor_id=1)
+
+    mock_evidence_service.delete_all_for_entity.assert_called_once_with(db, "RiskItem", 10)
+    mock_sheet_service.delete_row.assert_called_once_with(db, 5, 10)
+
+
+@patch("app.services.risk_assessment_service.audit_service")
+@patch("app.services.risk_assessment_service.evidence_service")
+@patch("app.services.risk_assessment_service.framework_service")
+@patch("app.services.risk_assessment_service.sheet_repository")
+@patch("app.services.risk_assessment_service.risk_assessment_repository")
+def test_delete_risk_assessment_cleans_up_evidence_for_every_row(
+    mock_repo, mock_sheet_repo, mock_framework_service, mock_evidence_service, mock_audit, db
+) -> None:
+    risk_assessment = make_risk_assessment(sheet_id=5)
+    sheet = MagicMock(id=5)
+    mock_repo.get.return_value = risk_assessment
+    mock_sheet_repo.get.return_value = sheet
+    mock_sheet_repo.list_rows.return_value = [
+        SheetRow(id=10, sheet_id=5, row_index=1, data={}),
+        SheetRow(id=11, sheet_id=5, row_index=2, data={}),
+    ]
+
+    risk_assessment_service.delete_risk_assessment(db, 1, actor_id=1)
+
+    mock_evidence_service.delete_all_for_entity.assert_any_call(db, "RiskItem", 10)
+    mock_evidence_service.delete_all_for_entity.assert_any_call(db, "RiskItem", 11)
+    assert mock_evidence_service.delete_all_for_entity.call_count == 2
 
 
 @patch("app.services.risk_assessment_service.sheet_repository")

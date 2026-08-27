@@ -5,7 +5,7 @@ import { SegmentedBar, type Segment } from "../../../shared/components/Segmented
 import { StatCard } from "../../../shared/components/StatCard";
 import { RiskMatrix } from "../../risk-assessments/components/RiskMatrix";
 import { useDashboardSummary } from "../hooks";
-import type { AttentionItem, StatusCounts } from "../types";
+import type { AttentionItem, MyRiskItem, StatusCounts } from "../types";
 
 const ATTENTION_LINKS: Record<string, string> = {
   overdue_treatments: "/risk-assessments",
@@ -77,6 +77,31 @@ function AttentionPanel({ items }: { items: AttentionItem[] }) {
   );
 }
 
+function MyRiskItemsPanel({ items }: { items: MyRiskItem[] }) {
+  if (items.length === 0) return null;
+
+  return (
+    <div className="dashboard-card">
+      <h3>My Risk Items</h3>
+      <p>Risk items you own that are still open.</p>
+      <ul className="my-risk-items-list">
+        {items.map((item) => (
+          <li key={item.row_id} data-overdue={item.overdue}>
+            <Link to={`/risk-assessments/${item.risk_assessment_id}`}>
+              {item.category ?? "Risk item"}
+            </Link>
+            {item.description && <span className="my-risk-item-desc">{item.description}</span>}
+            <span className="my-risk-item-meta">
+              {item.overdue && <span className="flag-chip">Overdue</span>}
+              {item.treatment_deadline && <span>Due {item.treatment_deadline}</span>}
+            </span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 export function DashboardSummaryView() {
   const { data: summary, isLoading, isError } = useDashboardSummary();
 
@@ -111,6 +136,8 @@ export function DashboardSummaryView() {
   return (
     <div className="dashboard">
       <AttentionPanel items={summary.attention} />
+
+      <MyRiskItemsPanel items={summary.my_risk_items} />
 
       <section className="dashboard-section">
         <h2>Risk Posture</h2>

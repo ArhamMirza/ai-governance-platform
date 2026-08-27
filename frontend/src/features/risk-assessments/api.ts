@@ -16,6 +16,8 @@ export const riskAssessmentsApi = {
   update: (id: number, data: RiskAssessmentUpdateInput) =>
     httpClient.put<RiskAssessment>(`/risk-assessments/${id}`, data),
   remove: (id: number) => httpClient.delete<void>(`/risk-assessments/${id}`),
+  closeRiskItem: (riskAssessmentId: number, rowId: number) =>
+    httpClient.post<SheetRow>(`/risk-assessments/${riskAssessmentId}/rows/${rowId}/close`),
 };
 
 export function makeRiskAssessmentSheetAdapter(riskAssessmentId: number): SheetApiAdapter {

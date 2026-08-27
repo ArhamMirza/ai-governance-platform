@@ -42,6 +42,16 @@ export interface AttentionItem {
   severity: string;
 }
 
+export interface MyRiskItem {
+  risk_assessment_id: number;
+  row_id: number;
+  category: string | null;
+  description: string | null;
+  status: string | null;
+  treatment_deadline: string | null;
+  overdue: boolean;
+}
+
 export interface DashboardSummary {
   policies: StatusCounts;
   procedures: StatusCounts;
@@ -52,4 +62,5 @@ export interface DashboardSummary {
   attention: AttentionItem[];
   matrix: MatrixCell[];
   criteria: RiskCriteria;
+  my_risk_items: MyRiskItem[];
 }

@@ -9,6 +9,12 @@ export function useUsers() {
   return useQuery({ queryKey: usersKey, queryFn: usersApi.list });
 }
 
+/** Any logged-in user (not just admins) can call this -- used to populate
+ * pickers like risk item ownership. */
+export function useUserDirectory() {
+  return useQuery({ queryKey: ["users", "directory"], queryFn: usersApi.directory });
+}
+
 export function useCreateUser() {
   const queryClient = useQueryClient();
   return useMutation({

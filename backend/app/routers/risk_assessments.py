@@ -147,6 +147,16 @@ def delete_row(
     risk_assessment_service.delete_row(db, risk_assessment_id, row_id, actor_id)
 
 
+@router.post("/{risk_assessment_id}/rows/{row_id}/close", response_model=SheetRowRead)
+def close_row(
+    risk_assessment_id: int,
+    row_id: int,
+    db: Session = Depends(get_db),
+    actor_id: int | None = Depends(get_current_actor_id),
+) -> SheetRowRead:
+    return risk_assessment_service.close_risk_item(db, risk_assessment_id, row_id, actor_id)
+
+
 @router.post("/{risk_assessment_id}/upload", response_model=RiskAssessmentRead)
 def upload(
     risk_assessment_id: int,

@@ -112,6 +112,17 @@ def upload_evidence(
     return evidence
 
 
+def delete_all_for_entity(db: Session, entity_type: str, entity_id: int) -> None:
+    """Cleans up every evidence file for an entity that is itself being
+    deleted (e.g. a risk item row). No per-file audit entry -- the parent
+    entity's own "deleted" log entry already covers it, matching how
+    framework tags are cleared on delete elsewhere. Only reaches entities
+    that store evidence flat (folder_id always None), like RiskItem."""
+    for evidence in evidence_repository.list_at_level(db, entity_type, entity_id, None):
+        Path(evidence.storage_path).unlink(missing_ok=True)
+        evidence_repository.delete(db, evidence)
+
+
 def delete_evidence(db: Session, evidence_id: int, actor_id: int | None) -> None:
     evidence = _get_or_raise(db, evidence_id)
     entity_type, entity_id, filename = evidence.entity_type, evidence.entity_id, evidence.filename

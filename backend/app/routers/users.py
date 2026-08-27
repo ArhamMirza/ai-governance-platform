@@ -2,10 +2,10 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.dependencies import require_manage_users_user
+from app.dependencies import get_current_user, require_manage_users_user
 from app.models.user import User
 from app.schemas.auth import UserRead
-from app.schemas.user import UserCreate, UserUpdate
+from app.schemas.user import UserCreate, UserDirectoryEntry, UserUpdate
 from app.services import user_service
 
 router = APIRouter(prefix="/users", tags=["users"])
@@ -13,6 +13,18 @@ router = APIRouter(prefix="/users", tags=["users"])
 
 @router.get("", response_model=list[UserRead], dependencies=[Depends(require_manage_users_user)])
 def list_users(db: Session = Depends(get_db)) -> list[UserRead]:
+    return user_service.list_users(db)
+
+
+@router.get(
+    "/directory",
+    response_model=list[UserDirectoryEntry],
+    dependencies=[Depends(get_current_user)],
+)
+def list_directory(db: Session = Depends(get_db)) -> list[UserDirectoryEntry]:
+    """Any logged-in user can see id+name of everyone -- used to populate
+    pickers like risk item ownership. Deliberately excludes email/role/
+    active-status, which GET /users (admin-only) still guards."""
     return user_service.list_users(db)
 
 

@@ -5,6 +5,25 @@ from fastapi.testclient import TestClient
 from app.models.user import User, UserRole
 
 
+def test_directory_is_visible_to_any_logged_in_user(
+    client: TestClient, make_user: Callable[..., User], login_as: Callable[[User], None]
+) -> None:
+    client.post(
+        "/api/v1/users",
+        json={"name": "Ada", "email": "ada@example.com", "password": "supersecret1"},
+    )
+    viewer = make_user(role=UserRole.VIEWER)
+    login_as(viewer)
+
+    response = client.get("/api/v1/users/directory")
+
+    assert response.status_code == 200
+    names = {entry["name"] for entry in response.json()}
+    assert "Ada" in names
+    # Directory entries expose id/name only -- not email, role, or status.
+    assert set(response.json()[0].keys()) == {"id", "name"}
+
+
 def test_admin_can_create_a_user(client: TestClient) -> None:
     response = client.post(
         "/api/v1/users",
