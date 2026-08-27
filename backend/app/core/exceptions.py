@@ -26,3 +26,12 @@ class AuthenticationError(Exception):
 
     def __init__(self, message: str = "Not authenticated") -> None:
         super().__init__(message)
+
+
+class AuthorizationError(Exception):
+    """A real, authenticated user whose role doesn't permit the action --
+    403, distinct from AuthenticationError's 401 (who you are vs what
+    you're allowed to do)."""
+
+    def __init__(self, message: str = "Not permitted") -> None:
+        super().__init__(message)

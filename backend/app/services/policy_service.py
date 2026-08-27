@@ -78,6 +78,7 @@ def approve_policy(db: Session, policy_id: int, actor_id: int | None) -> Policy:
             f"Policy {policy_id} must be in 'in_review' status to approve, "
             f"currently '{policy.status}'"
         )
+    audit_service.require_different_approver(db, "Policy", policy_id, actor_id)
     policy.status = PolicyStatus.APPROVED
     policy = policy_repository.save(db, policy)
     audit_service.log(db, "Policy", policy.id, "approved", actor_id)

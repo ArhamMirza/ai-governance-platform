@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.dependencies import get_current_actor_id
+from app.dependencies import get_current_actor_id, get_current_approver_id
 from app.schemas.policy import PolicyCreate, PolicyHistoryEntry, PolicyRead, PolicyUpdate
 from app.services import policy_service
 
@@ -60,7 +60,7 @@ def submit_for_review(
 def approve_policy(
     policy_id: int,
     db: Session = Depends(get_db),
-    actor_id: int | None = Depends(get_current_actor_id),
+    actor_id: int = Depends(get_current_approver_id),
 ) -> PolicyRead:
     return policy_service.approve_policy(db, policy_id, actor_id)
 

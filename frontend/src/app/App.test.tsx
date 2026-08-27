@@ -21,6 +21,7 @@ describe("App", () => {
       name: "Ada Lovelace",
       email: "ada@example.com",
       role: "admin",
+      is_active: true,
       created_at: "2026-01-01T00:00:00Z",
     });
 

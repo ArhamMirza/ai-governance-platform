@@ -1,4 +1,8 @@
+from collections.abc import Callable
+
 from fastapi.testclient import TestClient
+
+from app.models.user import User
 
 
 def create_procedure(client: TestClient, **overrides) -> dict:
@@ -89,24 +93,40 @@ def test_uploading_a_document_bumps_version_and_appears_in_history(client: TestC
     assert history[0]["diff"]["filename"] == "procedure-draft.pdf"
 
 
-def test_full_review_workflow(client: TestClient) -> None:
+def test_full_review_workflow(
+    client: TestClient, second_user: User, login_as: Callable[[User], None]
+) -> None:
     procedure_id = create_procedure(client)["id"]
 
     submit_response = client.post(f"/api/v1/procedures/{procedure_id}/submit-for-review")
     assert submit_response.status_code == 200
     assert submit_response.json()["status"] == "in_review"
 
+    login_as(second_user)
     approve_response = client.post(f"/api/v1/procedures/{procedure_id}/approve")
     assert approve_response.status_code == 200
     assert approve_response.json()["status"] == "approved"
 
 
-def test_cannot_approve_a_draft_procedure(client: TestClient) -> None:
+def test_cannot_approve_a_draft_procedure(
+    client: TestClient, second_user: User, login_as: Callable[[User], None]
+) -> None:
     procedure_id = create_procedure(client)["id"]
+    login_as(second_user)
 
     response = client.post(f"/api/v1/procedures/{procedure_id}/approve")
 
     assert response.status_code == 409
+
+
+def test_cannot_approve_your_own_submission(client: TestClient) -> None:
+    procedure_id = create_procedure(client)["id"]
+    client.post(f"/api/v1/procedures/{procedure_id}/submit-for-review")
+
+    response = client.post(f"/api/v1/procedures/{procedure_id}/approve")
+
+    assert response.status_code == 409
+    assert "same user" in response.json()["detail"]
 
 
 def test_cannot_edit_after_submitted_for_review(client: TestClient) -> None:
@@ -127,10 +147,13 @@ def test_delete_draft_procedure(client: TestClient) -> None:
     assert client.get(f"/api/v1/procedures/{procedure_id}").status_code == 404
 
 
-def test_cannot_delete_approved_procedure(client: TestClient) -> None:
+def test_cannot_delete_approved_procedure(
+    client: TestClient, second_user: User, login_as: Callable[[User], None]
+) -> None:
     procedure_id = create_procedure(client)["id"]
     client.post(f"/api/v1/procedures/{procedure_id}/submit-for-review")
-    client.post(f"/api/v1/procedures/{procedure_id}/approve")
+    login_as(second_user)
+    assert client.post(f"/api/v1/procedures/{procedure_id}/approve").status_code == 200
 
     response = client.delete(f"/api/v1/procedures/{procedure_id}")
 

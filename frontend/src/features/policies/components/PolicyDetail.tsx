@@ -1,5 +1,6 @@
 import { StatusBadge } from "../../../shared/components/StatusBadge";
 import { AuditLogViewer } from "../../audit-log/components/AuditLogViewer";
+import { useCanApprove } from "../../audit-log/useCanApprove";
 import { DocumentBrowser } from "../../evidence/components/DocumentBrowser";
 import { FrameworkTagPicker } from "../../framework-tags/components/FrameworkTagPicker";
 import { useApprovePolicy, usePolicy, usePolicyVersions, useSubmitForReview } from "../hooks";
@@ -18,6 +19,7 @@ export function PolicyDetail({ policyId }: PolicyDetailProps) {
   const { data: history } = usePolicyVersions(policyId);
   const submitForReview = useSubmitForReview(policyId);
   const approve = useApprovePolicy(policyId);
+  const { canApprove, reason } = useCanApprove("Policy", policyId);
 
   if (isLoading) return <p>Loading policy...</p>;
   if (isError || !policy) return <p>Failed to load policy.</p>;
@@ -36,9 +38,13 @@ export function PolicyDetail({ policyId }: PolicyDetailProps) {
           </button>
         )}
         {policy.status === "in_review" && (
-          <button onClick={() => approve.mutate()} disabled={approve.isPending}>
-            Approve
-          </button>
+          canApprove ? (
+            <button onClick={() => approve.mutate()} disabled={approve.isPending}>
+              Approve
+            </button>
+          ) : (
+            <p className="approval-note">{reason}</p>
+          )
         )}
       </div>
 

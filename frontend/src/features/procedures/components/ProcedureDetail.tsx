@@ -1,5 +1,6 @@
 import { StatusBadge } from "../../../shared/components/StatusBadge";
 import { AuditLogViewer } from "../../audit-log/components/AuditLogViewer";
+import { useCanApprove } from "../../audit-log/useCanApprove";
 import { DocumentBrowser } from "../../evidence/components/DocumentBrowser";
 import { FrameworkTagPicker } from "../../framework-tags/components/FrameworkTagPicker";
 import {
@@ -23,6 +24,7 @@ export function ProcedureDetail({ procedureId }: ProcedureDetailProps) {
   const { data: history } = useProcedureVersions(procedureId);
   const submitForReview = useSubmitForReview(procedureId);
   const approve = useApproveProcedure(procedureId);
+  const { canApprove, reason } = useCanApprove("Procedure", procedureId);
 
   if (isLoading) return <p>Loading procedure...</p>;
   if (isError || !procedure) return <p>Failed to load procedure.</p>;
@@ -41,9 +43,13 @@ export function ProcedureDetail({ procedureId }: ProcedureDetailProps) {
           </button>
         )}
         {procedure.status === "in_review" && (
-          <button onClick={() => approve.mutate()} disabled={approve.isPending}>
-            Approve
-          </button>
+          canApprove ? (
+            <button onClick={() => approve.mutate()} disabled={approve.isPending}>
+              Approve
+            </button>
+          ) : (
+            <p className="approval-note">{reason}</p>
+          )
         )}
       </div>
 
