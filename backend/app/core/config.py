@@ -10,6 +10,8 @@ class Settings(BaseSettings):
     evidence_storage_dir: str = "./storage/evidence"
     secret_key: str = "change-me-in-a-real-deployment"
     cors_origins: str = "http://localhost:5173"
+    # False for local http dev; set true once served over https.
+    cookie_secure: bool = False
 
     @property
     def cors_origin_list(self) -> list[str]:

@@ -1,6 +1,8 @@
 import type { ReactNode } from "react";
 import { NavLink } from "react-router-dom";
 
+import { useCurrentUser, useLogout } from "../features/auth/hooks";
+
 const navItems = [
   {
     to: "/",
@@ -61,6 +63,9 @@ const navItems = [
 ];
 
 export function Layout({ children }: { children: ReactNode }) {
+  const { data: user } = useCurrentUser();
+  const logout = useLogout();
+
   return (
     <div className="app-shell">
       <aside className="sidebar">
@@ -88,6 +93,14 @@ export function Layout({ children }: { children: ReactNode }) {
             </NavLink>
           ))}
         </nav>
+        {user && (
+          <div className="sidebar-account">
+            <div className="sidebar-account-name">{user.name}</div>
+            <button onClick={() => logout.mutate()} disabled={logout.isPending}>
+              {logout.isPending ? "Signing out..." : "Sign out"}
+            </button>
+          </div>
+        )}
       </aside>
       <main className="main-content">{children}</main>
     </div>

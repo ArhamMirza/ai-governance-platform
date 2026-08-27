@@ -1,12 +1,14 @@
-from fastapi import FastAPI, Request
+from fastapi import Depends, FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from app.core.config import get_settings
-from app.core.exceptions import ConflictError, NotFoundError, ValidationError
+from app.core.exceptions import AuthenticationError, ConflictError, NotFoundError, ValidationError
+from app.dependencies import get_current_user
 from app.routers import (
     ai_system_inventory,
     audit_log,
+    auth,
     dashboard,
     evidence,
     folders,
@@ -47,15 +49,26 @@ def validation_handler(request: Request, exc: ValidationError) -> JSONResponse:
     return JSONResponse(status_code=400, content={"detail": str(exc)})
 
 
+@app.exception_handler(AuthenticationError)
+def authentication_handler(request: Request, exc: AuthenticationError) -> JSONResponse:
+    return JSONResponse(status_code=401, content={"detail": str(exc)})
+
+
+# Every business router requires a logged-in session (reads included, not
+# just writes) via this shared dependency. health and auth stay public --
+# auth obviously so, since it's how you get a session in the first place.
+_protected = [Depends(get_current_user)]
+
 app.include_router(health.router, prefix="/api/v1")
-app.include_router(policies.router, prefix="/api/v1")
-app.include_router(procedures.router, prefix="/api/v1")
-app.include_router(folders.router, prefix="/api/v1")
-app.include_router(evidence.router, prefix="/api/v1")
-app.include_router(ai_system_inventory.router, prefix="/api/v1")
-app.include_router(risk_assessments.router, prefix="/api/v1")
-app.include_router(risk_criteria.router, prefix="/api/v1")
-app.include_router(framework_controls.router, prefix="/api/v1")
-app.include_router(framework_tags.router, prefix="/api/v1")
-app.include_router(audit_log.router, prefix="/api/v1")
-app.include_router(dashboard.router, prefix="/api/v1")
+app.include_router(auth.router, prefix="/api/v1")
+app.include_router(policies.router, prefix="/api/v1", dependencies=_protected)
+app.include_router(procedures.router, prefix="/api/v1", dependencies=_protected)
+app.include_router(folders.router, prefix="/api/v1", dependencies=_protected)
+app.include_router(evidence.router, prefix="/api/v1", dependencies=_protected)
+app.include_router(ai_system_inventory.router, prefix="/api/v1", dependencies=_protected)
+app.include_router(risk_assessments.router, prefix="/api/v1", dependencies=_protected)
+app.include_router(audit_log.router, prefix="/api/v1", dependencies=_protected)
+app.include_router(dashboard.router, prefix="/api/v1", dependencies=_protected)
+app.include_router(risk_criteria.router, prefix="/api/v1", dependencies=_protected)
+app.include_router(framework_controls.router, prefix="/api/v1", dependencies=_protected)
+app.include_router(framework_tags.router, prefix="/api/v1", dependencies=_protected)
