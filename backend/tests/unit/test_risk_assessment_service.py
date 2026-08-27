@@ -14,7 +14,6 @@ def make_risk_assessment(**overrides) -> RiskAssessment:
         id=1,
         ai_system_row_id=10,
         sheet_id=5,
-        framework_tags=[],
         status=RiskAssessmentStatus.DRAFT,
         assessor_id=None,
         assessment_date=None,
@@ -122,10 +121,11 @@ def test_update_risk_assessment(mock_repo, mock_audit, db) -> None:
 
 
 @patch("app.services.risk_assessment_service.audit_service")
+@patch("app.services.risk_assessment_service.framework_service")
 @patch("app.services.risk_assessment_service.sheet_repository")
 @patch("app.services.risk_assessment_service.risk_assessment_repository")
 def test_delete_risk_assessment_also_deletes_its_sheet(
-    mock_repo, mock_sheet_repo, mock_audit, db
+    mock_repo, mock_sheet_repo, mock_framework_service, mock_audit, db
 ) -> None:
     risk_assessment = make_risk_assessment()
     sheet = MagicMock(id=5)

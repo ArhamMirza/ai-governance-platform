@@ -142,18 +142,39 @@ def test_list_risk_assessments(client: TestClient) -> None:
     assert len(response.json()) == 2
 
 
-def test_update_risk_assessment_status_and_framework_tags(client: TestClient) -> None:
+def test_update_risk_assessment_status(client: TestClient) -> None:
     created = create_risk_assessment(client)
 
     response = client.put(
         f"/api/v1/risk-assessments/{created['id']}",
-        json={"status": "in_progress", "framework_tags": ["ISO42001:8.4"]},
+        json={"status": "in_progress"},
     )
 
     assert response.status_code == 200
-    body = response.json()
-    assert body["status"] == "in_progress"
-    assert body["framework_tags"] == ["ISO42001:8.4"]
+    assert response.json()["status"] == "in_progress"
+
+
+def test_new_risk_assessment_has_no_framework_tags(client: TestClient) -> None:
+    created = create_risk_assessment(client)
+
+    assert created["framework_tags"] == []
+
+
+def test_framework_tags_can_be_set_via_the_generic_tagging_endpoint(client: TestClient) -> None:
+    created = create_risk_assessment(client)
+    control_id = client.get("/api/v1/framework-controls", params={"framework": "iso_42001"}).json()[
+        0
+    ]["id"]
+
+    response = client.put(
+        "/api/v1/framework-tags",
+        params={"entity_type": "RiskAssessment", "entity_id": created["id"]},
+        json={"control_ids": [control_id]},
+    )
+    assert response.status_code == 200
+
+    body = client.get(f"/api/v1/risk-assessments/{created['id']}").json()
+    assert [tag["id"] for tag in body["framework_tags"]] == [control_id]
 
 
 def test_add_row_and_compute_overall_risk_rating(client: TestClient) -> None:

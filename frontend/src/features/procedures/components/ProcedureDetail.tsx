@@ -1,6 +1,7 @@
 import { StatusBadge } from "../../../shared/components/StatusBadge";
 import { AuditLogViewer } from "../../audit-log/components/AuditLogViewer";
 import { DocumentBrowser } from "../../evidence/components/DocumentBrowser";
+import { FrameworkTagPicker } from "../../framework-tags/components/FrameworkTagPicker";
 import {
   useApproveProcedure,
   useProcedure,
@@ -45,6 +46,9 @@ export function ProcedureDetail({ procedureId }: ProcedureDetailProps) {
           </button>
         )}
       </div>
+
+      <h3>Framework Tags</h3>
+      <FrameworkTagPicker entityType="Procedure" entityId={procedureId} />
 
       <h3>Documents</h3>
       <DocumentBrowser entityType="Procedure" entityId={procedureId} />

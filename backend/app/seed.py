@@ -17,17 +17,27 @@ from types import SimpleNamespace
 from sqlalchemy.orm import Session
 
 from app.core.database import SessionLocal
-from app.repositories import policy_repository
+from app.repositories import framework_control_repository, policy_repository
 from app.schemas.policy import PolicyCreate
 from app.schemas.procedure import ProcedureCreate
 from app.schemas.risk_assessment import RiskAssessmentCreate
 from app.services import (
     ai_system_inventory_service,
     evidence_service,
+    framework_service,
     policy_service,
     procedure_service,
     risk_assessment_service,
 )
+
+
+def _tag(db: Session, entity_type: str, entity_id: int, *codes: str) -> None:
+    """codes like 'iso_42001:8.4' or 'eu_ai_act:Art.9'."""
+    controls = {
+        f"{c.framework}:{c.code}": c.id for c in framework_control_repository.list_all(db)
+    }
+    control_ids = [controls[code] for code in codes]
+    framework_service.set_tags(db, entity_type, entity_id, control_ids, actor_id=None)
 
 
 def _fake_upload(filename: str, content: bytes) -> SimpleNamespace:
@@ -59,6 +69,7 @@ def seed(db: Session) -> None:
     )
     policy_service.submit_for_review(db, retention_policy.id, actor_id=None)
     policy_service.approve_policy(db, retention_policy.id, actor_id=None)
+    _tag(db, "Policy", retention_policy.id, "eu_ai_act:Art.10")
 
     vendor_policy = policy_service.create_policy(
         db,
@@ -69,6 +80,7 @@ def seed(db: Session) -> None:
         actor_id=None,
     )
     policy_service.submit_for_review(db, vendor_policy.id, actor_id=None)
+    _tag(db, "Policy", vendor_policy.id, "iso_42001:6.1", "eu_ai_act:Art.9")
 
     print("Seeding procedures...")
     validation_procedure = procedure_service.create_procedure(
@@ -130,12 +142,10 @@ def seed(db: Session) -> None:
     print("Seeding risk assessments...")
     resume_assessment = risk_assessment_service.create_risk_assessment(
         db,
-        RiskAssessmentCreate(
-            ai_system_row_id=resume_screener.id,
-            framework_tags=["ISO42001:8.4", "EU_AI_ACT:Art.9"],
-        ),
+        RiskAssessmentCreate(ai_system_row_id=resume_screener.id),
         actor_id=None,
     )
+    _tag(db, "RiskAssessment", resume_assessment.id, "iso_42001:8.4", "eu_ai_act:Art.9")
     risk_assessment_service.add_row(
         db,
         resume_assessment.id,
@@ -173,9 +183,10 @@ def seed(db: Session) -> None:
 
     fraud_assessment = risk_assessment_service.create_risk_assessment(
         db,
-        RiskAssessmentCreate(ai_system_row_id=fraud_model.id, framework_tags=["ISO42001:6.1"]),
+        RiskAssessmentCreate(ai_system_row_id=fraud_model.id),
         actor_id=None,
     )
+    _tag(db, "RiskAssessment", fraud_assessment.id, "iso_42001:6.1")
     risk_assessment_service.add_row(
         db,
         fraud_assessment.id,

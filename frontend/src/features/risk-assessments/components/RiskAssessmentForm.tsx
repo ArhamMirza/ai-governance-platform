@@ -6,7 +6,6 @@ import { useAISystemInventoryRows, useCreateRiskAssessment } from "../hooks";
 
 const riskAssessmentFormSchema = z.object({
   ai_system_row_id: z.string().min(1, "Select an AI System"),
-  framework_tags: z.string().optional(),
 });
 
 type RiskAssessmentFormValues = z.infer<typeof riskAssessmentFormSchema>;
@@ -28,9 +27,6 @@ export function RiskAssessmentForm({ onCreated }: RiskAssessmentFormProps) {
   const onSubmit = handleSubmit(async (values) => {
     const riskAssessment = await createRiskAssessment.mutateAsync({
       ai_system_row_id: Number(values.ai_system_row_id),
-      framework_tags: values.framework_tags
-        ? values.framework_tags.split(",").map((tag) => tag.trim()).filter(Boolean)
-        : [],
     });
     reset();
     onCreated?.(riskAssessment.id);
@@ -52,10 +48,7 @@ export function RiskAssessmentForm({ onCreated }: RiskAssessmentFormProps) {
         </select>
         {errors.ai_system_row_id && <p role="alert">{errors.ai_system_row_id.message}</p>}
       </div>
-      <div>
-        <label htmlFor="risk-assessment-framework-tags">Framework Tags (comma-separated)</label>
-        <input id="risk-assessment-framework-tags" {...register("framework_tags")} />
-      </div>
+      <p>Framework tags are added from the assessment's detail page once it's created.</p>
       <button type="submit" disabled={createRiskAssessment.isPending}>
         {createRiskAssessment.isPending ? "Creating..." : "Create Risk Assessment"}
       </button>

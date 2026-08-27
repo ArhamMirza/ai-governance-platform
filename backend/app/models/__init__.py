@@ -1,6 +1,8 @@
 from app.models.audit_log import AuditLogEntry
 from app.models.evidence import Evidence
 from app.models.folder import Folder
+from app.models.framework_control import FrameworkControl
+from app.models.framework_tag import FrameworkTag
 from app.models.policy import Policy
 from app.models.procedure import Procedure
 from app.models.risk_assessment import RiskAssessment
@@ -11,6 +13,8 @@ __all__ = [
     "AuditLogEntry",
     "Evidence",
     "Folder",
+    "FrameworkControl",
+    "FrameworkTag",
     "Policy",
     "Procedure",
     "RiskAssessment",

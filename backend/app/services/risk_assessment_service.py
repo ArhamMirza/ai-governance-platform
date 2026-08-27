@@ -18,6 +18,7 @@ from app.schemas.sheet import ColumnDef
 from app.services import (
     ai_system_inventory_service,
     audit_service,
+    framework_service,
     risk_analytics_service,
     risk_criteria_service,
     sheet_service,
@@ -124,7 +125,6 @@ def create_risk_assessment(
     risk_assessment = RiskAssessment(
         ai_system_row_id=data.ai_system_row_id,
         sheet_id=sheet.id,
-        framework_tags=data.framework_tags,
         assessor_id=data.assessor_id,
         assessment_date=data.assessment_date,
     )
@@ -159,6 +159,7 @@ def delete_risk_assessment(db: Session, risk_assessment_id: int, actor_id: int |
     if sheet is not None:
         sheet_repository.delete_all_rows(db, sheet.id)
         sheet_repository.delete(db, sheet)
+    framework_service.delete_tags(db, "RiskAssessment", risk_assessment_id)
     audit_service.log(db, "RiskAssessment", risk_assessment_id, "deleted", actor_id)
 
 

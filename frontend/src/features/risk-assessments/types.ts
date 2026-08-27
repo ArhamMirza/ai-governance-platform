@@ -1,3 +1,4 @@
+import type { FrameworkControl } from "../framework-controls/types";
 import type { MatrixCell } from "./components/RiskMatrix";
 import type { RiskCriteria } from "./riskSeverity";
 
@@ -7,7 +8,7 @@ export interface RiskAssessment {
   id: number;
   ai_system_row_id: number;
   sheet_id: number;
-  framework_tags: string[];
+  framework_tags: FrameworkControl[];
   status: RiskAssessmentStatus;
   assessor_id: number | null;
   assessment_date: string | null;
@@ -18,13 +19,11 @@ export interface RiskAssessment {
 
 export interface RiskAssessmentCreateInput {
   ai_system_row_id: number;
-  framework_tags?: string[];
   assessor_id?: number | null;
   assessment_date?: string | null;
 }
 
 export interface RiskAssessmentUpdateInput {
-  framework_tags?: string[];
   status?: RiskAssessmentStatus;
   assessor_id?: number | null;
   assessment_date?: string | null;

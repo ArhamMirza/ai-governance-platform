@@ -12,7 +12,7 @@ from app.schemas.risk_assessment import (
     RiskPortfolioSummary,
 )
 from app.schemas.sheet import ColumnsUpdate, RowCreate, RowUpdate, SheetRowRead, SheetWithRowsRead
-from app.services import risk_assessment_service
+from app.services import framework_service, risk_assessment_service
 
 router = APIRouter(prefix="/risk-assessments", tags=["risk-assessments"])
 
@@ -23,11 +23,12 @@ def _to_read(db: Session, risk_assessment: RiskAssessment) -> RiskAssessmentRead
     overall_risk_rating = risk_assessment_service.compute_overall_risk_rating(
         db, risk_assessment.sheet_id
     )
+    framework_tags = framework_service.get_tags(db, "RiskAssessment", risk_assessment.id)
     return RiskAssessmentRead(
         id=risk_assessment.id,
         ai_system_row_id=risk_assessment.ai_system_row_id,
         sheet_id=risk_assessment.sheet_id,
-        framework_tags=risk_assessment.framework_tags,
+        framework_tags=framework_tags,
         status=risk_assessment.status,
         assessor_id=risk_assessment.assessor_id,
         assessment_date=risk_assessment.assessment_date,

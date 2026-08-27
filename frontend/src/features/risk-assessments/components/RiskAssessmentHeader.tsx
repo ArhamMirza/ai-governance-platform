@@ -1,4 +1,5 @@
-import { useUpdateRiskAssessment } from "../hooks";
+import { FrameworkTagPicker } from "../../framework-tags/components/FrameworkTagPicker";
+import { riskAssessmentKey, useUpdateRiskAssessment } from "../hooks";
 import type { RiskAssessment, RiskAssessmentStatus } from "../types";
 
 interface RiskAssessmentHeaderProps {
@@ -26,7 +27,14 @@ export function RiskAssessmentHeader({ riskAssessment, aiSystemName }: RiskAsses
           <option value="completed">Completed</option>
         </select>
       </div>
-      <p>Framework Tags: {riskAssessment.framework_tags.join(", ") || "None"}</p>
+      <div className="risk-header-tags">
+        <span className="risk-header-tags-label">Framework Tags</span>
+        <FrameworkTagPicker
+          entityType="RiskAssessment"
+          entityId={riskAssessment.id}
+          extraInvalidateKeys={[riskAssessmentKey(riskAssessment.id)]}
+        />
+      </div>
       <p className="risk-rating">
         Overall Risk Rating:{" "}
         {riskAssessment.overall_risk_rating !== null
