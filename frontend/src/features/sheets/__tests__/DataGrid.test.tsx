@@ -261,6 +261,67 @@ describe("DataGrid", () => {
     expect(screen.getByText("ML Team (unrecognized)")).toBeInTheDocument();
   });
 
+  it("renders a long-text column as a wrapping textarea, not a truncating input", async () => {
+    const adapter = makeAdapter();
+    const queryClient = createTestQueryClient();
+    render(
+      <QueryClientProvider client={queryClient}>
+        <DataGrid
+          queryKey={["test-sheet"]}
+          adapter={adapter}
+          longTextColumnKeys={["category"]}
+        />
+      </QueryClientProvider>,
+    );
+
+    const cell = await screen.findByLabelText("Category for row 10");
+    expect(cell.tagName).toBe("TEXTAREA");
+    expect(cell).toHaveValue("Bias");
+  });
+
+  it("saves an edited long-text cell on blur", async () => {
+    const adapter = makeAdapter();
+    const user = userEvent.setup();
+    const queryClient = createTestQueryClient();
+    render(
+      <QueryClientProvider client={queryClient}>
+        <DataGrid
+          queryKey={["test-sheet"]}
+          adapter={adapter}
+          longTextColumnKeys={["category"]}
+        />
+      </QueryClientProvider>,
+    );
+
+    const cell = await screen.findByLabelText("Category for row 10");
+    await user.clear(cell);
+    await user.type(cell, "A much longer sentence about the risk.");
+    await user.tab();
+
+    await waitFor(() => {
+      expect(adapter.updateRow).toHaveBeenCalledWith(10, {
+        category: "A much longer sentence about the risk.",
+      });
+    });
+  });
+
+  it("keeps columns not listed as long text as plain inputs", async () => {
+    const adapter = makeAdapter();
+    const queryClient = createTestQueryClient();
+    render(
+      <QueryClientProvider client={queryClient}>
+        <DataGrid
+          queryKey={["test-sheet"]}
+          adapter={adapter}
+          longTextColumnKeys={["category"]}
+        />
+      </QueryClientProvider>,
+    );
+
+    const other = await screen.findByLabelText("Likelihood for row 10");
+    expect(other.tagName).toBe("INPUT");
+  });
+
   it("renders caller-provided row actions", async () => {
     renderGridWithRowActions(makeAdapter());
 

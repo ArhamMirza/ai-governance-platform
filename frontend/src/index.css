@@ -126,6 +126,11 @@ ul {
   display: flex;
   flex-direction: column;
   padding: 20px 12px;
+  /* Pinned: the nav stays put while only the main column scrolls. */
+  position: sticky;
+  top: 0;
+  height: 100svh;
+  overflow-y: auto;
 }
 
 .sidebar-brand {
@@ -229,7 +234,10 @@ ul {
 .main-content {
   flex: 1;
   padding: 32px 44px 60px;
-  max-width: 1280px;
+  /* A flex item defaults to min-width:auto, so without this a wide
+     DataGrid stretches the whole shell and scrolls the sidebar off-screen
+     instead of scrolling inside its own container. */
+  min-width: 0;
 }
 
 /* ---------- Auth screen ---------- */
@@ -1133,6 +1141,64 @@ nav[aria-label="breadcrumb"] button:hover {
 
 .grid-toolbar a {
   margin-left: auto;
+}
+
+/* A wide sheet scrolls inside this box rather than widening the page.
+   The card border/radius live here so the rounded edge clips the scroll. */
+.table-scroll {
+  overflow-x: auto;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+}
+
+.table-scroll > table {
+  border-radius: 0;
+}
+
+/* The sheet scrolls horizontally, so size each column for its content
+   rather than squeezing everything into the viewport. Prose columns get
+   real room; numbers and dates stay compact. */
+.data-grid thead th,
+.data-grid td {
+  white-space: nowrap;
+}
+
+.data-grid td input,
+.data-grid td select {
+  min-width: 160px;
+}
+
+/* Prose columns wrap across a few lines so the whole sentence is readable;
+   a single-line input silently truncates anything longer than the column. */
+.data-grid td[data-long-text="true"] {
+  white-space: normal;
+}
+
+.data-grid td[data-long-text="true"] textarea {
+  min-width: 300px;
+  width: 300px;
+  min-height: 0;
+  resize: vertical;
+  line-height: 1.4;
+  border-color: transparent;
+  background: transparent;
+  padding: 6px 7px;
+}
+
+.data-grid td[data-long-text="true"] textarea:hover {
+  border-color: var(--border);
+  background: var(--bg-page);
+}
+
+.data-grid td[data-type="number"] input,
+.data-grid td[data-type="number"] span {
+  min-width: 90px;
+}
+
+.data-grid td[data-type="date"] input {
+  min-width: 140px;
 }
 
 /* ---------- Framework tag picker ---------- */

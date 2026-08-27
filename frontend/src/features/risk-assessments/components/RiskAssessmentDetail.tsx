@@ -14,6 +14,7 @@ import { RiskItemPanel } from "./RiskItemPanel";
 import { RiskMatrix } from "./RiskMatrix";
 
 const COMPUTED_COLUMNS = ["inherent_risk_score", "residual_risk_score"];
+const LONG_TEXT_COLUMNS = ["description", "mitigation"];
 
 interface RiskAssessmentDetailProps {
   riskAssessmentId: number;
@@ -53,6 +54,7 @@ export function RiskAssessmentDetail({ riskAssessmentId }: RiskAssessmentDetailP
         queryKey={[...queryKey]}
         adapter={adapter}
         readOnlyColumnKeys={COMPUTED_COLUMNS}
+        longTextColumnKeys={LONG_TEXT_COLUMNS}
         isRowFlagged={isRiskItemOverdue}
         flaggedLabel="Overdue"
         selectOptions={{ risk_owner: ownerOptions }}
