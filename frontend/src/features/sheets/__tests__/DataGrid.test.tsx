@@ -1,5 +1,5 @@
 import { QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
@@ -364,6 +364,79 @@ describe("DataGrid", () => {
     // 3 columns total, 2 grouped under "Risk Details" (colSpan 2) + 1
     // ungrouped ("inherent_risk_score") + the trailing blank Actions cell.
     expect(groupRow?.querySelectorAll("th")).toHaveLength(3);
+  });
+
+  it("deletes immediately when no confirmation is required", async () => {
+    const adapter = makeAdapter();
+    const user = userEvent.setup();
+    renderGrid(adapter);
+
+    await user.click(await screen.findByRole("button", { name: "Delete" }));
+
+    await waitFor(() => expect(adapter.deleteRow).toHaveBeenCalledWith(10));
+  });
+
+  it("asks for confirmation before deleting when confirmDelete is given", async () => {
+    const adapter = makeAdapter();
+    const user = userEvent.setup();
+    const queryClient = createTestQueryClient();
+    render(
+      <QueryClientProvider client={queryClient}>
+        <DataGrid
+          queryKey={["test-sheet"]}
+          adapter={adapter}
+          confirmDelete={(row) => `Row ${row.id} and everything under it.`}
+        />
+      </QueryClientProvider>,
+    );
+
+    await user.click(await screen.findByRole("button", { name: "Delete" }));
+
+    expect(screen.getByRole("alertdialog")).toBeInTheDocument();
+    expect(screen.getByText("Row 10 and everything under it.")).toBeInTheDocument();
+    expect(adapter.deleteRow).not.toHaveBeenCalled();
+  });
+
+  it("deletes once the confirmation is accepted", async () => {
+    const adapter = makeAdapter();
+    const user = userEvent.setup();
+    const queryClient = createTestQueryClient();
+    render(
+      <QueryClientProvider client={queryClient}>
+        <DataGrid
+          queryKey={["test-sheet"]}
+          adapter={adapter}
+          confirmDelete={() => "Are you sure?"}
+        />
+      </QueryClientProvider>,
+    );
+
+    await user.click(await screen.findByRole("button", { name: "Delete" }));
+    const dialog = within(screen.getByRole("alertdialog"));
+    await user.click(dialog.getByRole("button", { name: "Delete" }));
+
+    await waitFor(() => expect(adapter.deleteRow).toHaveBeenCalledWith(10));
+  });
+
+  it("does not delete when the confirmation is cancelled", async () => {
+    const adapter = makeAdapter();
+    const user = userEvent.setup();
+    const queryClient = createTestQueryClient();
+    render(
+      <QueryClientProvider client={queryClient}>
+        <DataGrid
+          queryKey={["test-sheet"]}
+          adapter={adapter}
+          confirmDelete={() => "Are you sure?"}
+        />
+      </QueryClientProvider>,
+    );
+
+    await user.click(await screen.findByRole("button", { name: "Delete" }));
+    await user.click(screen.getByRole("button", { name: "Cancel" }));
+
+    expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
+    expect(adapter.deleteRow).not.toHaveBeenCalled();
   });
 
   it("renders no group row when columnGroups is not passed", async () => {

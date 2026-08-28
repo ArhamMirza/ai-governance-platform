@@ -1,6 +1,9 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useNavigate } from "react-router-dom";
 
+import { ApiError } from "../../../shared/api/httpClient";
+import { ConfirmDialog } from "../../../shared/components/ConfirmDialog";
 import { AuditLogViewer } from "../../audit-log/components/AuditLogViewer";
 import { ImpactAssessmentList } from "../../impact-assessments/components/ImpactAssessmentList";
 import { useRiskCriteria } from "../../risk-criteria/hooks";
@@ -8,7 +11,12 @@ import { DataGrid } from "../../sheets/components/DataGrid";
 import type { SheetRow } from "../../sheets/types";
 import { useUserDirectory } from "../../users/hooks";
 import { makeRiskAssessmentSheetAdapter } from "../api";
-import { riskAssessmentSheetKey, useAISystemInventoryRows, useRiskAssessment } from "../hooks";
+import {
+  riskAssessmentSheetKey,
+  useAISystemInventoryRows,
+  useDeleteRiskAssessment,
+  useRiskAssessment,
+} from "../hooks";
 import { isRiskItemOverdue } from "../riskMonitoring";
 import { RiskAssessmentHeader } from "./RiskAssessmentHeader";
 import { RiskItemPanel } from "./RiskItemPanel";
@@ -30,6 +38,10 @@ export function RiskAssessmentDetail({ riskAssessmentId }: RiskAssessmentDetailP
   const queryKey = riskAssessmentSheetKey(riskAssessmentId);
   const { data: sheet } = useQuery({ queryKey, queryFn: adapter.get });
   const [managingRow, setManagingRow] = useState<SheetRow | null>(null);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const deleteRiskAssessment = useDeleteRiskAssessment();
+  const navigate = useNavigate();
 
   if (isLoading) return <p>Loading risk assessment...</p>;
   if (isError || !riskAssessment) return <p>Failed to load risk assessment.</p>;
@@ -45,9 +57,24 @@ export function RiskAssessmentDetail({ riskAssessmentId }: RiskAssessmentDetailP
     label: user.name,
   }));
 
+  const handleDelete = async () => {
+    setDeleteError(null);
+    try {
+      await deleteRiskAssessment.mutateAsync(riskAssessmentId);
+      navigate("/risk-assessments");
+    } catch (err) {
+      setDeleteError(
+        err instanceof ApiError ? err.message : "Failed to delete risk assessment",
+      );
+    }
+  };
+
   return (
     <article>
-      <h2>Risk Assessment</h2>
+      <div className="page-header">
+        <h2>Risk Assessment</h2>
+        <button onClick={() => setConfirmingDelete(true)}>Delete Risk Assessment</button>
+      </div>
       <RiskAssessmentHeader riskAssessment={riskAssessment} aiSystemName={aiSystemName} />
 
       <h3>Risk Items</h3>
@@ -82,6 +109,21 @@ export function RiskAssessmentDetail({ riskAssessmentId }: RiskAssessmentDetailP
 
       <h3>Audit Log</h3>
       <AuditLogViewer entityType="RiskAssessment" entityId={riskAssessmentId} />
+
+      {confirmingDelete && (
+        <ConfirmDialog
+          title="Delete this risk assessment?"
+          message={`This deletes every risk item on ${aiSystemName}'s risk assessment and the evidence attached to them. The AI system and its impact assessment are kept. This cannot be undone.`}
+          confirmLabel="Delete Risk Assessment"
+          isPending={deleteRiskAssessment.isPending}
+          error={deleteError}
+          onCancel={() => {
+            setConfirmingDelete(false);
+            setDeleteError(null);
+          }}
+          onConfirm={handleDelete}
+        />
+      )}
     </article>
   );
 }

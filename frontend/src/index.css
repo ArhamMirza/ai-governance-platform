@@ -1636,6 +1636,30 @@ article h3 + p {
 
 /* ---------- Modal ---------- */
 
+/* ---------- Confirm dialog ---------- */
+
+.confirm-dialog {
+  max-width: 440px;
+}
+
+.confirm-dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 18px;
+}
+
+button.danger {
+  background: var(--danger);
+  border-color: var(--danger);
+  color: #fff;
+}
+
+button.danger:hover:not(:disabled) {
+  background: var(--danger-text);
+  border-color: var(--danger-text);
+}
+
 .modal-backdrop {
   position: fixed;
   inset: 0;

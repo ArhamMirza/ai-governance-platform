@@ -73,6 +73,22 @@ def update_row(db: Session, row_id: int, data: dict, actor_id: int | None) -> Sh
 
 
 def delete_row(db: Session, row_id: int, actor_id: int | None) -> None:
+    """Removing an AI system also removes the assessments performed on it --
+    they describe a system that no longer exists, and their sheets, evidence
+    and framework tags would otherwise be orphaned."""
+    # Imported here rather than at module scope: both assessment services
+    # import this one (to validate the AI system row), so a top-level import
+    # would be circular.
+    from app.services import impact_assessment_service, risk_assessment_service
+
+    risk_assessment = risk_assessment_service.get_for_ai_system(db, row_id)
+    if risk_assessment is not None:
+        risk_assessment_service.delete_risk_assessment(db, risk_assessment.id, actor_id)
+
+    impact_assessment = impact_assessment_service.get_for_ai_system(db, row_id)
+    if impact_assessment is not None:
+        impact_assessment_service.delete(db, impact_assessment.id, actor_id)
+
     sheet = get_or_create_sheet(db)
     sheet_service.delete_row(db, sheet.id, row_id)
     audit_service.log(db, ENTITY_TYPE, sheet.id, "row_deleted", actor_id, {"row_id": row_id})

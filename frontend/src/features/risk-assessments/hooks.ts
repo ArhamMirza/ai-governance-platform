@@ -41,6 +41,18 @@ export function useCreateRiskAssessment() {
   });
 }
 
+export function useDeleteRiskAssessment() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => riskAssessmentsApi.remove(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: riskAssessmentsKey });
+      queryClient.invalidateQueries({ queryKey: ["risk-portfolio-summary"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard-summary"] });
+    },
+  });
+}
+
 export function useUpdateRiskAssessment(id: number) {
   const queryClient = useQueryClient();
   return useMutation({
