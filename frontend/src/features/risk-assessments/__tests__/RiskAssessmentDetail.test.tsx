@@ -1,5 +1,6 @@
 import { QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, waitFor } from "@testing-library/react";
+import { MemoryRouter } from "react-router-dom";
 import { describe, expect, it, vi } from "vitest";
 
 import { auditLogApi } from "../../audit-log/api";
@@ -96,9 +97,11 @@ describe("RiskAssessmentDetail", () => {
     const queryClient = createTestQueryClient();
 
     render(
-      <QueryClientProvider client={queryClient}>
-        <RiskAssessmentDetail riskAssessmentId={1} />
-      </QueryClientProvider>,
+      <MemoryRouter>
+        <QueryClientProvider client={queryClient}>
+          <RiskAssessmentDetail riskAssessmentId={1} />
+        </QueryClientProvider>
+      </MemoryRouter>,
     );
 
     await waitFor(() => {

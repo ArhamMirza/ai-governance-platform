@@ -2,6 +2,7 @@ import { useRef, useState } from "react";
 import type { ReactNode } from "react";
 
 import { ApiError } from "../../../shared/api/httpClient";
+import { ConfirmDialog } from "../../../shared/components/ConfirmDialog";
 import { useAddRow, useDeleteRow, useSetColumns, useSheet, useUpdateRow, useUploadSheet } from "../hooks";
 import type { SheetApiAdapter, SheetRow } from "../types";
 
@@ -31,6 +32,9 @@ interface DataGridProps {
    * underlying column keys or data. Any column not listed in a group gets a
    * blank cell in the group row so headers stay aligned. */
   columnGroups?: { label: string; keys: string[] }[];
+  /** Return the confirmation text for deleting a row, to require an explicit
+   * confirm first. Omit to delete immediately. */
+  confirmDelete?: (row: SheetRow) => string;
 }
 
 function cellText(value: unknown): string {
@@ -76,7 +80,9 @@ export function DataGrid({
   rowActions,
   longTextColumnKeys = [],
   columnGroups,
+  confirmDelete,
 }: DataGridProps) {
+  const [pendingDelete, setPendingDelete] = useState<SheetRow | null>(null);
   const { data: sheet, isLoading, isError } = useSheet(queryKey, adapter);
   const setColumns = useSetColumns(queryKey, adapter);
   const addRow = useAddRow(queryKey, adapter);
@@ -284,7 +290,13 @@ export function DataGrid({
                   <td>
                     {flagged && <span className="flag-chip">{flaggedLabel}</span>}
                     {rowActions?.(row)}
-                    <button onClick={() => handleDeleteRow(row.id)}>Delete</button>
+                    <button
+                      onClick={() =>
+                        confirmDelete ? setPendingDelete(row) : handleDeleteRow(row.id)
+                      }
+                    >
+                      Delete
+                    </button>
                   </td>
                 </tr>
               );
@@ -310,6 +322,20 @@ export function DataGrid({
           </tbody>
         </table>
       </div>
+
+      {pendingDelete && confirmDelete && (
+        <ConfirmDialog
+          title="Delete this row?"
+          message={confirmDelete(pendingDelete)}
+          isPending={deleteRow.isPending}
+          onCancel={() => setPendingDelete(null)}
+          onConfirm={() => {
+            const rowId = pendingDelete.id;
+            setPendingDelete(null);
+            handleDeleteRow(rowId);
+          }}
+        />
+      )}
     </div>
   );
 }

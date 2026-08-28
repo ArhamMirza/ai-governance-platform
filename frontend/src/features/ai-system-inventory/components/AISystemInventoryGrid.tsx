@@ -30,6 +30,11 @@ export function AISystemInventoryGrid() {
       adapter={aiSystemInventoryAdapter}
       longTextColumnKeys={LONG_TEXT_COLUMNS}
       columnGroups={COLUMN_GROUPS}
+      confirmDelete={(row) => {
+        const name =
+          typeof row.data.name === "string" && row.data.name ? row.data.name : "this AI system";
+        return `Deleting ${name} also deletes its impact assessment and risk assessment, including their risk items and evidence. This cannot be undone.`;
+      }}
     />
   );
 }

@@ -1,5 +1,7 @@
 from fastapi.testclient import TestClient
 
+from tests.helpers import complete_impact_assessment
+
 
 def test_get_creates_singleton_with_default_columns(client: TestClient) -> None:
     response = client.get("/api/v1/ai-system-inventory")
@@ -135,3 +137,29 @@ def test_row_and_column_changes_are_audit_logged(client: TestClient) -> None:
     ).json()
 
     assert [entry["action"] for entry in history] == ["row_added", "row_updated", "row_deleted"]
+
+
+def test_deleting_an_ai_system_deletes_its_assessments(client: TestClient) -> None:
+    """The assessments describe a system that no longer exists, so they go
+    with it rather than being left orphaned."""
+    row = client.post(
+        "/api/v1/ai-system-inventory/rows", json={"data": {"name": "Resume Screener"}}
+    ).json()
+    impact = complete_impact_assessment(client, row["id"])
+    risk = client.post(
+        "/api/v1/risk-assessments", json={"ai_system_row_id": row["id"]}
+    ).json()
+
+    response = client.delete(f"/api/v1/ai-system-inventory/rows/{row['id']}")
+
+    assert response.status_code == 204
+    assert client.get(f"/api/v1/impact-assessments/{impact['id']}").status_code == 404
+    assert client.get(f"/api/v1/risk-assessments/{risk['id']}").status_code == 404
+
+
+def test_deleting_an_ai_system_without_assessments_still_works(client: TestClient) -> None:
+    row = client.post(
+        "/api/v1/ai-system-inventory/rows", json={"data": {"name": "Unassessed"}}
+    ).json()
+
+    assert client.delete(f"/api/v1/ai-system-inventory/rows/{row['id']}").status_code == 204
