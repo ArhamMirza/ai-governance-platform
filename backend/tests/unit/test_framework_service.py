@@ -29,6 +29,19 @@ def test_list_controls_filters_by_framework(db_session: Session) -> None:
     assert all(c.framework == "iso_42001" for c in controls)
 
 
+def test_list_controls_orders_clauses_numerically_not_lexicographically(
+    db_session: Session,
+) -> None:
+    """Regression: plain string ordering put "10.1" before "4.1" since
+    "1" < "4" -- clauses must read in the order a human expects."""
+    codes = [
+        c.code for c in framework_control_repository.list_all(db_session, "iso_42001", "clause")
+    ]
+
+    assert codes.index("4.1") < codes.index("10.1")
+    assert codes.index("9.3") < codes.index("10.1")
+
+
 def test_list_controls_without_filter_returns_both_frameworks(db_session: Session) -> None:
     controls = framework_service.list_controls(db_session)
 
