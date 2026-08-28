@@ -59,21 +59,9 @@ def list_impact_assessments(
     return [_to_read(db, a) for a in assessments]
 
 
-@risk_assessments_router.post(
-    "/{risk_assessment_id}/impact-assessments",
-    response_model=ImpactAssessmentRead,
-    status_code=201,
-)
-def create_impact_assessment(
-    risk_assessment_id: int,
-    data: ImpactAssessmentCreate,
-    db: Session = Depends(get_db),
-    actor_id: int | None = Depends(get_current_actor_id),
-) -> ImpactAssessmentRead:
-    impact_assessment = impact_assessment_service.create_for_risk_assessment(
-        db, risk_assessment_id, data, actor_id
-    )
-    return _to_read(db, impact_assessment)
+# There is deliberately no POST under /risk-assessments/{id}: an AI system has
+# exactly one impact assessment, and it must already exist (and be completed)
+# before a risk assessment can be created at all. Use POST /impact-assessments.
 
 
 @router.get("", response_model=list[ImpactAssessmentRead])

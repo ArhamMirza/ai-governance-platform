@@ -1,15 +1,23 @@
-import { render, screen, waitFor } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
+import { render, screen } from "@testing-library/react";
+import { MemoryRouter } from "react-router-dom";
 import { describe, expect, it, vi } from "vitest";
 
 import { ImpactAssessmentList } from "../components/ImpactAssessmentList";
-import { useCreateImpactAssessment, useImpactAssessments } from "../hooks";
+import { useImpactAssessments } from "../hooks";
 import type { ImpactAssessment } from "../types";
 
 vi.mock("../hooks");
 vi.mock("../components/ImpactAssessmentForm", () => ({
-  ImpactAssessmentForm: ({ assessment }: { assessment: ImpactAssessment }) => (
-    <div>Form for assessment {assessment.id}</div>
+  ImpactAssessmentForm: ({
+    assessment,
+    allowDelete,
+  }: {
+    assessment: ImpactAssessment;
+    allowDelete?: boolean;
+  }) => (
+    <div>
+      Form for assessment {assessment.id} (delete: {String(allowDelete)})
+    </div>
   ),
 }));
 
@@ -17,10 +25,10 @@ function makeAssessment(overrides: Partial<ImpactAssessment> = {}): ImpactAssess
   return {
     id: 1,
     ai_system_row_id: 7,
-    status: "draft",
+    status: "completed",
     assessor_id: null,
-    assessment_date: null,
-    next_review_date: null,
+    assessment_date: "2026-01-01",
+    next_review_date: "2027-01-01",
     review_overdue: false,
     system_description: null,
     intended_purpose: null,
@@ -38,51 +46,62 @@ function makeAssessment(overrides: Partial<ImpactAssessment> = {}): ImpactAssess
   };
 }
 
-function mockHooks({
-  assessments = [],
-  mutateAsync = vi.fn(),
-}: { assessments?: ImpactAssessment[]; mutateAsync?: ReturnType<typeof vi.fn> } = {}) {
+function mockHook(assessments: ImpactAssessment[]) {
   vi.mocked(useImpactAssessments).mockReturnValue({
     data: assessments,
     isLoading: false,
     isError: false,
   } as never);
-  vi.mocked(useCreateImpactAssessment).mockReturnValue({
-    mutateAsync,
-    isPending: false,
-  } as never);
-  return mutateAsync;
+}
+
+function renderList() {
+  return render(
+    <MemoryRouter>
+      <ImpactAssessmentList riskAssessmentId={1} />
+    </MemoryRouter>,
+  );
 }
 
 describe("ImpactAssessmentList", () => {
-  it("shows a placeholder when there are no impact assessments yet", () => {
-    mockHooks({ assessments: [] });
+  it("shows the AI system's single impact assessment", () => {
+    mockHook([makeAssessment({ id: 3 })]);
 
-    render(<ImpactAssessmentList riskAssessmentId={1} />);
+    renderList();
 
-    expect(screen.getByText("No impact assessments yet for this AI system.")).toBeInTheDocument();
+    expect(screen.getByText(/Impact Assessment #3/)).toBeInTheDocument();
+    expect(screen.getByText(/Form for assessment 3/)).toBeInTheDocument();
   });
 
-  it("lists assessments, most recent first, with the newest expanded", () => {
-    mockHooks({ assessments: [makeAssessment({ id: 1 }), makeAssessment({ id: 2 })] });
+  it("shows the review due date", () => {
+    mockHook([makeAssessment()]);
 
-    render(<ImpactAssessmentList riskAssessmentId={1} />);
+    renderList();
 
-    expect(screen.getByText(/Impact Assessment #2/)).toBeInTheDocument();
-    expect(screen.getByText("Form for assessment 2")).toBeInTheDocument();
-    expect(screen.queryByText("Form for assessment 1")).not.toBeInTheDocument();
+    expect(screen.getByText(/Review due/)).toBeInTheDocument();
+    expect(screen.getByText(/2027-01-01/)).toBeInTheDocument();
   });
 
-  it("creates a new impact assessment and expands it", async () => {
-    const mutateAsync = vi.fn().mockResolvedValue(makeAssessment({ id: 3 }));
-    mockHooks({ assessments: [makeAssessment({ id: 1 })], mutateAsync });
-    const user = userEvent.setup();
+  it("flags an overdue review", () => {
+    mockHook([makeAssessment({ review_overdue: true })]);
 
-    render(<ImpactAssessmentList riskAssessmentId={1} />);
-    await user.click(screen.getByRole("button", { name: "New Impact Assessment" }));
+    renderList();
 
-    await waitFor(() => {
-      expect(mutateAsync).toHaveBeenCalledWith({});
-    });
+    expect(screen.getByText(/Review overdue/)).toBeInTheDocument();
+  });
+
+  it("does not offer deletion here, since a risk assessment depends on it", () => {
+    mockHook([makeAssessment({ id: 3 })]);
+
+    renderList();
+
+    expect(screen.getByText(/delete: false/)).toBeInTheDocument();
+  });
+
+  it("handles a system with no impact assessment", () => {
+    mockHook([]);
+
+    renderList();
+
+    expect(screen.getByText("No impact assessment for this AI system.")).toBeInTheDocument();
   });
 });

@@ -14,7 +14,7 @@ from datetime import UTC, date, datetime
 from sqlalchemy.orm import Session
 
 from app.core import review_cadence
-from app.core.exceptions import NotFoundError, ValidationError
+from app.core.exceptions import ConflictError, NotFoundError, ValidationError
 from app.core.impact_factors import IMPACT_FACTORS
 from app.models.impact_assessment import ImpactAssessment, ImpactAssessmentStatus
 from app.models.impact_factor_assessment import ImpactFactorAssessment
@@ -60,10 +60,17 @@ def list_for_ai_system(db: Session, ai_system_row_id: int) -> list[ImpactAssessm
     return impact_assessment_repository.list_for_ai_system(db, ai_system_row_id)
 
 
+def get_for_ai_system(db: Session, ai_system_row_id: int) -> ImpactAssessment | None:
+    """An AI system has at most one impact assessment -- the yearly review
+    updates that record rather than adding another."""
+    existing = list_for_ai_system(db, ai_system_row_id)
+    return existing[0] if existing else None
+
+
 def list_for_risk_assessment(db: Session, risk_assessment_id: int) -> list[ImpactAssessment]:
-    """Convenience for the risk-assessment detail page: resolves the risk
-    assessment's AI system and returns every impact assessment scoped to it
-    (not just ones created "through" this particular risk assessment)."""
+    """The risk-assessment detail page's view of its system's impact
+    assessment -- at most one, returned as a list so the caller doesn't need
+    a separate empty case."""
     risk_assessment = risk_assessment_repository.get(db, risk_assessment_id)
     if risk_assessment is None:
         raise NotFoundError("RiskAssessment", risk_assessment_id)
@@ -78,21 +85,18 @@ def get_factors(db: Session, impact_assessment_id: int) -> list[ImpactFactorAsse
     return impact_factor_assessment_repository.list_for_assessment(db, impact_assessment_id)
 
 
-def create_for_risk_assessment(
-    db: Session, risk_assessment_id: int, data: ImpactAssessmentCreate, actor_id: int | None
-) -> ImpactAssessment:
-    """Entry point used by the risk-assessment detail page's "New Impact
-    Assessment" action -- resolves to the underlying AI system."""
-    risk_assessment = risk_assessment_repository.get(db, risk_assessment_id)
-    if risk_assessment is None:
-        raise NotFoundError("RiskAssessment", risk_assessment_id)
-    return create_for_ai_system(db, risk_assessment.ai_system_row_id, data, actor_id)
-
-
 def create_for_ai_system(
     db: Session, ai_system_row_id: int, data: ImpactAssessmentCreate, actor_id: int | None
 ) -> ImpactAssessment:
     _validate_ai_system_row(db, ai_system_row_id)
+
+    # One per AI system: re-assessing means revisiting this record and
+    # re-completing it, which re-stamps the yearly review date.
+    if get_for_ai_system(db, ai_system_row_id) is not None:
+        raise ConflictError(
+            "This AI system already has an impact assessment. Update it instead of "
+            "creating another."
+        )
 
     impact_assessment = ImpactAssessment(
         ai_system_row_id=ai_system_row_id,

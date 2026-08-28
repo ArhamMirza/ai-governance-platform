@@ -117,6 +117,19 @@ def list_risk_assessments(db: Session) -> list[RiskAssessment]:
     return risk_assessment_repository.list_all(db)
 
 
+def get_for_ai_system(db: Session, ai_system_row_id: int) -> RiskAssessment | None:
+    """An AI system has at most one risk assessment; its risk items live as
+    rows on that assessment's sheet."""
+    return next(
+        (
+            risk_assessment
+            for risk_assessment in risk_assessment_repository.list_all(db)
+            if risk_assessment.ai_system_row_id == ai_system_row_id
+        ),
+        None,
+    )
+
+
 def get_risk_assessment(db: Session, risk_assessment_id: int) -> RiskAssessment:
     return _get_or_raise(db, risk_assessment_id)
 
@@ -132,6 +145,14 @@ def create_risk_assessment(
         raise ValidationError(
             "Complete an impact assessment for this AI system before opening a "
             "risk assessment against it."
+        )
+
+    # One per AI system -- further risks go in this assessment's sheet as new
+    # rows, rather than spawning a parallel assessment.
+    if get_for_ai_system(db, data.ai_system_row_id) is not None:
+        raise ConflictError(
+            "This AI system already has a risk assessment. Add risk items to it "
+            "instead of creating another."
         )
 
     sheet = sheet_service.create_sheet(db, ENTITY_TYPE, "Risk Items", DEFAULT_COLUMNS)

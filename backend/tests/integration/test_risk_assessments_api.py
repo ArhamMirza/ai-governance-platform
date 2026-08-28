@@ -143,6 +143,19 @@ def test_create_risk_assessment_requires_a_completed_impact_assessment(
     assert "impact assessment" in response.text.lower()
 
 
+def test_only_one_risk_assessment_per_ai_system(client: TestClient) -> None:
+    """Further risks are rows on the existing assessment's sheet."""
+    row = create_ai_system_row(client)
+    complete_impact_assessment(client, row["id"])
+    first = client.post("/api/v1/risk-assessments", json={"ai_system_row_id": row["id"]})
+    assert first.status_code == 201
+
+    second = client.post("/api/v1/risk-assessments", json={"ai_system_row_id": row["id"]})
+
+    assert second.status_code == 409
+    assert "already has a risk assessment" in second.text
+
+
 def test_a_draft_impact_assessment_does_not_unlock_risk_assessment(
     client: TestClient,
 ) -> None:

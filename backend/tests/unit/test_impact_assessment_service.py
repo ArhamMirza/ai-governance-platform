@@ -1,7 +1,7 @@
 import pytest
 from sqlalchemy.orm import Session
 
-from app.core.exceptions import NotFoundError, ValidationError
+from app.core.exceptions import ConflictError, NotFoundError, ValidationError
 from app.core.impact_factors import IMPACT_FACTORS
 from app.core.review_cadence import next_review_date
 from app.schemas.impact_assessment import ImpactAssessmentCreate, ImpactAssessmentUpdate
@@ -41,23 +41,13 @@ def test_create_rejects_an_ai_system_that_does_not_exist(db_session: Session) ->
         )
 
 
-def test_create_for_risk_assessment_resolves_to_its_ai_system(db_session: Session) -> None:
+def test_only_one_impact_assessment_per_ai_system(db_session: Session) -> None:
+    """Re-assessing revisits this record; it does not add a second one."""
     ai_system_row_id = make_ai_system_row(db_session)
-    impact_assessment_service.update(
-        db_session,
-        make_impact_assessment(db_session, ai_system_row_id).id,
-        ImpactAssessmentUpdate(status="completed"),
-        actor_id=None,
-    )
-    risk_assessment = risk_assessment_service.create_risk_assessment(
-        db_session, RiskAssessmentCreate(ai_system_row_id=ai_system_row_id), actor_id=None
-    )
+    make_impact_assessment(db_session, ai_system_row_id)
 
-    created = impact_assessment_service.create_for_risk_assessment(
-        db_session, risk_assessment.id, ImpactAssessmentCreate(), actor_id=None
-    )
-
-    assert created.ai_system_row_id == ai_system_row_id
+    with pytest.raises(ConflictError):
+        make_impact_assessment(db_session, ai_system_row_id)
 
 
 def test_impact_assessments_are_scoped_to_the_ai_system(db_session: Session) -> None:
@@ -66,11 +56,28 @@ def test_impact_assessments_are_scoped_to_the_ai_system(db_session: Session) -> 
         db_session, {"name": "Other System"}, actor_id=None
     ).id
     make_impact_assessment(db_session, ai_system_row_id)
-    make_impact_assessment(db_session, ai_system_row_id)
     make_impact_assessment(db_session, other_row_id)
 
-    assert len(impact_assessment_service.list_for_ai_system(db_session, ai_system_row_id)) == 2
-    assert len(impact_assessment_service.list_for_ai_system(db_session, other_row_id)) == 1
+    assert len(impact_assessment_service.list_for_ai_system(db_session, ai_system_row_id)) == 1
+    assert (
+        impact_assessment_service.get_for_ai_system(db_session, other_row_id).ai_system_row_id
+        == other_row_id
+    )
+
+
+def test_risk_assessment_resolves_to_its_systems_impact_assessment(db_session: Session) -> None:
+    ai_system_row_id = make_ai_system_row(db_session)
+    impact = make_impact_assessment(db_session, ai_system_row_id)
+    impact_assessment_service.update(
+        db_session, impact.id, ImpactAssessmentUpdate(status="completed"), actor_id=None
+    )
+    risk_assessment = risk_assessment_service.create_risk_assessment(
+        db_session, RiskAssessmentCreate(ai_system_row_id=ai_system_row_id), actor_id=None
+    )
+
+    found = impact_assessment_service.list_for_risk_assessment(db_session, risk_assessment.id)
+
+    assert [a.id for a in found] == [impact.id]
 
 
 def test_update_narrative_fields(db_session: Session) -> None:

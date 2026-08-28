@@ -3,7 +3,7 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 
 import { useAllImpactAssessments } from "../../impact-assessments/hooks";
-import { useAISystemInventoryRows, useCreateRiskAssessment } from "../hooks";
+import { useAISystemInventoryRows, useCreateRiskAssessment, useRiskAssessments } from "../hooks";
 
 const riskAssessmentFormSchema = z.object({
   ai_system_row_id: z.string().min(1, "Select an AI System"),
@@ -19,6 +19,7 @@ export function RiskAssessmentForm({ onCreated }: RiskAssessmentFormProps) {
   const createRiskAssessment = useCreateRiskAssessment();
   const { data: inventory } = useAISystemInventoryRows();
   const { data: impactAssessments } = useAllImpactAssessments();
+  const { data: riskAssessments } = useRiskAssessments();
   const {
     register,
     handleSubmit,
@@ -34,14 +35,21 @@ export function RiskAssessmentForm({ onCreated }: RiskAssessmentFormProps) {
     onCreated?.(riskAssessment.id);
   });
 
-  // Only systems with a completed impact assessment can be risk-assessed --
-  // the backend enforces this, so offering the rest would just produce errors.
-  const eligibleRowIds = new Set(
+  // A system is eligible only if its impact assessment is complete and it
+  // doesn't already have a risk assessment -- one per system, with further
+  // risks added as rows. The backend enforces both, so offering anything else
+  // would just produce errors.
+  const impactCompleteRowIds = new Set(
     (impactAssessments ?? [])
       .filter((assessment) => assessment.status === "completed")
       .map((assessment) => assessment.ai_system_row_id),
   );
-  const eligibleRows = (inventory?.rows ?? []).filter((row) => eligibleRowIds.has(row.id));
+  const alreadyAssessedRowIds = new Set(
+    (riskAssessments ?? []).map((assessment) => assessment.ai_system_row_id),
+  );
+  const eligibleRows = (inventory?.rows ?? []).filter(
+    (row) => impactCompleteRowIds.has(row.id) && !alreadyAssessedRowIds.has(row.id),
+  );
 
   return (
     <form onSubmit={onSubmit}>
@@ -61,8 +69,8 @@ export function RiskAssessmentForm({ onCreated }: RiskAssessmentFormProps) {
       </div>
       {eligibleRows.length === 0 && (
         <p role="status">
-          No AI system is eligible yet. Complete an impact assessment for a system first &mdash;
-          ISO 42001 sequences impact assessment before risk assessment.
+          No AI system is eligible yet. Each system needs a completed impact assessment first,
+          and can have only one risk assessment &mdash; add further risks as rows on the existing one.
         </p>
       )}
       <p>Framework tags are added from the assessment's detail page once it's created.</p>

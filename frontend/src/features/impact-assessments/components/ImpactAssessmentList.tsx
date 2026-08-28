@@ -1,88 +1,49 @@
-import { useState } from "react";
+import { Link } from "react-router-dom";
 
-import { ApiError } from "../../../shared/api/httpClient";
-import { useCreateImpactAssessment, useImpactAssessments } from "../hooks";
+import { useImpactAssessments } from "../hooks";
 import { ImpactAssessmentForm } from "./ImpactAssessmentForm";
 
 interface ImpactAssessmentListProps {
   riskAssessmentId: number;
 }
 
-function readError(err: unknown, fallback: string): string {
-  if (!(err instanceof ApiError)) return fallback;
-  try {
-    const parsed = JSON.parse(err.message) as { detail?: string };
-    return parsed.detail ?? err.message;
-  } catch {
-    return err.message || fallback;
-  }
-}
-
+/** The one impact assessment for this risk assessment's AI system. A risk
+ * assessment can only exist once its system's impact assessment is complete,
+ * so there is always exactly one here and nothing to create. */
 export function ImpactAssessmentList({ riskAssessmentId }: ImpactAssessmentListProps) {
   const { data: assessments, isLoading, isError } = useImpactAssessments(riskAssessmentId);
-  const createAssessment = useCreateImpactAssessment(riskAssessmentId);
-  const [expandedId, setExpandedId] = useState<number | null>(null);
-  const [error, setError] = useState<string | null>(null);
 
-  if (isLoading) return <p>Loading impact assessments...</p>;
-  if (isError || !assessments) return <p>Failed to load impact assessments.</p>;
+  if (isLoading) return <p>Loading impact assessment...</p>;
+  if (isError || !assessments) return <p>Failed to load impact assessment.</p>;
 
-  const handleCreate = async () => {
-    setError(null);
-    try {
-      const created = await createAssessment.mutateAsync({});
-      setExpandedId(created.id);
-    } catch (err) {
-      setError(readError(err, "Failed to create impact assessment"));
-    }
-  };
-
-  // Most recently created shown first -- and expanded by default, since
-  // that's the one someone opening this page most likely wants.
-  const sorted = [...assessments].sort((a, b) => b.id - a.id);
+  const assessment = assessments[0];
+  if (!assessment) return <p>No impact assessment for this AI system.</p>;
 
   return (
-    <div className="impact-assessment-list">
-      {error && <p role="alert">{error}</p>}
-
-      <button onClick={handleCreate} disabled={createAssessment.isPending}>
-        {createAssessment.isPending ? "Creating..." : "New Impact Assessment"}
-      </button>
-
-      {sorted.length === 0 && <p>No impact assessments yet for this AI system.</p>}
-
-      {sorted.map((assessment, index) => {
-        const isExpanded = expandedId === null ? index === 0 : expandedId === assessment.id;
-        return (
-          <div key={assessment.id} className="impact-assessment-card">
-            <button
-              className="impact-assessment-card-header"
-              onClick={() => setExpandedId(isExpanded ? -1 : assessment.id)}
+    <div className="impact-assessment-card">
+      <div className="impact-assessment-card-header">
+        <span>
+          Impact Assessment #{assessment.id} &mdash; {assessment.status}
+          {assessment.assessment_date ? ` (${assessment.assessment_date})` : ""}
+          {assessment.next_review_date && (
+            <span
+              className={`impact-review-chip${assessment.review_overdue ? " is-overdue" : ""}`}
             >
-              <span>
-                Impact Assessment #{assessment.id} &mdash; {assessment.status}
-                {assessment.assessment_date ? ` (${assessment.assessment_date})` : ""}
-                {assessment.next_review_date && (
-                  <span
-                    className={`impact-review-chip${assessment.review_overdue ? " is-overdue" : ""}`}
-                  >
-                    {assessment.review_overdue ? "Review overdue" : "Review due"}{" "}
-                    {assessment.next_review_date}
-                  </span>
-                )}
-              </span>
-              <span>{isExpanded ? "▲" : "▼"}</span>
-            </button>
-            {isExpanded && (
-              <ImpactAssessmentForm
-                riskAssessmentId={riskAssessmentId}
-                assessment={assessment}
-                onDeleted={() => setExpandedId(null)}
-              />
-            )}
-          </div>
-        );
-      })}
+              {assessment.review_overdue ? "Review overdue" : "Review due"}{" "}
+              {assessment.next_review_date}
+            </span>
+          )}
+        </span>
+        <Link to={`/impact-assessments/${assessment.id}`}>Open full page</Link>
+      </div>
+      <ImpactAssessmentForm
+        riskAssessmentId={riskAssessmentId}
+        assessment={assessment}
+        // Deleting from here would strand the risk assessment, so the form's
+        // delete action is only offered on the impact assessment's own page.
+        allowDelete={false}
+        onDeleted={() => undefined}
+      />
     </div>
   );
 }

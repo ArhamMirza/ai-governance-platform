@@ -33,7 +33,11 @@ export function useCreateRiskAssessment() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (data: RiskAssessmentCreateInput) => riskAssessmentsApi.create(data),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: riskAssessmentsKey }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: riskAssessmentsKey });
+      queryClient.invalidateQueries({ queryKey: ["risk-portfolio-summary"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard-summary"] });
+    },
   });
 }
 
