@@ -25,6 +25,8 @@ interface ImpactAssessmentFormProps {
   riskAssessmentId: number | null;
   assessment: ImpactAssessment;
   onDeleted: () => void;
+  /** Hidden where deleting would strand a dependent risk assessment. */
+  allowDelete?: boolean;
 }
 
 function readError(err: unknown, fallback: string): string {
@@ -67,6 +69,7 @@ export function ImpactAssessmentForm({
   riskAssessmentId,
   assessment,
   onDeleted,
+  allowDelete = true,
 }: ImpactAssessmentFormProps) {
   const updateAssessment = useUpdateImpactAssessment(riskAssessmentId, assessment.id);
   const deleteAssessment = useDeleteImpactAssessment(riskAssessmentId);
@@ -149,9 +152,11 @@ export function ImpactAssessmentForm({
       <h4>Evidence</h4>
       <DocumentBrowser entityType={ENTITY_TYPE} entityId={assessment.id} />
 
-      <button onClick={handleDelete} disabled={deleteAssessment.isPending}>
-        {deleteAssessment.isPending ? "Deleting..." : "Delete Impact Assessment"}
-      </button>
+      {allowDelete && (
+        <button onClick={handleDelete} disabled={deleteAssessment.isPending}>
+          {deleteAssessment.isPending ? "Deleting..." : "Delete Impact Assessment"}
+        </button>
+      )}
     </div>
   );
 }

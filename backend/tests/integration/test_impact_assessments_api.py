@@ -52,36 +52,40 @@ def test_list_filters_by_ai_system(client: TestClient) -> None:
     first = create_ai_system_row(client, name="First")
     second = create_ai_system_row(client, name="Second")
     create_impact_assessment(client, first["id"])
-    create_impact_assessment(client, first["id"])
     create_impact_assessment(client, second["id"])
 
     listing = client.get(
         "/api/v1/impact-assessments", params={"ai_system_row_id": first["id"]}
     ).json()
 
-    assert len(listing) == 2
+    assert [a["ai_system_row_id"] for a in listing] == [first["id"]]
 
 
-def test_list_shows_assessments_shared_across_risk_assessments_for_the_same_system(
-    client: TestClient,
-) -> None:
-    """An Impact Assessment is scoped to the AI system, not to one risk
-    assessment run -- a second risk assessment for the same system should
-    see the same impact assessment history."""
+def test_only_one_impact_assessment_per_ai_system(client: TestClient) -> None:
+    ai_system = create_ai_system_row(client)
+    create_impact_assessment(client, ai_system["id"])
+
+    response = client.post(
+        "/api/v1/impact-assessments", json={"ai_system_row_id": ai_system["id"]}
+    )
+
+    assert response.status_code == 409
+    assert "already has an impact assessment" in response.text
+
+
+def test_risk_assessment_sees_its_systems_impact_assessment(client: TestClient) -> None:
     ai_system = create_ai_system_row(client)
     complete_impact_assessment(client, ai_system["id"])
-    first_ra = client.post(
-        "/api/v1/risk-assessments", json={"ai_system_row_id": ai_system["id"]}
-    ).json()
-    second_ra = client.post(
+    risk_assessment = client.post(
         "/api/v1/risk-assessments", json={"ai_system_row_id": ai_system["id"]}
     ).json()
 
-    for risk_assessment in (first_ra, second_ra):
-        listing = client.get(
-            f"/api/v1/risk-assessments/{risk_assessment['id']}/impact-assessments"
-        ).json()
-        assert len(listing) == 1
+    listing = client.get(
+        f"/api/v1/risk-assessments/{risk_assessment['id']}/impact-assessments"
+    ).json()
+
+    assert len(listing) == 1
+    assert listing[0]["ai_system_row_id"] == ai_system["id"]
 
 
 def test_completing_sets_the_yearly_review_date(client: TestClient) -> None:
