@@ -4,9 +4,9 @@ from datetime import UTC, datetime
 from fastapi import UploadFile
 from sqlalchemy.orm import Session
 
-from app.core import risk_scoring
+from app.core import review_cadence, risk_scoring
 from app.core.exceptions import ConflictError, NotFoundError, ValidationError
-from app.models.risk_assessment import RiskAssessment
+from app.models.risk_assessment import RiskAssessment, RiskAssessmentStatus
 from app.models.sheet import Sheet, SheetRow
 from app.repositories import evidence_repository, risk_assessment_repository, sheet_repository
 from app.schemas.risk_assessment import (
@@ -21,6 +21,7 @@ from app.services import (
     audit_service,
     evidence_service,
     framework_service,
+    impact_assessment_service,
     risk_analytics_service,
     risk_criteria_service,
     sheet_service,
@@ -125,6 +126,14 @@ def create_risk_assessment(
 ) -> RiskAssessment:
     _validate_ai_system_row(db, data.ai_system_row_id)
 
+    # ISO 42001 sequences impact assessment before risk assessment: you can't
+    # size a system's risks before establishing who it affects and how.
+    if not impact_assessment_service.has_completed_for_ai_system(db, data.ai_system_row_id):
+        raise ValidationError(
+            "Complete an impact assessment for this AI system before opening a "
+            "risk assessment against it."
+        )
+
     sheet = sheet_service.create_sheet(db, ENTITY_TYPE, "Risk Items", DEFAULT_COLUMNS)
     risk_assessment = RiskAssessment(
         ai_system_row_id=data.ai_system_row_id,
@@ -151,6 +160,16 @@ def update_risk_assessment(
     changes = data.model_dump(exclude_unset=True)
     for field, value in changes.items():
         setattr(risk_assessment, field, value)
+
+    # Same cadence rule as ImpactAssessment -- completing stamps the date and
+    # schedules the next review so the two stay on one clock.
+    if risk_assessment.status == RiskAssessmentStatus.COMPLETED:
+        if risk_assessment.assessment_date is None:
+            risk_assessment.assessment_date = datetime.now(UTC).date()
+        risk_assessment.next_review_date = review_cadence.next_review_date(
+            risk_assessment.assessment_date
+        )
+
     risk_assessment = risk_assessment_repository.save(db, risk_assessment)
     audit_service.log(db, "RiskAssessment", risk_assessment.id, "updated", actor_id, changes)
     return risk_assessment

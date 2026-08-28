@@ -41,6 +41,10 @@ class CoverageSummary(BaseModel):
 
     ai_systems_total: int
     ai_systems_assessed: int
+    # Impact assessment precedes risk assessment, so this is tracked
+    # separately -- a system can be impact-assessed but not yet risk-assessed.
+    ai_systems_impact_assessed: int
+    assessments_review_overdue: int
     policies_total: int
     policies_approved: int
     procedures_total: int

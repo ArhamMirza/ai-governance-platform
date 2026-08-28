@@ -8,6 +8,7 @@ import type {
 } from "./types";
 
 export const impactAssessmentsApi = {
+  listAll: () => httpClient.get<ImpactAssessment[]>("/impact-assessments"),
   listForRiskAssessment: (riskAssessmentId: number) =>
     httpClient.get<ImpactAssessment[]>(
       `/risk-assessments/${riskAssessmentId}/impact-assessments`,
@@ -17,6 +18,10 @@ export const impactAssessmentsApi = {
       `/risk-assessments/${riskAssessmentId}/impact-assessments`,
       data,
     ),
+  createForAISystem: (aiSystemRowId: number) =>
+    httpClient.post<ImpactAssessment>("/impact-assessments", {
+      ai_system_row_id: aiSystemRowId,
+    }),
   get: (id: number) => httpClient.get<ImpactAssessment>(`/impact-assessments/${id}`),
   update: (id: number, data: ImpactAssessmentUpdateInput) =>
     httpClient.put<ImpactAssessment>(`/impact-assessments/${id}`, data),

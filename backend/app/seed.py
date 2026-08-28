@@ -18,6 +18,7 @@ from sqlalchemy.orm import Session
 
 from app.core.database import SessionLocal
 from app.repositories import framework_control_repository, policy_repository
+from app.schemas.impact_assessment import ImpactAssessmentCreate, ImpactAssessmentUpdate
 from app.schemas.policy import PolicyCreate
 from app.schemas.procedure import ProcedureCreate
 from app.schemas.risk_assessment import RiskAssessmentCreate
@@ -25,6 +26,7 @@ from app.services import (
     ai_system_inventory_service,
     evidence_service,
     framework_service,
+    impact_assessment_service,
     policy_service,
     procedure_service,
     risk_assessment_service,
@@ -42,6 +44,48 @@ def _tag(db: Session, entity_type: str, entity_id: int, *codes: str) -> None:
 
 def _fake_upload(filename: str, content: bytes) -> SimpleNamespace:
     return SimpleNamespace(filename=filename, content_type="application/pdf", file=BytesIO(content))
+
+
+def _seed_impact_assessment(
+    db: Session,
+    ai_system_row_id: int,
+    *,
+    system_description: str,
+    intended_purpose: str,
+    foreseeable_misuse: str,
+    scores: dict[str, int],
+) -> None:
+    """Creates a completed impact assessment, scoring the named factors and
+    leaving the rest blank -- a realistic part-way-through scorecard."""
+    assessment = impact_assessment_service.create_for_ai_system(
+        db,
+        ai_system_row_id,
+        ImpactAssessmentCreate(assessment_date=date.today()),
+        actor_id=None,
+    )
+    for factor, score in scores.items():
+        impact_assessment_service.update_factor(
+            db,
+            assessment.id,
+            factor,
+            benefits=f"Documented benefits for {factor.lower()}.",
+            harms=f"Documented harms for {factor.lower()}.",
+            criteria=f"Scored against the organization's {factor.lower()} criteria.",
+            score=score,
+            actor_id=None,
+        )
+    impact_assessment_service.update(
+        db,
+        assessment.id,
+        ImpactAssessmentUpdate(
+            status="completed",
+            system_description=system_description,
+            intended_purpose=intended_purpose,
+            foreseeable_misuse=foreseeable_misuse,
+        ),
+        actor_id=None,
+    )
+    _tag(db, "ImpactAssessment", assessment.id, "iso_42001:8.4", "iso_42001:A.5.2")
 
 
 def seed(db: Session) -> None:
@@ -137,6 +181,26 @@ def seed(db: Session) -> None:
             "risk_tier": "high",
         },
         actor_id=None,
+    )
+
+    print("Seeding impact assessments...")
+    # Impact assessment precedes risk assessment (ISO 42001 clause 8.4), and
+    # the service enforces it -- so these must be completed first.
+    _seed_impact_assessment(
+        db,
+        resume_screener.id,
+        system_description="Ranks incoming job applications for recruiters.",
+        intended_purpose="Shortlist applicants for human review, never to reject outright.",
+        foreseeable_misuse="Used as the sole decision-maker with no recruiter review.",
+        scores={"Fairness": 2, "Transparency": 2, "Accountability": 3, "Privacy": 3},
+    )
+    _seed_impact_assessment(
+        db,
+        fraud_model.id,
+        system_description="Flags potentially fraudulent transactions for manual review.",
+        intended_purpose="Surface suspicious transactions to the fraud operations team.",
+        foreseeable_misuse="Auto-blocking accounts without an analyst confirming the flag.",
+        scores={"Fairness": 3, "Reliability": 3, "Explainability": 2, "Safety": 4},
     )
 
     print("Seeding risk assessments...")

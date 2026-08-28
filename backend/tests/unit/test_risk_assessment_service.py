@@ -27,18 +27,20 @@ def db() -> MagicMock:
     return MagicMock()
 
 
+@patch("app.services.risk_assessment_service.impact_assessment_service")
 @patch("app.services.risk_assessment_service.audit_service")
 @patch("app.services.risk_assessment_service.sheet_service")
 @patch("app.services.risk_assessment_service.risk_assessment_repository")
 @patch("app.services.risk_assessment_service.ai_system_inventory_service")
 @patch("app.services.risk_assessment_service.sheet_repository")
 def test_create_risk_assessment_validates_ai_system_row(
-    mock_sheet_repo, mock_inventory, mock_repo, mock_sheet_service, mock_audit, db
+    mock_sheet_repo, mock_inventory, mock_repo, mock_sheet_service, mock_audit, mock_impact, db
 ) -> None:
     mock_inventory.get_or_create_sheet.return_value = MagicMock(id=99)
     mock_sheet_repo.get_row.return_value = SheetRow(id=10, sheet_id=99, row_index=1, data={})
     mock_sheet_service.create_sheet.return_value = MagicMock(id=5)
     mock_repo.create.side_effect = lambda _db, ra: ra
+    mock_impact.has_completed_for_ai_system.return_value = True
 
     result = risk_assessment_service.create_risk_assessment(
         db, RiskAssessmentCreate(ai_system_row_id=10), actor_id=1
@@ -47,6 +49,22 @@ def test_create_risk_assessment_validates_ai_system_row(
     assert result.ai_system_row_id == 10
     assert result.sheet_id == 5
     mock_audit.log.assert_called_once()
+
+
+@patch("app.services.risk_assessment_service.impact_assessment_service")
+@patch("app.services.risk_assessment_service.ai_system_inventory_service")
+@patch("app.services.risk_assessment_service.sheet_repository")
+def test_create_risk_assessment_requires_a_completed_impact_assessment(
+    mock_sheet_repo, mock_inventory, mock_impact, db
+) -> None:
+    mock_inventory.get_or_create_sheet.return_value = MagicMock(id=99)
+    mock_sheet_repo.get_row.return_value = SheetRow(id=10, sheet_id=99, row_index=1, data={})
+    mock_impact.has_completed_for_ai_system.return_value = False
+
+    with pytest.raises(ValidationError):
+        risk_assessment_service.create_risk_assessment(
+            db, RiskAssessmentCreate(ai_system_row_id=10), actor_id=1
+        )
 
 
 @patch("app.services.risk_assessment_service.ai_system_inventory_service")

@@ -7,8 +7,47 @@ import type {
   ImpactFactorUpdateInput,
 } from "./types";
 
+export const allImpactAssessmentsKey = ["impact-assessments"] as const;
+
 export function impactAssessmentsKey(riskAssessmentId: number) {
   return ["risk-assessments", riskAssessmentId, "impact-assessments"] as const;
+}
+
+export function impactAssessmentKey(impactAssessmentId: number) {
+  return ["impact-assessments", impactAssessmentId] as const;
+}
+
+/** An impact assessment can be worked on before any risk assessment exists
+ * for its AI system, so every mutation refreshes the global list and only
+ * additionally refreshes a risk assessment's list when viewed from one. */
+function useInvalidateImpactAssessments(
+  riskAssessmentId: number | null,
+  impactAssessmentId?: number,
+) {
+  const queryClient = useQueryClient();
+  return () => {
+    queryClient.invalidateQueries({ queryKey: allImpactAssessmentsKey });
+    if (riskAssessmentId !== null) {
+      queryClient.invalidateQueries({ queryKey: impactAssessmentsKey(riskAssessmentId) });
+    }
+    if (impactAssessmentId !== undefined) {
+      queryClient.invalidateQueries({ queryKey: impactAssessmentKey(impactAssessmentId) });
+    }
+  };
+}
+
+export function useAllImpactAssessments() {
+  return useQuery({
+    queryKey: allImpactAssessmentsKey,
+    queryFn: impactAssessmentsApi.listAll,
+  });
+}
+
+export function useImpactAssessment(impactAssessmentId: number) {
+  return useQuery({
+    queryKey: impactAssessmentKey(impactAssessmentId),
+    queryFn: () => impactAssessmentsApi.get(impactAssessmentId),
+  });
 }
 
 export function useImpactAssessments(riskAssessmentId: number) {
@@ -19,44 +58,51 @@ export function useImpactAssessments(riskAssessmentId: number) {
 }
 
 export function useCreateImpactAssessment(riskAssessmentId: number) {
-  const queryClient = useQueryClient();
+  const invalidate = useInvalidateImpactAssessments(riskAssessmentId);
   return useMutation({
     mutationFn: (data: ImpactAssessmentCreateInput = {}) =>
       impactAssessmentsApi.create(riskAssessmentId, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: impactAssessmentsKey(riskAssessmentId) });
-    },
+    onSuccess: invalidate,
   });
 }
 
-export function useUpdateImpactAssessment(riskAssessmentId: number, impactAssessmentId: number) {
-  const queryClient = useQueryClient();
+export function useCreateImpactAssessmentForAISystem() {
+  const invalidate = useInvalidateImpactAssessments(null);
+  return useMutation({
+    mutationFn: (aiSystemRowId: number) =>
+      impactAssessmentsApi.createForAISystem(aiSystemRowId),
+    onSuccess: invalidate,
+  });
+}
+
+export function useUpdateImpactAssessment(
+  riskAssessmentId: number | null,
+  impactAssessmentId: number,
+) {
+  const invalidate = useInvalidateImpactAssessments(riskAssessmentId, impactAssessmentId);
   return useMutation({
     mutationFn: (data: ImpactAssessmentUpdateInput) =>
       impactAssessmentsApi.update(impactAssessmentId, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: impactAssessmentsKey(riskAssessmentId) });
-    },
+    onSuccess: invalidate,
   });
 }
 
-export function useDeleteImpactAssessment(riskAssessmentId: number) {
-  const queryClient = useQueryClient();
+export function useDeleteImpactAssessment(riskAssessmentId: number | null) {
+  const invalidate = useInvalidateImpactAssessments(riskAssessmentId);
   return useMutation({
     mutationFn: (impactAssessmentId: number) => impactAssessmentsApi.remove(impactAssessmentId),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: impactAssessmentsKey(riskAssessmentId) });
-    },
+    onSuccess: invalidate,
   });
 }
 
-export function useUpdateImpactFactor(riskAssessmentId: number, impactAssessmentId: number) {
-  const queryClient = useQueryClient();
+export function useUpdateImpactFactor(
+  riskAssessmentId: number | null,
+  impactAssessmentId: number,
+) {
+  const invalidate = useInvalidateImpactAssessments(riskAssessmentId, impactAssessmentId);
   return useMutation({
     mutationFn: ({ factor, data }: { factor: string; data: ImpactFactorUpdateInput }) =>
       impactAssessmentsApi.updateFactor(impactAssessmentId, factor, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: impactAssessmentsKey(riskAssessmentId) });
-    },
+    onSuccess: invalidate,
   });
 }

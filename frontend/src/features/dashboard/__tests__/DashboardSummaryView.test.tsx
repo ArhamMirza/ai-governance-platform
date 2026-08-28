@@ -35,6 +35,8 @@ const summary: DashboardSummary = {
   coverage: {
     ai_systems_total: 2,
     ai_systems_assessed: 1,
+    ai_systems_impact_assessed: 2,
+    assessments_review_overdue: 0,
     policies_total: 3,
     policies_approved: 1,
     procedures_total: 1,
@@ -74,6 +76,8 @@ const emptySummary: DashboardSummary = {
   coverage: {
     ai_systems_total: 0,
     ai_systems_assessed: 0,
+    ai_systems_impact_assessed: 0,
+    assessments_review_overdue: 0,
     policies_total: 0,
     policies_approved: 0,
     procedures_total: 0,
@@ -151,7 +155,8 @@ describe("DashboardSummaryView", () => {
     renderView();
 
     await waitFor(() => {
-      expect(screen.getByLabelText("AI systems assessed: 1 of 2 (50%)")).toBeInTheDocument();
+      expect(screen.getByLabelText("Risk assessed: 1 of 2 (50%)")).toBeInTheDocument();
+      expect(screen.getByLabelText("Impact assessed: 2 of 2 (100%)")).toBeInTheDocument();
     });
   });
 

@@ -17,6 +17,8 @@ export interface ImpactAssessment {
   status: ImpactAssessmentStatus;
   assessor_id: number | null;
   assessment_date: string | null;
+  next_review_date: string | null;
+  review_overdue: boolean;
   system_description: string | null;
   intended_purpose: string | null;
   foreseeable_misuse: string | null;

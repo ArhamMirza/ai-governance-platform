@@ -32,6 +32,8 @@ class RiskAssessmentRead(BaseModel):
     status: RiskAssessmentStatus
     assessor_id: int | None
     assessment_date: date | None
+    next_review_date: date | None
+    review_overdue: bool
     overall_risk_rating: float | None
     created_at: datetime
     updated_at: datetime

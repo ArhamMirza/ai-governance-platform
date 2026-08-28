@@ -8,6 +8,10 @@ def get(db: Session, impact_assessment_id: int) -> ImpactAssessment | None:
     return db.get(ImpactAssessment, impact_assessment_id)
 
 
+def list_all(db: Session) -> list[ImpactAssessment]:
+    return list(db.scalars(select(ImpactAssessment).order_by(ImpactAssessment.id)))
+
+
 def list_for_ai_system(db: Session, ai_system_row_id: int) -> list[ImpactAssessment]:
     return list(
         db.scalars(

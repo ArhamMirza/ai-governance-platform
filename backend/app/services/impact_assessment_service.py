@@ -9,11 +9,14 @@ factors -- benefits/harms/criteria written up by a human, score assigned
 manually for now (a future pass can derive it automatically from the
 benefits/harms/criteria text instead)."""
 
+from datetime import UTC, date, datetime
+
 from sqlalchemy.orm import Session
 
+from app.core import review_cadence
 from app.core.exceptions import NotFoundError, ValidationError
 from app.core.impact_factors import IMPACT_FACTORS
-from app.models.impact_assessment import ImpactAssessment
+from app.models.impact_assessment import ImpactAssessment, ImpactAssessmentStatus
 from app.models.impact_factor_assessment import ImpactFactorAssessment
 from app.repositories import (
     impact_assessment_repository,
@@ -47,6 +50,10 @@ def _validate_ai_system_row(db: Session, ai_system_row_id: int) -> None:
     row = sheet_repository.get_row(db, ai_system_row_id)
     if row is None or row.sheet_id != inventory_sheet.id:
         raise NotFoundError("AISystemRow", ai_system_row_id)
+
+
+def list_all(db: Session) -> list[ImpactAssessment]:
+    return impact_assessment_repository.list_all(db)
 
 
 def list_for_ai_system(db: Session, ai_system_row_id: int) -> list[ImpactAssessment]:
@@ -101,6 +108,10 @@ def create_for_ai_system(
     return impact_assessment
 
 
+def _today() -> date:
+    return datetime.now(UTC).date()
+
+
 def update(
     db: Session, impact_assessment_id: int, data: ImpactAssessmentUpdate, actor_id: int | None
 ) -> ImpactAssessment:
@@ -108,9 +119,28 @@ def update(
     changes = data.model_dump(exclude_unset=True)
     for field, value in changes.items():
         setattr(impact_assessment, field, value)
+
+    # Completing an assessment stamps when it happened and when it is next
+    # due, so the review cadence can't be left unset by accident.
+    if impact_assessment.status == ImpactAssessmentStatus.COMPLETED:
+        if impact_assessment.assessment_date is None:
+            impact_assessment.assessment_date = _today()
+        impact_assessment.next_review_date = review_cadence.next_review_date(
+            impact_assessment.assessment_date
+        )
+
     impact_assessment = impact_assessment_repository.save(db, impact_assessment)
     audit_service.log(db, ENTITY_TYPE, impact_assessment_id, "updated", actor_id, changes)
     return impact_assessment
+
+
+def has_completed_for_ai_system(db: Session, ai_system_row_id: int) -> bool:
+    """Whether this AI system has an impact assessment signed off -- the
+    precondition for opening a risk assessment against it."""
+    return any(
+        assessment.status == ImpactAssessmentStatus.COMPLETED
+        for assessment in list_for_ai_system(db, ai_system_row_id)
+    )
 
 
 def update_factor(

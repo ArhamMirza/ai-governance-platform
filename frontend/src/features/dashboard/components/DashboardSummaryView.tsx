@@ -177,6 +177,13 @@ export function DashboardSummaryView() {
             tone={summary.risk_assessments.high_risk_count > 0 ? "warning" : "default"}
             hint={`Rated ${criteria.high_min_score} or above`}
           />
+
+          <StatCard
+            label="Reviews overdue"
+            value={coverage.assessments_review_overdue}
+            tone={coverage.assessments_review_overdue > 0 ? "danger" : "default"}
+            hint="Impact and risk assessments are reviewed yearly"
+          />
         </div>
       </section>
 
@@ -185,9 +192,14 @@ export function DashboardSummaryView() {
         <div className="dashboard-split">
           <div className="dashboard-card ring-row">
             <ProgressRing
+              value={coverage.ai_systems_impact_assessed}
+              total={coverage.ai_systems_total}
+              label="Impact assessed"
+            />
+            <ProgressRing
               value={coverage.ai_systems_assessed}
               total={coverage.ai_systems_total}
-              label="AI systems assessed"
+              label="Risk assessed"
             />
             <ProgressRing
               value={coverage.policies_approved}

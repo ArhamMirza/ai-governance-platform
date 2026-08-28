@@ -84,7 +84,7 @@ const navItems: NavItem[] = [
   },
   {
     to: "/risk-assessments",
-    label: "Risk Assessments",
+    label: "Impact & Risk Assessments",
     icon: (
       <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <path d="M12 2l8 3.5v6c0 5-3.4 8.7-8 10-4.6-1.3-8-5-8-10v-6z" />

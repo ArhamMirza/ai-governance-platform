@@ -1,11 +1,15 @@
+from datetime import UTC, datetime
+
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
+from app.core import review_cadence
 from app.core.database import get_db
 from app.dependencies import get_current_actor_id
 from app.models.impact_assessment import ImpactAssessment
 from app.schemas.impact_assessment import (
     ImpactAssessmentCreate,
+    ImpactAssessmentForSystemCreate,
     ImpactAssessmentRead,
     ImpactAssessmentUpdate,
     ImpactFactorAssessmentRead,
@@ -26,6 +30,10 @@ def _to_read(db: Session, impact_assessment: ImpactAssessment) -> ImpactAssessme
         status=impact_assessment.status,
         assessor_id=impact_assessment.assessor_id,
         assessment_date=impact_assessment.assessment_date,
+        next_review_date=impact_assessment.next_review_date,
+        review_overdue=review_cadence.is_review_overdue(
+            impact_assessment.next_review_date, datetime.now(UTC).date()
+        ),
         system_description=impact_assessment.system_description,
         intended_purpose=impact_assessment.intended_purpose,
         foreseeable_misuse=impact_assessment.foreseeable_misuse,
@@ -64,6 +72,37 @@ def create_impact_assessment(
 ) -> ImpactAssessmentRead:
     impact_assessment = impact_assessment_service.create_for_risk_assessment(
         db, risk_assessment_id, data, actor_id
+    )
+    return _to_read(db, impact_assessment)
+
+
+@router.get("", response_model=list[ImpactAssessmentRead])
+def list_impact_assessments_for_ai_system(
+    ai_system_row_id: int | None = None, db: Session = Depends(get_db)
+) -> list[ImpactAssessmentRead]:
+    assessments = (
+        impact_assessment_service.list_for_ai_system(db, ai_system_row_id)
+        if ai_system_row_id is not None
+        else impact_assessment_service.list_all(db)
+    )
+    return [_to_read(db, a) for a in assessments]
+
+
+@router.post("", response_model=ImpactAssessmentRead, status_code=201)
+def create_impact_assessment_for_ai_system(
+    data: ImpactAssessmentForSystemCreate,
+    db: Session = Depends(get_db),
+    actor_id: int | None = Depends(get_current_actor_id),
+) -> ImpactAssessmentRead:
+    """The primary entry point: an impact assessment is performed against an
+    AI system before any risk assessment exists for it."""
+    impact_assessment = impact_assessment_service.create_for_ai_system(
+        db,
+        data.ai_system_row_id,
+        ImpactAssessmentCreate(
+            assessor_id=data.assessor_id, assessment_date=data.assessment_date
+        ),
+        actor_id,
     )
     return _to_read(db, impact_assessment)
 

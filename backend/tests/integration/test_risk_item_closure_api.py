@@ -1,10 +1,13 @@
 from fastapi.testclient import TestClient
 
+from tests.helpers import complete_impact_assessment
+
 
 def create_risk_assessment(client: TestClient) -> dict:
     row = client.post(
         "/api/v1/ai-system-inventory/rows", json={"data": {"name": "Resume Screener"}}
     ).json()
+    complete_impact_assessment(client, row["id"])
     return client.post("/api/v1/risk-assessments", json={"ai_system_row_id": row["id"]}).json()
 
 

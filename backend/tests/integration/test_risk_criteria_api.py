@@ -1,6 +1,7 @@
 from fastapi.testclient import TestClient
 
 from app.models.risk_criteria import DEFAULT_HIGH_MIN_SCORE, DEFAULT_MEDIUM_MIN_SCORE
+from tests.helpers import complete_impact_assessment
 
 
 def test_get_returns_defaults_initially(client: TestClient) -> None:
@@ -69,6 +70,7 @@ def test_criteria_change_reshapes_dashboard_severity(client: TestClient) -> None
     row_id = client.post(
         "/api/v1/ai-system-inventory/rows", json={"data": {"name": "Screener"}}
     ).json()["id"]
+    complete_impact_assessment(client, row_id)
     assessment = client.post(
         "/api/v1/risk-assessments", json={"ai_system_row_id": row_id}
     ).json()

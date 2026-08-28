@@ -1,5 +1,7 @@
 from fastapi.testclient import TestClient
 
+from tests.helpers import complete_impact_assessment
+
 FACTORS = [
     "Accountability",
     "Explainability",
@@ -20,38 +22,44 @@ def create_ai_system_row(client: TestClient, **data) -> dict:
     return response.json()
 
 
-def create_risk_assessment(client: TestClient, ai_system_row_id: int | None = None) -> dict:
+def create_impact_assessment(client: TestClient, ai_system_row_id: int | None = None) -> dict:
+    """The primary path -- straight against an AI system, no risk assessment
+    needed (and none can exist yet, since impact assessment comes first)."""
     if ai_system_row_id is None:
         ai_system_row_id = create_ai_system_row(client)["id"]
     response = client.post(
-        "/api/v1/risk-assessments", json={"ai_system_row_id": ai_system_row_id}
+        "/api/v1/impact-assessments", json={"ai_system_row_id": ai_system_row_id}
     )
-    assert response.status_code == 201
-    return response.json()
-
-
-def create_impact_assessment(client: TestClient, risk_assessment_id: int) -> dict:
-    response = client.post(
-        f"/api/v1/risk-assessments/{risk_assessment_id}/impact-assessments", json={}
-    )
-    assert response.status_code == 201
+    assert response.status_code == 201, response.text
     return response.json()
 
 
 def test_create_seeds_all_eight_impact_factors(client: TestClient) -> None:
-    risk_assessment = create_risk_assessment(client)
-
-    created = create_impact_assessment(client, risk_assessment["id"])
+    created = create_impact_assessment(client)
 
     assert created["status"] == "draft"
     assert sorted(f["factor"] for f in created["factors"]) == sorted(FACTORS)
     assert all(f["score"] is None for f in created["factors"])
 
 
-def test_create_rejects_unknown_risk_assessment(client: TestClient) -> None:
-    response = client.post("/api/v1/risk-assessments/999999/impact-assessments", json={})
+def test_create_rejects_unknown_ai_system(client: TestClient) -> None:
+    response = client.post("/api/v1/impact-assessments", json={"ai_system_row_id": 999999})
 
     assert response.status_code == 404
+
+
+def test_list_filters_by_ai_system(client: TestClient) -> None:
+    first = create_ai_system_row(client, name="First")
+    second = create_ai_system_row(client, name="Second")
+    create_impact_assessment(client, first["id"])
+    create_impact_assessment(client, first["id"])
+    create_impact_assessment(client, second["id"])
+
+    listing = client.get(
+        "/api/v1/impact-assessments", params={"ai_system_row_id": first["id"]}
+    ).json()
+
+    assert len(listing) == 2
 
 
 def test_list_shows_assessments_shared_across_risk_assessments_for_the_same_system(
@@ -61,20 +69,37 @@ def test_list_shows_assessments_shared_across_risk_assessments_for_the_same_syst
     assessment run -- a second risk assessment for the same system should
     see the same impact assessment history."""
     ai_system = create_ai_system_row(client)
-    first_ra = create_risk_assessment(client, ai_system["id"])
-    second_ra = create_risk_assessment(client, ai_system["id"])
-    create_impact_assessment(client, first_ra["id"])
-
-    listing = client.get(
-        f"/api/v1/risk-assessments/{second_ra['id']}/impact-assessments"
+    complete_impact_assessment(client, ai_system["id"])
+    first_ra = client.post(
+        "/api/v1/risk-assessments", json={"ai_system_row_id": ai_system["id"]}
+    ).json()
+    second_ra = client.post(
+        "/api/v1/risk-assessments", json={"ai_system_row_id": ai_system["id"]}
     ).json()
 
-    assert len(listing) == 1
+    for risk_assessment in (first_ra, second_ra):
+        listing = client.get(
+            f"/api/v1/risk-assessments/{risk_assessment['id']}/impact-assessments"
+        ).json()
+        assert len(listing) == 1
+
+
+def test_completing_sets_the_yearly_review_date(client: TestClient) -> None:
+    created = create_impact_assessment(client)
+
+    response = client.put(
+        f"/api/v1/impact-assessments/{created['id']}", json={"status": "completed"}
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["assessment_date"] is not None
+    assert body["next_review_date"][:4] == str(int(body["assessment_date"][:4]) + 1)
+    assert body["review_overdue"] is False
 
 
 def test_update_narrative_fields(client: TestClient) -> None:
-    risk_assessment = create_risk_assessment(client)
-    created = create_impact_assessment(client, risk_assessment["id"])
+    created = create_impact_assessment(client)
 
     response = client.put(
         f"/api/v1/impact-assessments/{created['id']}",
@@ -93,8 +118,7 @@ def test_update_narrative_fields(client: TestClient) -> None:
 
 
 def test_update_factor_with_benefits_harms_criteria_and_score(client: TestClient) -> None:
-    risk_assessment = create_risk_assessment(client)
-    created = create_impact_assessment(client, risk_assessment["id"])
+    created = create_impact_assessment(client)
 
     response = client.put(
         f"/api/v1/impact-assessments/{created['id']}/factors/Fairness",
@@ -114,8 +138,7 @@ def test_update_factor_with_benefits_harms_criteria_and_score(client: TestClient
 
 
 def test_update_factor_rejects_score_out_of_range(client: TestClient) -> None:
-    risk_assessment = create_risk_assessment(client)
-    created = create_impact_assessment(client, risk_assessment["id"])
+    created = create_impact_assessment(client)
 
     response = client.put(
         f"/api/v1/impact-assessments/{created['id']}/factors/Safety",
@@ -126,8 +149,7 @@ def test_update_factor_rejects_score_out_of_range(client: TestClient) -> None:
 
 
 def test_update_factor_rejects_unknown_factor_name(client: TestClient) -> None:
-    risk_assessment = create_risk_assessment(client)
-    created = create_impact_assessment(client, risk_assessment["id"])
+    created = create_impact_assessment(client)
 
     response = client.put(
         f"/api/v1/impact-assessments/{created['id']}/factors/NotARealFactor",
@@ -138,8 +160,7 @@ def test_update_factor_rejects_unknown_factor_name(client: TestClient) -> None:
 
 
 def test_delete_removes_the_assessment_and_its_factors(client: TestClient) -> None:
-    risk_assessment = create_risk_assessment(client)
-    created = create_impact_assessment(client, risk_assessment["id"])
+    created = create_impact_assessment(client)
 
     response = client.delete(f"/api/v1/impact-assessments/{created['id']}")
     assert response.status_code == 204
@@ -149,8 +170,7 @@ def test_delete_removes_the_assessment_and_its_factors(client: TestClient) -> No
 
 
 def test_impact_assessment_can_be_tagged_to_framework_controls(client: TestClient) -> None:
-    risk_assessment = create_risk_assessment(client)
-    created = create_impact_assessment(client, risk_assessment["id"])
+    created = create_impact_assessment(client)
     control_id = client.get(
         "/api/v1/framework-controls", params={"framework": "iso_42001"}
     ).json()[0]["id"]

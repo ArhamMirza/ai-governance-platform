@@ -225,6 +225,7 @@ def test_get_summary_reports_risk_items_and_coverage(
 
 
 @patch("app.services.dashboard_service.risk_criteria_service")
+@patch("app.services.dashboard_service.impact_assessment_repository")
 @patch("app.services.dashboard_service.sheet_repository")
 @patch("app.services.dashboard_service.risk_assessment_repository")
 @patch("app.services.dashboard_service.ai_system_inventory_service")
@@ -236,6 +237,7 @@ def test_get_summary_attention_lists_only_nonzero_items(
     mock_inventory,
     mock_ra_repo,
     mock_sheet_repo,
+    mock_impact_repo,
     mock_criteria,
     db,
 ) -> None:
@@ -245,11 +247,13 @@ def test_get_summary_attention_lists_only_nonzero_items(
     mock_inventory.list_rows.return_value = [make_ai_system_row(id=1)]
     mock_ra_repo.list_all.return_value = []
     mock_sheet_repo.list_rows_for_sheets.return_value = {}
+    mock_impact_repo.list_all.return_value = []
 
     result = dashboard_service.get_summary(db, actor_id=99)
 
     keys = {item.key: item.count for item in result.attention}
-    assert keys == {"unassessed_ai_systems": 1}
+    # The one AI system has neither an impact nor a risk assessment.
+    assert keys == {"no_impact_assessment": 1, "unassessed_ai_systems": 1}
 
 
 @patch("app.services.dashboard_service.risk_criteria_service")

@@ -4,6 +4,7 @@ import { AISystemInventoryPage } from "../pages/AISystemInventoryPage";
 import { DashboardPage } from "../pages/DashboardPage";
 import { DataInventoryPage } from "../pages/DataInventoryPage";
 import { FrameworksPage } from "../pages/FrameworksPage";
+import { ImpactAssessmentDetailPage } from "../pages/ImpactAssessmentDetailPage";
 import { PoliciesPage } from "../pages/PoliciesPage";
 import { PolicyDetailPage } from "../pages/PolicyDetailPage";
 import { ProcedureDetailPage } from "../pages/ProcedureDetailPage";
@@ -25,6 +26,10 @@ export function AppRoutes() {
         <Route path="/ai-systems" element={<AISystemInventoryPage />} />
         <Route path="/data-inventory" element={<DataInventoryPage />} />
         <Route path="/risk-assessments" element={<RiskAssessmentsPage />} />
+        <Route
+          path="/impact-assessments/:impactAssessmentId"
+          element={<ImpactAssessmentDetailPage />}
+        />
         <Route
           path="/risk-assessments/:riskAssessmentId"
           element={<RiskAssessmentDetailPage />}
