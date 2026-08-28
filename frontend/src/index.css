@@ -1186,6 +1186,14 @@ nav[aria-label="breadcrumb"] button:hover {
   border-radius: 0;
 }
 
+/* Groups a clause table's rows under their top-level clause number (4, 5, 6...),
+   matching the standard's own section structure instead of reading as a flat list. */
+.table-section-row td {
+  background: var(--bg-page);
+  font-weight: 600;
+  color: var(--text-muted, var(--text));
+}
+
 /* The sheet scrolls horizontally, so size each column for its content
    rather than squeezing everything into the viewport. Prose columns get
    real room; numbers and dates stay compact. */

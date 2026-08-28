@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 
 from app.models.framework_control import FrameworkControl
 from app.models.framework_tag import FrameworkTag
+from app.repositories.framework_control_repository import _natural_code_key
 
 
 def list_controls_for_entity(
@@ -12,9 +13,8 @@ def list_controls_for_entity(
         select(FrameworkControl)
         .join(FrameworkTag, FrameworkTag.framework_control_id == FrameworkControl.id)
         .where(FrameworkTag.entity_type == entity_type, FrameworkTag.entity_id == entity_id)
-        .order_by(FrameworkControl.framework, FrameworkControl.code)
     )
-    return list(db.scalars(query))
+    return sorted(db.scalars(query), key=_natural_code_key)
 
 
 def list_all_grouped_by_control(db: Session) -> dict[int, list[FrameworkTag]]:
