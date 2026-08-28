@@ -20,6 +20,8 @@ function makeAssessment(overrides: Partial<ImpactAssessment> = {}): ImpactAssess
     status: "draft",
     assessor_id: null,
     assessment_date: null,
+    next_review_date: null,
+    review_overdue: false,
     system_description: null,
     intended_purpose: null,
     foreseeable_misuse: null,
