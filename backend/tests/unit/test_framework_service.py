@@ -1,7 +1,7 @@
 import pytest
 from sqlalchemy.orm import Session
 
-from app.core.exceptions import ValidationError
+from app.core.exceptions import NotFoundError, ValidationError
 from app.repositories import framework_control_repository
 from app.services import framework_service
 
@@ -12,6 +12,14 @@ def iso_control_id(db: Session) -> int:
 
 def eu_control_id(db: Session) -> int:
     return framework_control_repository.list_all(db, "eu_ai_act")[0].id
+
+
+def annex_a_control_id(db: Session) -> int:
+    return framework_control_repository.list_all(db, "iso_42001", "annex_a_control")[0].id
+
+
+def clause_control_id(db: Session) -> int:
+    return framework_control_repository.list_all(db, "iso_42001", "clause")[0].id
 
 
 def test_list_controls_filters_by_framework(db_session: Session) -> None:
@@ -128,3 +136,108 @@ def test_delete_tags_removes_all_tags_for_the_entity(db_session: Session) -> Non
     framework_service.delete_tags(db_session, "Policy", 1)
 
     assert framework_service.get_tags(db_session, "Policy", 1) == []
+
+
+def test_get_mapping_returns_all_clauses_and_articles_but_not_annex_a_controls(
+    db_session: Session,
+) -> None:
+    entries = framework_service.get_mapping(db_session)
+
+    categories = {e.category for e in entries}
+    assert categories == {"clause", "annex_a_control"}
+    assert len(entries) == 70
+
+
+def test_get_mapping_filters_by_framework(db_session: Session) -> None:
+    entries = framework_service.get_mapping(db_session, "eu_ai_act")
+
+    assert len(entries) == 8
+    assert all(e.framework == "eu_ai_act" for e in entries)
+
+
+def test_get_mapping_lists_tagged_policy_by_title(db_session: Session) -> None:
+    from app.models.policy import Policy
+
+    policy = Policy(title="Data Retention Policy")
+    db_session.add(policy)
+    db_session.commit()
+    db_session.refresh(policy)
+
+    control_id = clause_control_id(db_session)
+    framework_service.set_tags(db_session, "Policy", policy.id, [control_id], actor_id=None)
+
+    entries = framework_service.get_mapping(db_session)
+    entry = next(e for e in entries if e.id == control_id)
+    assert len(entry.tagged_items) == 1
+    assert entry.tagged_items[0].entity_type == "Policy"
+    assert entry.tagged_items[0].entity_id == policy.id
+    assert entry.tagged_items[0].label == "Data Retention Policy"
+
+
+def test_get_mapping_falls_back_to_a_generic_label_for_unknown_entities(
+    db_session: Session,
+) -> None:
+    control_id = clause_control_id(db_session)
+    framework_service.set_tags(db_session, "RiskAssessment", 999, [control_id], actor_id=None)
+
+    entries = framework_service.get_mapping(db_session)
+    entry = next(e for e in entries if e.id == control_id)
+    assert entry.tagged_items[0].label == "RiskAssessment #999"
+
+
+def test_get_soa_lists_only_annex_a_controls_defaulting_to_applicable(
+    db_session: Session,
+) -> None:
+    entries = framework_service.get_soa(db_session)
+
+    assert len(entries) == 38
+    assert all(e.applicability == "applicable" for e in entries)
+    assert all(e.justification is None for e in entries)
+
+
+def test_update_soa_entry_sets_not_applicable_with_justification(db_session: Session) -> None:
+    control_id = annex_a_control_id(db_session)
+
+    updated = framework_service.update_soa_entry(
+        db_session, control_id, "not_applicable", "Not used by this organization.", actor_id=None
+    )
+
+    assert updated.applicability == "not_applicable"
+    assert updated.justification == "Not used by this organization."
+
+    entries = framework_service.get_soa(db_session)
+    entry = next(e for e in entries if e.id == control_id)
+    assert entry.applicability == "not_applicable"
+    assert entry.justification == "Not used by this organization."
+
+
+def test_update_soa_entry_rejects_invalid_applicability(db_session: Session) -> None:
+    control_id = annex_a_control_id(db_session)
+
+    with pytest.raises(ValidationError):
+        framework_service.update_soa_entry(
+            db_session, control_id, "sort_of", None, actor_id=None
+        )
+
+
+def test_update_soa_entry_rejects_a_clause_that_is_not_an_annex_a_control(
+    db_session: Session,
+) -> None:
+    control_id = clause_control_id(db_session)
+
+    with pytest.raises(NotFoundError):
+        framework_service.update_soa_entry(
+            db_session, control_id, "applicable", None, actor_id=None
+        )
+
+
+def test_update_soa_entry_is_audited(db_session: Session) -> None:
+    from app.repositories import audit_log_repository
+
+    control_id = annex_a_control_id(db_session)
+    framework_service.update_soa_entry(
+        db_session, control_id, "not_applicable", "Out of scope.", actor_id=None
+    )
+
+    entries = audit_log_repository.list_for_entity(db_session, "FrameworkSoaEntry", control_id)
+    assert [e.action for e in entries] == ["framework_soa_updated"]

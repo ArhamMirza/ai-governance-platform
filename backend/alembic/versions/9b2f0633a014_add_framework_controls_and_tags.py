@@ -11,13 +11,73 @@ import sqlalchemy as sa
 from sqlalchemy.dialects import sqlite
 
 from alembic import op
-from app.core.framework_reference_data import as_rows
 
 # revision identifiers, used by Alembic.
 revision: str = '9b2f0633a014'
 down_revision: str | Sequence[str] | None = '107ca4d934d2'
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
+
+# Frozen at the time this migration was written -- app.core.framework_reference_data
+# has since grown far beyond this partial seed (see migration 4294e07f9cd3), but a
+# migration must keep inserting exactly what it always did when replayed from scratch.
+_ISO_42001_CONTROLS: list[tuple[str, str, str]] = [
+    ("4.1", "Understanding the organization and its context",
+     "Determine external and internal issues relevant to the AI management system."),
+    ("5.2", "AI policy",
+     "Establish an AI policy appropriate to the purpose of the organization."),
+    ("6.1", "Actions to address risks and opportunities",
+     "Plan actions to address risks and opportunities in the AI management system."),
+    ("6.2", "AI risk assessment",
+     "Define and apply an AI risk assessment process."),
+    ("8.2", "AI risk assessment (operational)",
+     "Perform AI risk assessments at planned intervals."),
+    ("8.3", "AI risk treatment",
+     "Implement the AI risk treatment plan and retain documented evidence."),
+    ("8.4", "AI system impact assessment",
+     "Assess the impacts an AI system can have on individuals or groups of individuals, "
+     "or both, and society."),
+    ("9.1", "Monitoring, measurement, analysis and evaluation",
+     "Evaluate the performance and effectiveness of the AI management system."),
+    ("10.2", "Nonconformity and corrective action",
+     "React to nonconformities and take action to control and correct them."),
+]
+
+_EU_AI_ACT_CONTROLS: list[tuple[str, str, str]] = [
+    ("Art.9", "Risk management system",
+     "Establish, implement, document and maintain a risk management system for "
+     "high-risk AI systems."),
+    ("Art.10", "Data and data governance",
+     "Training, validation and testing data sets shall be subject to appropriate "
+     "data governance practices."),
+    ("Art.11", "Technical documentation",
+     "Technical documentation shall be drawn up before a high-risk AI system is "
+     "placed on the market."),
+    ("Art.13", "Transparency and provision of information to deployers",
+     "High-risk AI systems shall be designed to ensure their operation is "
+     "sufficiently transparent."),
+    ("Art.14", "Human oversight",
+     "High-risk AI systems shall be designed to be effectively overseen by "
+     "natural persons."),
+    ("Art.15", "Accuracy, robustness and cybersecurity",
+     "High-risk AI systems shall be designed to achieve an appropriate level of "
+     "accuracy, robustness and cybersecurity."),
+    ("Art.17", "Quality management system",
+     "Providers of high-risk AI systems shall put a quality management system in place."),
+    ("Art.61", "Post-market monitoring by providers",
+     "Providers shall establish a post-market monitoring system proportionate to "
+     "the risks of the AI system."),
+]
+
+
+def _as_rows() -> list[dict[str, str]]:
+    return [
+        {"framework": "iso_42001", "code": code, "title": title, "description": description}
+        for code, title, description in _ISO_42001_CONTROLS
+    ] + [
+        {"framework": "eu_ai_act", "code": code, "title": title, "description": description}
+        for code, title, description in _EU_AI_ACT_CONTROLS
+    ]
 
 
 def upgrade() -> None:
@@ -55,7 +115,7 @@ def upgrade() -> None:
         sa.column('title', sa.String),
         sa.column('description', sa.Text),
     )
-    op.bulk_insert(framework_controls_table, as_rows())
+    op.bulk_insert(framework_controls_table, _as_rows())
 
 
 def downgrade() -> None:

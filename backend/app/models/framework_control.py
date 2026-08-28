@@ -24,3 +24,6 @@ class FrameworkControl(Base):
     code: Mapped[str] = mapped_column(String(30))
     title: Mapped[str] = mapped_column(String(200))
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # "clause" (ISO main body 4-10, EU AI Act articles) or "annex_a_control"
+    # (the 38 Annex A controls a Statement of Applicability is built over).
+    category: Mapped[str] = mapped_column(String(20), default="clause")

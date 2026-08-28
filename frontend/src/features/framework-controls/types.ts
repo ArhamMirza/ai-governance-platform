@@ -4,4 +4,5 @@ export interface FrameworkControl {
   code: string;
   title: string;
   description: string | null;
+  category: string;
 }

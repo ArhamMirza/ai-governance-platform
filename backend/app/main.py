@@ -19,6 +19,8 @@ from app.routers import (
     evidence,
     folders,
     framework_controls,
+    framework_mapping,
+    framework_soa,
     framework_tags,
     health,
     policies,
@@ -84,4 +86,6 @@ app.include_router(dashboard.router, prefix="/api/v1", dependencies=_protected)
 app.include_router(risk_criteria.router, prefix="/api/v1", dependencies=_protected)
 app.include_router(framework_controls.router, prefix="/api/v1", dependencies=_protected)
 app.include_router(framework_tags.router, prefix="/api/v1", dependencies=_protected)
+app.include_router(framework_mapping.router, prefix="/api/v1", dependencies=_protected)
+app.include_router(framework_soa.router, prefix="/api/v1", dependencies=_protected)
 app.include_router(users.router, prefix="/api/v1", dependencies=_protected)

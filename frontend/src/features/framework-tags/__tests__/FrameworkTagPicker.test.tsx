@@ -12,9 +12,9 @@ vi.mock("../hooks");
 vi.mock("../../framework-controls/hooks");
 
 const controls: FrameworkControl[] = [
-  { id: 1, framework: "iso_42001", code: "8.4", title: "AI system impact assessment", description: null },
-  { id: 2, framework: "iso_42001", code: "6.1", title: "Actions to address risks", description: null },
-  { id: 3, framework: "eu_ai_act", code: "Art.9", title: "Risk management system", description: null },
+  { id: 1, framework: "iso_42001", code: "8.4", title: "AI system impact assessment", description: null, category: "clause" },
+  { id: 2, framework: "iso_42001", code: "6.1", title: "Actions to address risks", description: null, category: "clause" },
+  { id: 3, framework: "eu_ai_act", code: "Art.9", title: "Risk management system", description: null, category: "clause" },
 ];
 
 function mockHooks({

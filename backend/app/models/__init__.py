@@ -2,6 +2,7 @@ from app.models.audit_log import AuditLogEntry
 from app.models.evidence import Evidence
 from app.models.folder import Folder
 from app.models.framework_control import FrameworkControl
+from app.models.framework_soa_entry import FrameworkSoaEntry
 from app.models.framework_tag import FrameworkTag
 from app.models.policy import Policy
 from app.models.procedure import Procedure
@@ -16,6 +17,7 @@ __all__ = [
     "Evidence",
     "Folder",
     "FrameworkControl",
+    "FrameworkSoaEntry",
     "FrameworkTag",
     "Policy",
     "Procedure",

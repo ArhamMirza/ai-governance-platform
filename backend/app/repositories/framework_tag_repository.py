@@ -17,6 +17,16 @@ def list_controls_for_entity(
     return list(db.scalars(query))
 
 
+def list_all_grouped_by_control(db: Session) -> dict[int, list[FrameworkTag]]:
+    """All tags, grouped by the control they're tagged against -- the raw
+    material for the clause-mapping and SoA views (which entity is tagged to
+    each clause/control)."""
+    grouped: dict[int, list[FrameworkTag]] = {}
+    for tag in db.scalars(select(FrameworkTag)):
+        grouped.setdefault(tag.framework_control_id, []).append(tag)
+    return grouped
+
+
 def replace_for_entity(
     db: Session, entity_type: str, entity_id: int, control_ids: list[int]
 ) -> None:

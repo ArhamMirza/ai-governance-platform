@@ -5,21 +5,55 @@ product. Consumed by the alembic migration that seeds the framework_controls
 table (real deployments) and by tests/conftest.py, which builds its schema
 with Base.metadata.create_all and so needs the same rows inserted directly.
 
-A representative subset of clauses/articles orgs commonly tag work against,
-not the full text of either standard.
+ISO_42001_CLAUSES covers the full main-body clause structure (4-10).
+ISO_42001_ANNEX_A_CONTROLS covers all 38 Annex A controls -- these are the
+rows a Statement of Applicability is built over. EU_AI_ACT_CONTROLS remains a
+representative subset of articles, not the full regulation text.
 """
 
-ISO_42001_CONTROLS: list[tuple[str, str, str]] = [
+ISO_42001_CLAUSES: list[tuple[str, str, str]] = [
     ("4.1", "Understanding the organization and its context",
      "Determine external and internal issues relevant to the AI management system."),
+    ("4.2", "Understanding the needs and expectations of interested parties",
+     "Determine the interested parties relevant to the AI management system and their "
+     "requirements."),
+    ("4.3", "Determining the scope of the AI management system",
+     "Determine the boundaries and applicability of the AI management system to establish "
+     "its scope."),
+    ("4.4", "AI management system",
+     "Establish, implement, maintain and continually improve an AI management system."),
+    ("5.1", "Leadership and commitment",
+     "Top management shall demonstrate leadership and commitment to the AI management system."),
     ("5.2", "AI policy",
      "Establish an AI policy appropriate to the purpose of the organization."),
+    ("5.3", "Roles, responsibilities and authorities",
+     "Top management shall assign and communicate responsibilities and authorities for "
+     "relevant roles."),
     ("6.1", "Actions to address risks and opportunities",
      "Plan actions to address risks and opportunities in the AI management system."),
-    ("6.2", "AI risk assessment",
-     "Define and apply an AI risk assessment process."),
-    ("8.2", "AI risk assessment (operational)",
-     "Perform AI risk assessments at planned intervals."),
+    ("6.2", "AI objectives and planning to achieve them",
+     "Establish AI objectives at relevant functions and levels and plan how to achieve them."),
+    ("6.3", "Planning of changes",
+     "Determine the need for changes to the AI management system and carry them out in a "
+     "planned manner."),
+    ("7.1", "Resources",
+     "Determine and provide the resources needed for the AI management system."),
+    ("7.2", "Competence",
+     "Determine the necessary competence of persons doing work under the organization's "
+     "control that affects AI system performance."),
+    ("7.3", "Awareness",
+     "Ensure persons doing work under the organization's control are aware of the AI policy "
+     "and their contribution to the AI management system."),
+    ("7.4", "Communication",
+     "Determine internal and external communications relevant to the AI management system."),
+    ("7.5", "Documented information",
+     "Maintain documented information required by the AI management system and this "
+     "document."),
+    ("8.1", "Operational planning and control",
+     "Plan, implement and control the processes needed to meet requirements and implement "
+     "actions determined in clause 6."),
+    ("8.2", "AI risk assessment",
+     "Perform AI risk assessments at planned intervals or when significant changes occur."),
     ("8.3", "AI risk treatment",
      "Implement the AI risk treatment plan and retain documented evidence."),
     ("8.4", "AI system impact assessment",
@@ -27,8 +61,110 @@ ISO_42001_CONTROLS: list[tuple[str, str, str]] = [
      "or both, and society."),
     ("9.1", "Monitoring, measurement, analysis and evaluation",
      "Evaluate the performance and effectiveness of the AI management system."),
+    ("9.2", "Internal audit",
+     "Conduct internal audits at planned intervals to check conformance of the AI "
+     "management system."),
+    ("9.3", "Management review",
+     "Top management shall review the AI management system at planned intervals to ensure "
+     "its continuing suitability."),
+    ("10.1", "Continual improvement",
+     "Continually improve the suitability, adequacy and effectiveness of the AI management "
+     "system."),
     ("10.2", "Nonconformity and corrective action",
      "React to nonconformities and take action to control and correct them."),
+]
+
+ISO_42001_ANNEX_A_CONTROLS: list[tuple[str, str, str]] = [
+    ("A.2.2", "AI policy",
+     "Policies for the development, provision or use of AI systems shall be defined and "
+     "approved by management."),
+    ("A.2.3", "Alignment with other organizational policies",
+     "The AI policy shall be aligned with other relevant organizational policies."),
+    ("A.2.4", "Review of the AI policy",
+     "The AI policy shall be reviewed at planned intervals or when significant changes occur."),
+    ("A.3.2", "AI roles and responsibilities",
+     "Roles and responsibilities relevant to AI risk management shall be defined and "
+     "allocated according to organizational needs."),
+    ("A.3.3", "Reporting of concerns",
+     "A process shall be established for reporting concerns about the organization's role "
+     "with respect to an AI system throughout its life cycle."),
+    ("A.4.2", "Resource documentation",
+     "Resources necessary for the AI system's life cycle stages shall be documented."),
+    ("A.4.3", "Data resources",
+     "Documentation of data resources used in developing and operating AI systems shall be "
+     "maintained."),
+    ("A.4.4", "Tooling resources",
+     "Documentation of tooling resources used in developing and operating AI systems shall "
+     "be maintained."),
+    ("A.4.5", "System and computing resources",
+     "Documentation of system and computing resources used in developing and operating AI "
+     "systems shall be maintained."),
+    ("A.4.6", "Human resources",
+     "Documentation of the competencies and capabilities of personnel involved in the AI "
+     "system's life cycle shall be maintained."),
+    ("A.5.2", "AI system impact assessment process",
+     "A process for assessing the impacts of an AI system over its life cycle shall be "
+     "defined."),
+    ("A.5.3", "Documentation of AI system impact assessments",
+     "Documented information from AI system impact assessments shall be retained."),
+    ("A.5.4", "Assessing AI system impact on individuals or groups of individuals",
+     "Impacts of the AI system on individuals or groups of individuals shall be assessed."),
+    ("A.5.5", "Assessing societal impacts of AI systems",
+     "Impacts of the AI system on society shall be assessed."),
+    ("A.6.1.2", "Objectives for responsible development of AI system",
+     "Objectives for the responsible development of AI systems shall be defined."),
+    ("A.6.1.3", "Processes for responsible design and development of AI systems",
+     "Processes for the responsible design and development of AI systems shall be defined "
+     "and applied."),
+    ("A.6.2.2", "AI system requirements and specification",
+     "Requirements and specifications for the AI system shall be determined and documented."),
+    ("A.6.2.3", "Documentation of AI system design and development",
+     "Documentation of the AI system's design and development shall be maintained."),
+    ("A.6.2.4", "AI system verification and validation",
+     "Verification and validation measures for the AI system shall be defined and applied."),
+    ("A.6.2.5", "AI system deployment",
+     "A process for the controlled deployment of AI systems shall be defined."),
+    ("A.6.2.6", "AI system operation and monitoring",
+     "Processes for operating and monitoring the AI system shall be defined and applied."),
+    ("A.6.2.7", "AI system technical documentation",
+     "Technical documentation describing the AI system's characteristics shall be maintained."),
+    ("A.6.2.8", "AI system recording of event logs",
+     "Event logs enabling the AI system's operation to be reconstructed shall be recorded and "
+     "retained."),
+    ("A.7.2", "Data for development and enhancement of AI system",
+     "Requirements for data used in developing and enhancing the AI system shall be defined."),
+    ("A.7.3", "Acquisition of data",
+     "Data acquisition for the AI system shall be documented, including its origin."),
+    ("A.7.4", "Quality of data for AI systems",
+     "Requirements for the quality of data used by the AI system shall be defined and applied."),
+    ("A.7.5", "Data provenance",
+     "Documentation of the provenance of data used by the AI system shall be maintained."),
+    ("A.7.6", "Data preparation",
+     "Data preparation activities, including labelling and cleaning, shall be documented."),
+    ("A.8.2", "System documentation and information for users",
+     "Documentation and information necessary for users of the AI system shall be provided."),
+    ("A.8.3", "External reporting",
+     "A process for external reporting of information related to the AI system shall be "
+     "defined."),
+    ("A.8.4", "Communication of incidents",
+     "A process for communicating incidents related to the AI system to relevant interested "
+     "parties shall be defined."),
+    ("A.8.5", "Information for interested parties",
+     "Information about the AI system shall be made available to relevant interested "
+     "parties."),
+    ("A.9.2", "Processes for responsible use of AI systems",
+     "Processes for the responsible use of AI systems shall be defined and applied."),
+    ("A.9.3", "Objectives for responsible use of AI system",
+     "Objectives for the responsible use of AI systems shall be defined."),
+    ("A.9.4", "Intended use of the AI system",
+     "The intended use of the AI system shall be documented and communicated."),
+    ("A.10.2", "Allocation of responsibilities",
+     "Responsibilities between the organization and third parties involved in the AI "
+     "system's life cycle shall be allocated and documented."),
+    ("A.10.3", "Suppliers",
+     "Requirements for suppliers involved in the AI system's life cycle shall be defined."),
+    ("A.10.4", "Customers",
+     "Relevant information about the AI system shall be provided to customers."),
 ]
 
 EU_AI_ACT_CONTROLS: list[tuple[str, str, str]] = [
@@ -60,9 +196,30 @@ EU_AI_ACT_CONTROLS: list[tuple[str, str, str]] = [
 
 def as_rows() -> list[dict[str, str]]:
     return [
-        {"framework": "iso_42001", "code": code, "title": title, "description": description}
-        for code, title, description in ISO_42001_CONTROLS
+        {
+            "framework": "iso_42001",
+            "code": code,
+            "title": title,
+            "description": description,
+            "category": "clause",
+        }
+        for code, title, description in ISO_42001_CLAUSES
     ] + [
-        {"framework": "eu_ai_act", "code": code, "title": title, "description": description}
+        {
+            "framework": "iso_42001",
+            "code": code,
+            "title": title,
+            "description": description,
+            "category": "annex_a_control",
+        }
+        for code, title, description in ISO_42001_ANNEX_A_CONTROLS
+    ] + [
+        {
+            "framework": "eu_ai_act",
+            "code": code,
+            "title": title,
+            "description": description,
+            "category": "clause",
+        }
         for code, title, description in EU_AI_ACT_CONTROLS
     ]

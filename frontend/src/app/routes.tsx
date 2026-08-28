@@ -2,6 +2,7 @@ import { Route, Routes } from "react-router-dom";
 
 import { AISystemInventoryPage } from "../pages/AISystemInventoryPage";
 import { DashboardPage } from "../pages/DashboardPage";
+import { FrameworksPage } from "../pages/FrameworksPage";
 import { PoliciesPage } from "../pages/PoliciesPage";
 import { PolicyDetailPage } from "../pages/PolicyDetailPage";
 import { ProcedureDetailPage } from "../pages/ProcedureDetailPage";
@@ -26,6 +27,7 @@ export function AppRoutes() {
           path="/risk-assessments/:riskAssessmentId"
           element={<RiskAssessmentDetailPage />}
         />
+        <Route path="/frameworks" element={<FrameworksPage />} />
         <Route path="/users" element={<UsersPage />} />
       </Routes>
     </Layout>
