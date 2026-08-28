@@ -16,6 +16,7 @@ from app.routers import (
     audit_log,
     auth,
     dashboard,
+    data_inventory,
     evidence,
     folders,
     framework_controls,
@@ -23,6 +24,7 @@ from app.routers import (
     framework_soa,
     framework_tags,
     health,
+    impact_assessments,
     policies,
     procedures,
     risk_assessments,
@@ -80,7 +82,12 @@ app.include_router(procedures.router, prefix="/api/v1", dependencies=_protected)
 app.include_router(folders.router, prefix="/api/v1", dependencies=_protected)
 app.include_router(evidence.router, prefix="/api/v1", dependencies=_protected)
 app.include_router(ai_system_inventory.router, prefix="/api/v1", dependencies=_protected)
+app.include_router(data_inventory.router, prefix="/api/v1", dependencies=_protected)
 app.include_router(risk_assessments.router, prefix="/api/v1", dependencies=_protected)
+app.include_router(
+    impact_assessments.risk_assessments_router, prefix="/api/v1", dependencies=_protected
+)
+app.include_router(impact_assessments.router, prefix="/api/v1", dependencies=_protected)
 app.include_router(audit_log.router, prefix="/api/v1", dependencies=_protected)
 app.include_router(dashboard.router, prefix="/api/v1", dependencies=_protected)
 app.include_router(risk_criteria.router, prefix="/api/v1", dependencies=_protected)

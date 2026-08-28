@@ -4,6 +4,8 @@ from app.models.folder import Folder
 from app.models.framework_control import FrameworkControl
 from app.models.framework_soa_entry import FrameworkSoaEntry
 from app.models.framework_tag import FrameworkTag
+from app.models.impact_assessment import ImpactAssessment
+from app.models.impact_factor_assessment import ImpactFactorAssessment
 from app.models.policy import Policy
 from app.models.procedure import Procedure
 from app.models.risk_assessment import RiskAssessment
@@ -19,6 +21,8 @@ __all__ = [
     "FrameworkControl",
     "FrameworkSoaEntry",
     "FrameworkTag",
+    "ImpactAssessment",
+    "ImpactFactorAssessment",
     "Policy",
     "Procedure",
     "RiskAssessment",

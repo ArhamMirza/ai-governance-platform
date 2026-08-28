@@ -26,10 +26,44 @@ interface DataGridProps {
    * wrapping textarea so the whole value is readable -- a single-line input
    * silently truncates anything longer than the column. */
   longTextColumnKeys?: string[];
+  /** Visually groups columns under a shared header row (e.g. "Tooling",
+   * "Human Resources") -- purely presentational, does not change the
+   * underlying column keys or data. Any column not listed in a group gets a
+   * blank cell in the group row so headers stay aligned. */
+  columnGroups?: { label: string; keys: string[] }[];
 }
 
 function cellText(value: unknown): string {
   return value !== undefined && value !== null ? String(value) : "";
+}
+
+interface GroupHeaderCell {
+  label: string | null;
+  span: number;
+}
+
+/** Collapses consecutive columns sharing a group into one colSpan cell;
+ * ungrouped columns (and any run change) start a fresh cell. */
+function buildGroupHeaderCells(
+  columns: { key: string }[],
+  columnGroups: { label: string; keys: string[] }[],
+): GroupHeaderCell[] {
+  const keyToLabel = new Map<string, string>();
+  for (const group of columnGroups) {
+    for (const key of group.keys) keyToLabel.set(key, group.label);
+  }
+
+  const cells: GroupHeaderCell[] = [];
+  for (const column of columns) {
+    const label = keyToLabel.get(column.key) ?? null;
+    const last = cells[cells.length - 1];
+    if (last && last.label === label) {
+      last.span += 1;
+    } else {
+      cells.push({ label, span: 1 });
+    }
+  }
+  return cells;
 }
 
 export function DataGrid({
@@ -41,6 +75,7 @@ export function DataGrid({
   selectOptions,
   rowActions,
   longTextColumnKeys = [],
+  columnGroups,
 }: DataGridProps) {
   const { data: sheet, isLoading, isError } = useSheet(queryKey, adapter);
   const setColumns = useSetColumns(queryKey, adapter);
@@ -106,6 +141,8 @@ export function DataGrid({
     });
   };
 
+  const groupHeaderCells = columnGroups ? buildGroupHeaderCells(sheet.columns, columnGroups) : null;
+
   return (
     <div className="data-grid">
       {error && <p role="alert">{error}</p>}
@@ -141,6 +178,16 @@ export function DataGrid({
       <div className="table-scroll">
         <table>
           <thead>
+            {groupHeaderCells && (
+              <tr className="data-grid-group-row">
+                {groupHeaderCells.map((cell, index) => (
+                  <th key={index} colSpan={cell.span}>
+                    {cell.label ?? ""}
+                  </th>
+                ))}
+                <th />
+              </tr>
+            )}
             <tr>
               {sheet.columns.map((column) => (
                 <th key={column.key}>

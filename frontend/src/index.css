@@ -1202,6 +1202,15 @@ nav[aria-label="breadcrumb"] button:hover {
   white-space: nowrap;
 }
 
+.data-grid-group-row th {
+  background: var(--bg-page);
+  text-align: left;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--text-muted, var(--text));
+}
+
 .data-grid td input,
 .data-grid td select {
   min-width: 160px;
@@ -1321,6 +1330,83 @@ nav[aria-label="breadcrumb"] button:hover {
   color: var(--text);
   font-weight: 700;
   margin-right: 4px;
+}
+
+/* ---------- Impact assessments ---------- */
+
+.impact-assessment-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  margin-bottom: 12px;
+  overflow: hidden;
+}
+
+.impact-assessment-card-header {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  padding: 12px 16px;
+  font-weight: 600;
+  text-align: left;
+}
+
+.impact-assessment-form {
+  padding: 0 16px 16px;
+}
+
+.impact-assessment-field {
+  margin-bottom: 12px;
+}
+
+.impact-assessment-field label {
+  display: block;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-faint);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  margin-bottom: 4px;
+}
+
+.impact-assessment-field textarea,
+.impact-assessment-field select {
+  width: 100%;
+}
+
+.impact-factor-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.impact-factor-card {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 10px 12px;
+  background: var(--bg-page);
+}
+
+.impact-factor-card legend {
+  font-weight: 700;
+  padding: 0 0 6px;
+}
+
+.impact-factor-card label {
+  display: block;
+  font-size: 11px;
+  color: var(--text-faint);
+  margin: 6px 0 2px;
+}
+
+.impact-factor-card textarea,
+.impact-factor-card select {
+  width: 100%;
 }
 
 .framework-tag-picker-actions {

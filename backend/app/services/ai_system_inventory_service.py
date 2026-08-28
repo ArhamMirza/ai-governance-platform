@@ -9,12 +9,34 @@ from app.services import audit_service, sheet_service
 ENTITY_TYPE = "AISystemInventory"
 
 DEFAULT_COLUMNS = [
+    # System Overview
     ColumnDef(key="name", label="Name"),
     ColumnDef(key="description", label="Description"),
     ColumnDef(key="purpose", label="Purpose"),
     ColumnDef(key="lifecycle_stage", label="Lifecycle Stage"),
     ColumnDef(key="risk_tier", label="Risk Tier"),
+    # Resource documentation -- ISO 42001 A.4.2/A.4.3. Per-dataset detail
+    # (A.7) lives in the separate Data Inventory, so data_resources here is
+    # a documentation-level summary, not a full register.
+    ColumnDef(key="resource_documentation", label="Resource Documentation"),
+    ColumnDef(key="data_resources", label="Data Resources"),
+    # Tooling -- A.4.4
+    ColumnDef(key="tooling_frameworks", label="Tooling & Frameworks"),
+    ColumnDef(key="tooling_documentation", label="Tooling Documentation"),
+    # System & computing resources -- A.4.5
+    ColumnDef(key="compute_infrastructure", label="Compute Infrastructure"),
+    ColumnDef(key="hosting_environment", label="Hosting Environment"),
+    # Human resources -- A.4.6
+    ColumnDef(key="development_team", label="Development Team"),
+    ColumnDef(key="oversight_roles", label="Oversight Roles"),
 ]
+
+# New A.4 columns not present in an already-provisioned inventory sheet get
+# appended to it by a one-off data migration -- a fresh install just gets
+# them from DEFAULT_COLUMNS above on first use.
+RESOURCE_COLUMN_KEYS = [c.key for c in DEFAULT_COLUMNS if c.key not in {
+    "name", "description", "purpose", "lifecycle_stage", "risk_tier",
+}]
 
 
 def get_or_create_sheet(db: Session) -> Sheet:

@@ -13,6 +13,14 @@ def test_get_creates_singleton_with_default_columns(client: TestClient) -> None:
         "purpose",
         "lifecycle_stage",
         "risk_tier",
+        "resource_documentation",
+        "data_resources",
+        "tooling_frameworks",
+        "tooling_documentation",
+        "compute_infrastructure",
+        "hosting_environment",
+        "development_team",
+        "oversight_roles",
     ]
     assert body["rows"] == []
 

@@ -72,6 +72,17 @@ const navItems: NavItem[] = [
     ),
   },
   {
+    to: "/data-inventory",
+    label: "Data Inventory",
+    icon: (
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <ellipse cx="12" cy="5" rx="8" ry="3" />
+        <path d="M4 5v6c0 1.7 3.6 3 8 3s8-1.3 8-3V5" />
+        <path d="M4 11v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6" />
+      </svg>
+    ),
+  },
+  {
     to: "/risk-assessments",
     label: "Risk Assessments",
     icon: (

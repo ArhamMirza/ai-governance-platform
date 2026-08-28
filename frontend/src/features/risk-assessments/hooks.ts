@@ -1,8 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { aiSystemInventoryAdapter } from "../ai-system-inventory/api";
 import { riskAssessmentsApi } from "./api";
 import type { RiskAssessmentCreateInput, RiskAssessmentUpdateInput } from "./types";
+
+// Re-exported for existing consumers/tests in this feature -- the hook now
+// lives with the feature it actually queries.
+export { useAISystemInventoryRows } from "../ai-system-inventory/hooks";
 
 const riskAssessmentsKey = ["risk-assessments"] as const;
 export const riskAssessmentKey = (id: number) => ["risk-assessments", id] as const;
@@ -43,10 +46,6 @@ export function useUpdateRiskAssessment(id: number) {
       queryClient.invalidateQueries({ queryKey: riskAssessmentKey(id) });
     },
   });
-}
-
-export function useAISystemInventoryRows() {
-  return useQuery({ queryKey: ["ai-system-inventory"], queryFn: aiSystemInventoryAdapter.get });
 }
 
 export function useCloseRiskItem(riskAssessmentId: number) {
