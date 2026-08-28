@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 
 import { AuditLogViewer } from "../../audit-log/components/AuditLogViewer";
+import { ImpactAssessmentList } from "../../impact-assessments/components/ImpactAssessmentList";
 import { useRiskCriteria } from "../../risk-criteria/hooks";
 import { DataGrid } from "../../sheets/components/DataGrid";
 import type { SheetRow } from "../../sheets/types";
@@ -75,6 +76,9 @@ export function RiskAssessmentDetail({ riskAssessmentId }: RiskAssessmentDetailP
 
       <h3>Risk Matrix</h3>
       <RiskMatrix rows={sheet?.rows ?? []} bands={criteria} />
+
+      <h3>Impact Assessments</h3>
+      <ImpactAssessmentList riskAssessmentId={riskAssessmentId} />
 
       <h3>Audit Log</h3>
       <AuditLogViewer entityType="RiskAssessment" entityId={riskAssessmentId} />

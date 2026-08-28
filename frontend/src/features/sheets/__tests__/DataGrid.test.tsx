@@ -327,6 +327,51 @@ describe("DataGrid", () => {
 
     expect(await screen.findByRole("button", { name: "Manage row 10" })).toBeInTheDocument();
   });
+
+  it("renders a group header row spanning the columns in each group", async () => {
+    const queryClient = createTestQueryClient();
+    render(
+      <QueryClientProvider client={queryClient}>
+        <DataGrid
+          queryKey={["test-sheet"]}
+          adapter={makeAdapter()}
+          columnGroups={[
+            { label: "Risk Details", keys: ["category", "likelihood"] },
+          ]}
+        />
+      </QueryClientProvider>,
+    );
+
+    const groupHeader = await screen.findByText("Risk Details");
+    expect(groupHeader.tagName).toBe("TH");
+    expect(groupHeader).toHaveAttribute("colspan", "2");
+  });
+
+  it("gives an ungrouped column its own blank header cell, not swallowed into a group", async () => {
+    const queryClient = createTestQueryClient();
+    render(
+      <QueryClientProvider client={queryClient}>
+        <DataGrid
+          queryKey={["test-sheet"]}
+          adapter={makeAdapter()}
+          columnGroups={[{ label: "Risk Details", keys: ["category", "likelihood"] }]}
+        />
+      </QueryClientProvider>,
+    );
+
+    await screen.findByText("Risk Details");
+    const groupRow = document.querySelector(".data-grid-group-row");
+    // 3 columns total, 2 grouped under "Risk Details" (colSpan 2) + 1
+    // ungrouped ("inherent_risk_score") + the trailing blank Actions cell.
+    expect(groupRow?.querySelectorAll("th")).toHaveLength(3);
+  });
+
+  it("renders no group row when columnGroups is not passed", async () => {
+    renderGrid(makeAdapter());
+
+    await screen.findByText("Category");
+    expect(document.querySelector(".data-grid-group-row")).not.toBeInTheDocument();
+  });
 });
 
 function renderGridWithRowActions(adapter: SheetApiAdapter) {
