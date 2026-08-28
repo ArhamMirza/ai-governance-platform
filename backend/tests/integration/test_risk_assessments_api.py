@@ -1,5 +1,7 @@
 from fastapi.testclient import TestClient
 
+from tests.helpers import complete_impact_assessment
+
 
 def create_ai_system_row(client: TestClient, **data) -> dict:
     payload = {"name": "Resume Screener", "risk_tier": "high"}
@@ -11,10 +13,12 @@ def create_ai_system_row(client: TestClient, **data) -> dict:
 
 def create_risk_assessment(client: TestClient, **overrides) -> dict:
     row = create_ai_system_row(client)
+    # A completed impact assessment is a precondition -- see tests.helpers.
+    complete_impact_assessment(client, row["id"])
     payload = {"ai_system_row_id": row["id"]}
     payload.update(overrides)
     response = client.post("/api/v1/risk-assessments", json=payload)
-    assert response.status_code == 201
+    assert response.status_code == 201, response.text
     return response.json()
 
 
@@ -125,6 +129,33 @@ def test_create_risk_assessment_rejects_missing_ai_system_row(client: TestClient
     response = client.post("/api/v1/risk-assessments", json={"ai_system_row_id": 999})
 
     assert response.status_code == 404
+
+
+def test_create_risk_assessment_requires_a_completed_impact_assessment(
+    client: TestClient,
+) -> None:
+    """ISO 42001 sequences impact assessment before risk assessment."""
+    row = create_ai_system_row(client)
+
+    response = client.post("/api/v1/risk-assessments", json={"ai_system_row_id": row["id"]})
+
+    assert response.status_code == 400
+    assert "impact assessment" in response.text.lower()
+
+
+def test_a_draft_impact_assessment_does_not_unlock_risk_assessment(
+    client: TestClient,
+) -> None:
+    """Only a completed one counts -- an untouched draft isn't an assessment."""
+    row = create_ai_system_row(client)
+    created = client.post(
+        "/api/v1/impact-assessments", json={"ai_system_row_id": row["id"]}
+    )
+    assert created.status_code == 201
+
+    response = client.post("/api/v1/risk-assessments", json={"ai_system_row_id": row["id"]})
+
+    assert response.status_code == 400
 
 
 def test_get_missing_risk_assessment_returns_404(client: TestClient) -> None:

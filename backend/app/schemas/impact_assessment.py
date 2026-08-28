@@ -11,6 +11,13 @@ class ImpactAssessmentCreate(BaseModel):
     assessment_date: date | None = None
 
 
+class ImpactAssessmentForSystemCreate(ImpactAssessmentCreate):
+    """Creating an impact assessment directly against an AI system -- the
+    normal path, since impact assessment precedes risk assessment."""
+
+    ai_system_row_id: int
+
+
 class ImpactAssessmentUpdate(BaseModel):
     status: ImpactAssessmentStatus | None = None
     assessor_id: int | None = None
@@ -51,6 +58,8 @@ class ImpactAssessmentRead(BaseModel):
     status: ImpactAssessmentStatus
     assessor_id: int | None
     assessment_date: date | None
+    next_review_date: date | None
+    review_overdue: bool
     system_description: str | None
     intended_purpose: str | None
     foreseeable_misuse: str | None

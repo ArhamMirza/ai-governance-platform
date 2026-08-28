@@ -27,6 +27,9 @@ class ImpactAssessment(Base):
     status: Mapped[str] = mapped_column(String(20), default=ImpactAssessmentStatus.DRAFT)
     assessor_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
     assessment_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    # Set from assessment_date on completion (see app.core.review_cadence) --
+    # ISO 42001 expects assessments to be re-performed at planned intervals.
+    next_review_date: Mapped[date | None] = mapped_column(Date, nullable=True)
 
     system_description: Mapped[str | None] = mapped_column(Text, nullable=True)
     intended_purpose: Mapped[str | None] = mapped_column(Text, nullable=True)

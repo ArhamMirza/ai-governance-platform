@@ -1,11 +1,14 @@
 from collections import Counter
+from datetime import UTC, datetime
 
 from sqlalchemy.orm import Session
 
-from app.core import risk_scoring
+from app.core import review_cadence, risk_scoring
+from app.models.impact_assessment import ImpactAssessmentStatus
 from app.models.risk_assessment import RiskAssessment
 from app.models.sheet import SheetRow
 from app.repositories import (
+    impact_assessment_repository,
     policy_repository,
     procedure_repository,
     risk_assessment_repository,
@@ -35,6 +38,8 @@ def _attention(
     *,
     overdue_count: int,
     unassessed_count: int,
+    no_impact_assessment_count: int,
+    review_overdue_count: int,
     in_review_count: int,
     high_risk_count: int,
 ) -> list[AttentionItem]:
@@ -45,6 +50,18 @@ def _attention(
             key="overdue_treatments",
             label="Risk treatments overdue",
             count=overdue_count,
+            severity="danger",
+        ),
+        AttentionItem(
+            key="no_impact_assessment",
+            label="AI systems without a completed impact assessment",
+            count=no_impact_assessment_count,
+            severity="danger",
+        ),
+        AttentionItem(
+            key="assessments_review_overdue",
+            label="Assessments overdue for annual review",
+            count=review_overdue_count,
             severity="danger",
         ),
         AttentionItem(
@@ -134,6 +151,25 @@ def get_summary(db: Session, actor_id: int) -> DashboardSummary:
     }
     assessed_count = sum(1 for row in ai_system_rows if row.id in assessed_row_ids)
 
+    # Impact assessment coverage: an AI system counts once it has at least one
+    # COMPLETED impact assessment (drafts don't satisfy clause 8.4).
+    impact_assessments = impact_assessment_repository.list_all(db)
+    impact_assessed_row_ids = {
+        assessment.ai_system_row_id
+        for assessment in impact_assessments
+        if assessment.status == ImpactAssessmentStatus.COMPLETED
+    }
+    impact_assessed_count = sum(
+        1 for row in ai_system_rows if row.id in impact_assessed_row_ids
+    )
+
+    today = datetime.now(UTC).date()
+    review_overdue_count = sum(
+        1
+        for assessment in [*impact_assessments, *risk_assessments]
+        if review_cadence.is_review_overdue(assessment.next_review_date, today)
+    )
+
     risk_items = risk_analytics_service.summarize_rows(all_risk_rows, bands)
     in_review_count = sum(
         1 for record in [*policies, *procedures] if record.status == IN_REVIEW_STATUS
@@ -158,6 +194,8 @@ def get_summary(db: Session, actor_id: int) -> DashboardSummary:
         coverage=CoverageSummary(
             ai_systems_total=len(ai_system_rows),
             ai_systems_assessed=assessed_count,
+            ai_systems_impact_assessed=impact_assessed_count,
+            assessments_review_overdue=review_overdue_count,
             policies_total=len(policies),
             policies_approved=sum(1 for p in policies if p.status == APPROVED_STATUS),
             procedures_total=len(procedures),
@@ -166,6 +204,8 @@ def get_summary(db: Session, actor_id: int) -> DashboardSummary:
         attention=_attention(
             overdue_count=risk_items.overdue_count,
             unassessed_count=len(ai_system_rows) - assessed_count,
+            no_impact_assessment_count=len(ai_system_rows) - impact_assessed_count,
+            review_overdue_count=review_overdue_count,
             in_review_count=in_review_count,
             high_risk_count=high_risk_count,
         ),

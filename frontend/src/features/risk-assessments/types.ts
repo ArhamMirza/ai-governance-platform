@@ -12,6 +12,8 @@ export interface RiskAssessment {
   status: RiskAssessmentStatus;
   assessor_id: number | null;
   assessment_date: string | null;
+  next_review_date: string | null;
+  review_overdue: boolean;
   overall_risk_rating: number | null;
   created_at: string;
   updated_at: string;

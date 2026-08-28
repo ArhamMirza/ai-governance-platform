@@ -22,35 +22,33 @@ function mockHook(mutateAsync = vi.fn()) {
   return mutateAsync;
 }
 
+function renderCard(overrides: Partial<ImpactFactorAssessment> = {}) {
+  return render(
+    <ImpactFactorCard
+      riskAssessmentId={1}
+      impactAssessmentId={2}
+      factorAssessment={{ ...factorAssessment, ...overrides }}
+    />,
+  );
+}
+
 describe("ImpactFactorCard", () => {
-  it("shows the factor name and blank fields", () => {
+  it("shows the factor name and an unscored badge", () => {
     mockHook();
 
-    render(
-      <ImpactFactorCard
-        riskAssessmentId={1}
-        impactAssessmentId={2}
-        factorAssessment={factorAssessment}
-      />,
-    );
+    renderCard();
 
     expect(screen.getByText("Fairness")).toBeInTheDocument();
-    expect(screen.getByLabelText("Score (1-5)")).toHaveValue("");
+    expect(screen.getByText("Not scored")).toBeInTheDocument();
   });
 
   it("saves benefits on blur", async () => {
     const mutateAsync = mockHook();
     const user = userEvent.setup();
 
-    render(
-      <ImpactFactorCard
-        riskAssessmentId={1}
-        impactAssessmentId={2}
-        factorAssessment={factorAssessment}
-      />,
-    );
+    renderCard();
 
-    await user.type(screen.getByLabelText("Benefits"), "Standardizes screening.");
+    await user.type(screen.getByLabelText("Benefits for Fairness"), "Standardizes screening.");
     await user.tab();
 
     await waitFor(() => {
@@ -66,24 +64,47 @@ describe("ImpactFactorCard", () => {
     });
   });
 
-  it("saves the score immediately on change", async () => {
+  it("saves the score immediately when a score button is clicked", async () => {
     const mutateAsync = mockHook();
     const user = userEvent.setup();
 
-    render(
-      <ImpactFactorCard
-        riskAssessmentId={1}
-        impactAssessmentId={2}
-        factorAssessment={factorAssessment}
-      />,
-    );
+    renderCard();
 
-    await user.selectOptions(screen.getByLabelText("Score (1-5)"), "4");
+    await user.click(screen.getByRole("radio", { name: "Fairness score 4" }));
 
     await waitFor(() => {
       expect(mutateAsync).toHaveBeenCalledWith({
         factor: "Fairness",
         data: { benefits: "", harms: "", criteria: "", score: 4 },
+      });
+    });
+  });
+
+  it("marks the selected score and shows it in the badge", () => {
+    mockHook();
+
+    renderCard({ score: 4 });
+
+    expect(screen.getByRole("radio", { name: "Fairness score 4" })).toHaveAttribute(
+      "aria-checked",
+      "true",
+    );
+    expect(screen.getByText("4", { selector: ".impact-score-badge" })).toBeInTheDocument();
+    expect(screen.queryByText("Not scored")).not.toBeInTheDocument();
+  });
+
+  it("clears the score when the selected one is clicked again", async () => {
+    const mutateAsync = mockHook();
+    const user = userEvent.setup();
+
+    renderCard({ score: 4 });
+
+    await user.click(screen.getByRole("radio", { name: "Fairness score 4" }));
+
+    await waitFor(() => {
+      expect(mutateAsync).toHaveBeenCalledWith({
+        factor: "Fairness",
+        data: { benefits: "", harms: "", criteria: "", score: null },
       });
     });
   });

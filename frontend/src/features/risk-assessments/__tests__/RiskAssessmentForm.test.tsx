@@ -2,11 +2,16 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
+import { useAllImpactAssessments } from "../../impact-assessments/hooks";
 import { RiskAssessmentForm } from "../components/RiskAssessmentForm";
 import { useAISystemInventoryRows, useCreateRiskAssessment } from "../hooks";
 import type { RiskAssessment } from "../types";
 
 vi.mock("../hooks");
+vi.mock("../../impact-assessments/hooks");
+
+/** Row 5 is impact-assessed, so it is eligible for a risk assessment. */
+const completedImpactAssessments = [{ id: 1, ai_system_row_id: 5, status: "completed" }];
 
 const mockInventory = {
   id: 1,
@@ -35,6 +40,8 @@ const createdRiskAssessment: RiskAssessment = {
   status: "draft",
   assessor_id: null,
   assessment_date: null,
+  next_review_date: null,
+  review_overdue: false,
   overall_risk_rating: null,
   created_at: "2026-01-01T00:00:00Z",
   updated_at: "2026-01-01T00:00:00Z",
@@ -43,6 +50,9 @@ const createdRiskAssessment: RiskAssessment = {
 describe("RiskAssessmentForm", () => {
   it("submits the selected AI system", async () => {
     vi.mocked(useAISystemInventoryRows).mockReturnValue({ data: mockInventory } as never);
+    vi.mocked(useAllImpactAssessments).mockReturnValue({
+      data: completedImpactAssessments,
+    } as never);
     const mutateAsync = vi.fn().mockResolvedValue(createdRiskAssessment);
     vi.mocked(useCreateRiskAssessment).mockReturnValue({
       mutateAsync,
@@ -62,6 +72,9 @@ describe("RiskAssessmentForm", () => {
 
   it("shows a validation error when no AI System is selected", async () => {
     vi.mocked(useAISystemInventoryRows).mockReturnValue({ data: mockInventory } as never);
+    vi.mocked(useAllImpactAssessments).mockReturnValue({
+      data: completedImpactAssessments,
+    } as never);
     const mutateAsync = vi.fn();
     vi.mocked(useCreateRiskAssessment).mockReturnValue({
       mutateAsync,
@@ -74,5 +87,21 @@ describe("RiskAssessmentForm", () => {
 
     expect(await screen.findByRole("alert")).toHaveTextContent("Select an AI System");
     expect(mutateAsync).not.toHaveBeenCalled();
+  });
+
+  it("omits AI systems without a completed impact assessment", () => {
+    vi.mocked(useAISystemInventoryRows).mockReturnValue({ data: mockInventory } as never);
+    vi.mocked(useAllImpactAssessments).mockReturnValue({
+      data: [{ id: 1, ai_system_row_id: 5, status: "draft" }],
+    } as never);
+    vi.mocked(useCreateRiskAssessment).mockReturnValue({
+      mutateAsync: vi.fn(),
+      isPending: false,
+    } as never);
+
+    render(<RiskAssessmentForm />);
+
+    expect(screen.queryByRole("option", { name: "Resume Screener" })).not.toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent("No AI system is eligible yet");
   });
 });

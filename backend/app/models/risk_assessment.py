@@ -22,6 +22,9 @@ class RiskAssessment(Base):
     status: Mapped[str] = mapped_column(String(20), default=RiskAssessmentStatus.DRAFT)
     assessor_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
     assessment_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    # Same yearly cadence as ImpactAssessment (see app.core.review_cadence) so
+    # the two assessments for one AI system stay aligned.
+    next_review_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(UTC)
     )

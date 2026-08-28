@@ -22,6 +22,8 @@ const riskAssessment: RiskAssessment = {
   status: "draft",
   assessor_id: null,
   assessment_date: null,
+  next_review_date: null,
+  review_overdue: false,
   overall_risk_rating: 12,
   created_at: "2026-01-01T00:00:00Z",
   updated_at: "2026-01-01T00:00:00Z",

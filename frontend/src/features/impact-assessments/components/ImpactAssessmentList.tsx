@@ -62,6 +62,14 @@ export function ImpactAssessmentList({ riskAssessmentId }: ImpactAssessmentListP
               <span>
                 Impact Assessment #{assessment.id} &mdash; {assessment.status}
                 {assessment.assessment_date ? ` (${assessment.assessment_date})` : ""}
+                {assessment.next_review_date && (
+                  <span
+                    className={`impact-review-chip${assessment.review_overdue ? " is-overdue" : ""}`}
+                  >
+                    {assessment.review_overdue ? "Review overdue" : "Review due"}{" "}
+                    {assessment.next_review_date}
+                  </span>
+                )}
               </span>
               <span>{isExpanded ? "▲" : "▼"}</span>
             </button>

@@ -1,5 +1,7 @@
 from fastapi.testclient import TestClient
 
+from tests.helpers import complete_impact_assessment
+
 PAST_DEADLINE = "2020-01-01"
 
 
@@ -10,6 +12,7 @@ def make_system(client: TestClient, name: str) -> int:
 
 
 def make_assessment(client: TestClient, row_id: int) -> int:
+    complete_impact_assessment(client, row_id)
     return client.post("/api/v1/risk-assessments", json={"ai_system_row_id": row_id}).json()[
         "id"
     ]

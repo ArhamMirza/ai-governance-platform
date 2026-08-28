@@ -29,6 +29,8 @@ export interface RiskItemSummary {
 export interface CoverageSummary {
   ai_systems_total: number;
   ai_systems_assessed: number;
+  ai_systems_impact_assessed: number;
+  assessments_review_overdue: number;
   policies_total: number;
   policies_approved: number;
   procedures_total: number;

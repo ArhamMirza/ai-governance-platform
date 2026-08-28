@@ -2,6 +2,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 
+import { useAllImpactAssessments } from "../../impact-assessments/hooks";
 import { useAISystemInventoryRows, useCreateRiskAssessment } from "../hooks";
 
 const riskAssessmentFormSchema = z.object({
@@ -17,6 +18,7 @@ interface RiskAssessmentFormProps {
 export function RiskAssessmentForm({ onCreated }: RiskAssessmentFormProps) {
   const createRiskAssessment = useCreateRiskAssessment();
   const { data: inventory } = useAISystemInventoryRows();
+  const { data: impactAssessments } = useAllImpactAssessments();
   const {
     register,
     handleSubmit,
@@ -32,13 +34,22 @@ export function RiskAssessmentForm({ onCreated }: RiskAssessmentFormProps) {
     onCreated?.(riskAssessment.id);
   });
 
+  // Only systems with a completed impact assessment can be risk-assessed --
+  // the backend enforces this, so offering the rest would just produce errors.
+  const eligibleRowIds = new Set(
+    (impactAssessments ?? [])
+      .filter((assessment) => assessment.status === "completed")
+      .map((assessment) => assessment.ai_system_row_id),
+  );
+  const eligibleRows = (inventory?.rows ?? []).filter((row) => eligibleRowIds.has(row.id));
+
   return (
     <form onSubmit={onSubmit}>
       <div>
         <label htmlFor="risk-assessment-ai-system">AI System</label>
         <select id="risk-assessment-ai-system" {...register("ai_system_row_id")}>
           <option value="">Select an AI System</option>
-          {inventory?.rows.map((row) => (
+          {eligibleRows.map((row) => (
             <option key={row.id} value={row.id}>
               {typeof row.data.name === "string" && row.data.name
                 ? row.data.name
@@ -48,6 +59,12 @@ export function RiskAssessmentForm({ onCreated }: RiskAssessmentFormProps) {
         </select>
         {errors.ai_system_row_id && <p role="alert">{errors.ai_system_row_id.message}</p>}
       </div>
+      {eligibleRows.length === 0 && (
+        <p role="status">
+          No AI system is eligible yet. Complete an impact assessment for a system first &mdash;
+          ISO 42001 sequences impact assessment before risk assessment.
+        </p>
+      )}
       <p>Framework tags are added from the assessment's detail page once it's created.</p>
       <button type="submit" disabled={createRiskAssessment.isPending}>
         {createRiskAssessment.isPending ? "Creating..." : "Create Risk Assessment"}

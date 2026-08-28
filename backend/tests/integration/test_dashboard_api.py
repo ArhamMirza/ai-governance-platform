@@ -1,5 +1,7 @@
 from fastapi.testclient import TestClient
 
+from tests.helpers import complete_impact_assessment
+
 
 def test_summary_reflects_created_entities(client: TestClient) -> None:
     client.post("/api/v1/policies", json={"title": "Policy A"})
@@ -13,6 +15,7 @@ def test_summary_reflects_created_entities(client: TestClient) -> None:
         json={"data": {"name": "Resume Screener", "risk_tier": "high"}},
     ).json()
 
+    complete_impact_assessment(client, row["id"])
     risk_assessment = client.post(
         "/api/v1/risk-assessments", json={"ai_system_row_id": row["id"]}
     ).json()
@@ -51,6 +54,7 @@ def test_my_risk_items_lists_open_items_owned_by_the_current_user(
     row = client.post(
         "/api/v1/ai-system-inventory/rows", json={"data": {"name": "Resume Screener"}}
     ).json()
+    complete_impact_assessment(client, row["id"])
     ra = client.post("/api/v1/risk-assessments", json={"ai_system_row_id": row["id"]}).json()
 
     mine = client.post(
@@ -82,6 +86,7 @@ def test_my_risk_items_excludes_closed_items(client: TestClient, test_user) -> N
     row = client.post(
         "/api/v1/ai-system-inventory/rows", json={"data": {"name": "Resume Screener"}}
     ).json()
+    complete_impact_assessment(client, row["id"])
     ra = client.post("/api/v1/risk-assessments", json={"ai_system_row_id": row["id"]}).json()
     item = client.post(
         f"/api/v1/risk-assessments/{ra['id']}/rows",

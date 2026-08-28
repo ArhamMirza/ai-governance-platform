@@ -1378,35 +1378,165 @@ nav[aria-label="breadcrumb"] button:hover {
   width: 100%;
 }
 
+/* One factor per full-width row rather than a cramped multi-column grid --
+   these hold prose, and three narrow columns of empty boxes read as noise. */
 .impact-factor-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-  gap: 12px;
-  margin-bottom: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 20px;
 }
 
-.impact-factor-card {
+.impact-factor {
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
-  padding: 10px 12px;
+  background: var(--bg-surface);
+  overflow: hidden;
+}
+
+.impact-factor-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 14px;
   background: var(--bg-page);
+  border-bottom: 1px solid var(--border);
 }
 
-.impact-factor-card legend {
+.impact-factor-header h5 {
+  margin: 0;
+  font-size: 13.5px;
+  font-weight: 650;
+}
+
+.impact-score-badge {
+  min-width: 26px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 12px;
   font-weight: 700;
-  padding: 0 0 6px;
+  text-align: center;
+  color: #fff;
 }
 
-.impact-factor-card label {
+.impact-score-badge.is-empty {
+  background: transparent;
+  color: var(--text-faint);
+  font-weight: 500;
+  border: 1px dashed var(--border);
+}
+
+.impact-score-badge.score-low {
+  background: var(--success);
+}
+
+.impact-score-badge.score-medium {
+  background: var(--warning);
+}
+
+.impact-score-badge.score-high {
+  background: var(--danger);
+}
+
+.impact-factor-body {
+  padding: 12px 14px 14px;
+}
+
+/* Benefits and harms sit side by side -- they're read as a pair, and it
+   halves the vertical run through eight factors. */
+.impact-factor-pair {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+@media (max-width: 900px) {
+  .impact-factor-pair {
+    grid-template-columns: 1fr;
+  }
+}
+
+.impact-factor-field {
+  margin-bottom: 10px;
+}
+
+.impact-factor-field label,
+.impact-factor-score-label {
   display: block;
   font-size: 11px;
+  font-weight: 700;
   color: var(--text-faint);
-  margin: 6px 0 2px;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  margin-bottom: 4px;
 }
 
-.impact-factor-card textarea,
-.impact-factor-card select {
+.impact-factor-field textarea {
   width: 100%;
+  resize: vertical;
+  line-height: 1.45;
+}
+
+/* A row of 1-5 buttons instead of a dropdown: the whole scale is visible,
+   scoring is one click, and the selection carries its severity colour. */
+.impact-score-picker {
+  display: flex;
+  gap: 6px;
+}
+
+.impact-score-option {
+  width: 38px;
+  padding: 6px 0;
+  background: var(--bg-page);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  font-weight: 650;
+  color: var(--text-muted);
+}
+
+.impact-score-option:hover {
+  border-color: var(--text-faint);
+}
+
+.impact-score-option.is-selected {
+  color: #fff;
+  border-color: transparent;
+}
+
+.impact-score-option.is-selected.score-low {
+  background: var(--success);
+}
+
+.impact-score-option.is-selected.score-medium {
+  background: var(--warning);
+}
+
+.impact-score-option.is-selected.score-high {
+  background: var(--danger);
+}
+
+.impact-assessment-progress {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin: 0 0 12px;
+}
+
+.impact-review-chip {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  background: var(--bg-page);
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+}
+
+.impact-review-chip.is-overdue {
+  background: var(--danger);
+  border-color: transparent;
+  color: #fff;
 }
 
 .framework-tag-picker-actions {

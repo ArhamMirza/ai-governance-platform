@@ -1,7 +1,10 @@
+from datetime import UTC, datetime
+
 from fastapi import APIRouter, Depends, File, UploadFile
 from fastapi.responses import Response
 from sqlalchemy.orm import Session
 
+from app.core import review_cadence
 from app.core.database import get_db
 from app.dependencies import get_current_actor_id
 from app.models.risk_assessment import RiskAssessment
@@ -32,6 +35,10 @@ def _to_read(db: Session, risk_assessment: RiskAssessment) -> RiskAssessmentRead
         status=risk_assessment.status,
         assessor_id=risk_assessment.assessor_id,
         assessment_date=risk_assessment.assessment_date,
+        next_review_date=risk_assessment.next_review_date,
+        review_overdue=review_cadence.is_review_overdue(
+            risk_assessment.next_review_date, datetime.now(UTC).date()
+        ),
         overall_risk_rating=overall_risk_rating,
         created_at=risk_assessment.created_at,
         updated_at=risk_assessment.updated_at,

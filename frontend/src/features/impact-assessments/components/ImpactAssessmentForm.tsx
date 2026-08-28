@@ -22,7 +22,7 @@ const NARRATIVE_FIELDS: { key: keyof ImpactAssessmentUpdateInput; label: string 
 ];
 
 interface ImpactAssessmentFormProps {
-  riskAssessmentId: number;
+  riskAssessmentId: number | null;
   assessment: ImpactAssessment;
   onDeleted: () => void;
 }
@@ -94,6 +94,7 @@ export function ImpactAssessmentForm({
   const orderedFactors = IMPACT_FACTORS.map((factor) =>
     assessment.factors.find((f) => f.factor === factor),
   ).filter((f): f is ImpactFactorAssessment => f !== undefined);
+  const scoredCount = orderedFactors.filter((f) => f.score !== null).length;
 
   return (
     <div className="impact-assessment-form">
@@ -109,6 +110,11 @@ export function ImpactAssessmentForm({
           <option value="draft">Draft</option>
           <option value="completed">Completed</option>
         </select>
+        <p className="impact-assessment-progress">
+          {assessment.next_review_date
+            ? `Completed ${assessment.assessment_date ?? "—"} · next review due ${assessment.next_review_date}`
+            : "Marking this completed sets its review date one year out, and unlocks risk assessment for this AI system."}
+        </p>
       </div>
 
       {NARRATIVE_FIELDS.map(({ key, label }) => (
@@ -122,6 +128,10 @@ export function ImpactAssessmentForm({
       ))}
 
       <h4>Impact Factors</h4>
+      <p className="impact-assessment-progress">
+        {scoredCount} of {orderedFactors.length} factors scored. Write the benefits and harms
+        for a factor before scoring it.
+      </p>
       <div className="impact-factor-grid">
         {orderedFactors.map((factor) => (
           <ImpactFactorCard
