@@ -5,11 +5,15 @@ import { describe, expect, it, vi } from "vitest";
 
 import { ApiError } from "../../../shared/api/httpClient";
 import { createTestQueryClient } from "../../../test/testQueryClient";
+import { useFrameworkControls } from "../../framework-controls/hooks";
+import { useFrameworkTags, useSetFrameworkTags } from "../../framework-tags/hooks";
 import { evidenceApi, folderApi } from "../api";
 import { DocumentBrowser } from "../components/DocumentBrowser";
 import type { Evidence, Folder } from "../types";
 
 vi.mock("../api");
+vi.mock("../../framework-tags/hooks");
+vi.mock("../../framework-controls/hooks");
 
 function renderBrowser() {
   const queryClient = createTestQueryClient();
@@ -149,5 +153,35 @@ describe("DocumentBrowser", () => {
     await waitFor(() => {
       expect(evidenceApi.remove).toHaveBeenCalledWith(5);
     });
+  });
+
+  it("toggles an inline framework tag picker scoped to that evidence record", async () => {
+    vi.mocked(folderApi.list).mockResolvedValue([]);
+    vi.mocked(evidenceApi.list).mockResolvedValue([rootDoc]);
+    vi.mocked(useFrameworkTags).mockReturnValue({
+      data: [],
+      isLoading: false,
+      isError: false,
+    } as never);
+    vi.mocked(useFrameworkControls).mockReturnValue({
+      data: [],
+      isLoading: false,
+      isError: false,
+    } as never);
+    vi.mocked(useSetFrameworkTags).mockReturnValue({
+      mutateAsync: vi.fn(),
+      isPending: false,
+    } as never);
+    const user = userEvent.setup();
+
+    renderBrowser();
+    await waitFor(() => expect(screen.getByText("policy.pdf")).toBeInTheDocument());
+
+    expect(screen.queryByText("No framework tags yet.")).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Tags" }));
+
+    expect(screen.getByText("No framework tags yet.")).toBeInTheDocument();
+    expect(useFrameworkTags).toHaveBeenCalledWith("Evidence", 5);
   });
 });

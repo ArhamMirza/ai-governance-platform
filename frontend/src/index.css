@@ -309,6 +309,35 @@ ul {
   margin: 0;
 }
 
+/* ---------- Tab bar ---------- */
+
+.tab-bar {
+  display: flex;
+  gap: 6px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 16px;
+}
+
+.tab-bar button {
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  padding: 8px 4px;
+  margin-bottom: -1px;
+  color: var(--text-muted, var(--text));
+}
+
+.tab-bar button:hover {
+  background: transparent;
+  color: var(--text);
+}
+
+.tab-bar button.active {
+  color: var(--primary);
+  border-bottom-color: var(--primary);
+}
+
 /* ---------- Buttons ---------- */
 
 button,

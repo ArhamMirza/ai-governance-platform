@@ -3,7 +3,7 @@ from types import SimpleNamespace
 
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, select
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
 
@@ -13,6 +13,7 @@ from app.core.security import hash_password
 from app.dependencies import get_current_user
 from app.main import app
 from app.models.framework_control import FrameworkControl
+from app.models.framework_soa_entry import FrameworkSoaEntry
 from app.models.user import User, UserRole
 from app.services import evidence_service
 
@@ -42,6 +43,16 @@ def db_session() -> Generator[Session, None, None]:
         # the schema, so reference data has to be inserted separately here.
         session.bulk_insert_mappings(FrameworkControl, as_rows())
         session.commit()
+
+        annex_a_ids = session.scalars(
+            select(FrameworkControl.id).where(FrameworkControl.category == "annex_a_control")
+        ).all()
+        session.bulk_insert_mappings(
+            FrameworkSoaEntry,
+            [{"framework_control_id": control_id} for control_id in annex_a_ids],
+        )
+        session.commit()
+
         yield session
     finally:
         session.close()

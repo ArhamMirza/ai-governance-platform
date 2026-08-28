@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
 
 import { ApiError } from "../../../shared/api/httpClient";
+import { FrameworkTagPicker } from "../../framework-tags/components/FrameworkTagPicker";
 import { evidenceApi } from "../api";
 import {
   useCreateFolder,
@@ -25,6 +26,7 @@ export function DocumentBrowser({ entityType, entityId }: DocumentBrowserProps) 
   const [path, setPath] = useState<PathEntry[]>([]);
   const [newFolderName, setNewFolderName] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [taggingEvidenceId, setTaggingEvidenceId] = useState<number | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const currentFolderId = path.length > 0 ? path[path.length - 1].id : null;
@@ -158,7 +160,17 @@ export function DocumentBrowser({ entityType, entityId }: DocumentBrowserProps) 
               >
                 {doc.filename}
               </a>
+              <button
+                onClick={() =>
+                  setTaggingEvidenceId(taggingEvidenceId === doc.id ? null : doc.id)
+                }
+              >
+                {taggingEvidenceId === doc.id ? "Hide Tags" : "Tags"}
+              </button>
               <button onClick={() => handleDeleteEvidence(doc.id)}>Delete</button>
+              {taggingEvidenceId === doc.id && (
+                <FrameworkTagPicker entityType="Evidence" entityId={doc.id} />
+              )}
             </li>
           ))}
         </ul>

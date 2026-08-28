@@ -4,10 +4,14 @@ from sqlalchemy.orm import Session
 from app.models.framework_control import FrameworkControl
 
 
-def list_all(db: Session, framework: str | None = None) -> list[FrameworkControl]:
+def list_all(
+    db: Session, framework: str | None = None, category: str | None = None
+) -> list[FrameworkControl]:
     query = select(FrameworkControl)
     if framework is not None:
         query = query.where(FrameworkControl.framework == framework)
+    if category is not None:
+        query = query.where(FrameworkControl.category == category)
     return list(
         db.scalars(query.order_by(FrameworkControl.framework, FrameworkControl.code))
     )
@@ -19,3 +23,7 @@ def list_by_ids(db: Session, control_ids: list[int]) -> list[FrameworkControl]:
     return list(
         db.scalars(select(FrameworkControl).where(FrameworkControl.id.in_(control_ids)))
     )
+
+
+def get_by_id(db: Session, control_id: int) -> FrameworkControl | None:
+    return db.get(FrameworkControl, control_id)
