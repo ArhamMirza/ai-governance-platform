@@ -27,9 +27,20 @@ class AISystemLifecycleRead(BaseModel):
     monitoring_owner_id: int | None
     incident_escalation_path: str | None
 
+    retirement_reason: str | None
+    retirement_approved_by: int | None
+    retirement_approved_at: datetime | None
+    retired_at: date | None
+    retention_until: date | None
+    archived_at: datetime | None
+    is_archived: bool
+    retention_expired: bool
+
     # Computed each request from the underlying governance artefacts.
     requirements: list[GateRequirementRead]
     can_advance: bool
+    # At Retirement the requirements gate archiving rather than a next stage.
+    can_archive: bool
 
 
 class StageRevert(BaseModel):
@@ -45,3 +56,20 @@ class DeploymentRecordUpdate(BaseModel):
 class MonitoringUpdate(BaseModel):
     monitoring_owner_id: int | None = None
     incident_escalation_path: str | None = None
+
+
+class RetirementUpdate(BaseModel):
+    retirement_reason: str | None = None
+    retention_until: date | None = None
+
+
+class ArchivedAISystemRead(BaseModel):
+    """One row of the archive listing."""
+
+    ai_system_row_id: int
+    name: str
+    retirement_reason: str | None
+    retired_at: date | None
+    retention_until: date | None
+    archived_at: datetime | None
+    retention_expired: bool

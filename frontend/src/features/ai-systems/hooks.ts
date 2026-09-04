@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { aiSystemLifecycleApi, uploadStageDocument } from "./api";
-import type { DeploymentRecordInput, MonitoringInput } from "./types";
+import type { DeploymentRecordInput, MonitoringInput, RetirementInput } from "./types";
 
 export function lifecycleKey(rowId: number) {
   return ["ai-systems", rowId, "lifecycle"] as const;
@@ -21,6 +21,8 @@ function useInvalidateLifecycle(rowId: number) {
   return () => {
     queryClient.invalidateQueries({ queryKey: lifecycleKey(rowId) });
     queryClient.invalidateQueries({ queryKey: ["ai-system-inventory"] });
+    queryClient.invalidateQueries({ queryKey: ["ai-systems", "archive"] });
+    queryClient.invalidateQueries({ queryKey: ["dashboard-summary"] });
     queryClient.invalidateQueries({ queryKey: ["evidence"] });
     queryClient.invalidateQueries({ queryKey: ["audit-log", "AISystem", rowId] });
   };
@@ -81,5 +83,44 @@ export function useUploadStageDocument(rowId: number) {
     mutationFn: ({ documentType, file }: { documentType: string; file: File }) =>
       uploadStageDocument(rowId, documentType, file),
     onSuccess: invalidate,
+  });
+}
+
+export function useSetRetirement(rowId: number) {
+  const invalidate = useInvalidateLifecycle(rowId);
+  return useMutation({
+    mutationFn: (data: RetirementInput) => aiSystemLifecycleApi.setRetirement(rowId, data),
+    onSuccess: invalidate,
+  });
+}
+
+export function useRequestRetirementApproval(rowId: number) {
+  const invalidate = useInvalidateLifecycle(rowId);
+  return useMutation({
+    mutationFn: () => aiSystemLifecycleApi.requestRetirementApproval(rowId),
+    onSuccess: invalidate,
+  });
+}
+
+export function useApproveRetirement(rowId: number) {
+  const invalidate = useInvalidateLifecycle(rowId);
+  return useMutation({
+    mutationFn: () => aiSystemLifecycleApi.approveRetirement(rowId),
+    onSuccess: invalidate,
+  });
+}
+
+export function useArchiveSystem(rowId: number) {
+  const invalidate = useInvalidateLifecycle(rowId);
+  return useMutation({
+    mutationFn: () => aiSystemLifecycleApi.archive(rowId),
+    onSuccess: invalidate,
+  });
+}
+
+export function useArchivedSystems() {
+  return useQuery({
+    queryKey: ["ai-systems", "archive"],
+    queryFn: aiSystemLifecycleApi.listArchive,
   });
 }

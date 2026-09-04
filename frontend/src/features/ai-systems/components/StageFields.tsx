@@ -4,9 +4,12 @@ import { ApiError } from "../../../shared/api/httpClient";
 import { useUserDirectory } from "../../users/hooks";
 import {
   useApproveDeployment,
+  useApproveRetirement,
   useRequestDeploymentApproval,
+  useRequestRetirementApproval,
   useSetDeploymentRecord,
   useSetMonitoring,
+  useSetRetirement,
 } from "../hooks";
 import type { AISystemLifecycle } from "../types";
 
@@ -185,6 +188,106 @@ export function MonitoringFields({ rowId, lifecycle }: StageFieldsProps) {
       <button onClick={handleSave} disabled={save.isPending}>
         {save.isPending ? "Saving..." : "Save monitoring details"}
       </button>
+    </section>
+  );
+}
+
+/** The decision to retire, and how long the record is kept afterwards. */
+export function RetirementFields({ rowId, lifecycle }: StageFieldsProps) {
+  const save = useSetRetirement(rowId);
+  const requestApproval = useRequestRetirementApproval(rowId);
+  const approve = useApproveRetirement(rowId);
+  const [reason, setReason] = useState(lifecycle.retirement_reason ?? "");
+  const [retentionUntil, setRetentionUntil] = useState(lifecycle.retention_until ?? "");
+  const [error, setError] = useState<string | null>(null);
+
+  const run = async (action: () => Promise<unknown>, fallback: string) => {
+    setError(null);
+    try {
+      await action();
+    } catch (err) {
+      setError(readError(err, fallback));
+    }
+  };
+
+  return (
+    <section className="stage-fields">
+      <h4>Retirement</h4>
+      {error && <p role="alert">{error}</p>}
+
+      <div>
+        <label htmlFor="retirement-reason">Why is this system being retired?</label>
+        <textarea
+          id="retirement-reason"
+          rows={2}
+          value={reason}
+          onChange={(e) => setReason(e.target.value)}
+          disabled={lifecycle.is_archived}
+        />
+      </div>
+
+      <div>
+        <label htmlFor="retention-until">Keep this record until</label>
+        <input
+          id="retention-until"
+          type="date"
+          value={retentionUntil}
+          onChange={(e) => setRetentionUntil(e.target.value)}
+          disabled={lifecycle.is_archived}
+        />
+        <p className="gate-detail">
+          The archived record can't be deleted before this date.
+        </p>
+      </div>
+
+      {!lifecycle.is_archived && (
+        <button
+          onClick={() =>
+            run(
+              () =>
+                save.mutateAsync({
+                  retirement_reason: reason || null,
+                  retention_until: retentionUntil || null,
+                }),
+              "Failed to save the retirement details",
+            )
+          }
+          disabled={save.isPending}
+        >
+          {save.isPending ? "Saving..." : "Save retirement details"}
+        </button>
+      )}
+
+      <h4>Retirement approval</h4>
+      {lifecycle.retirement_approved_by !== null ? (
+        <p className="approval-note">
+          Approved
+          {lifecycle.retirement_approved_at
+            ? ` on ${new Date(lifecycle.retirement_approved_at).toLocaleDateString()}`
+            : ""}
+          .
+        </p>
+      ) : (
+        <div className="stage-gate-actions">
+          <button
+            onClick={() =>
+              run(() => requestApproval.mutateAsync(), "Failed to request approval")
+            }
+            disabled={requestApproval.isPending}
+          >
+            Request approval
+          </button>
+          <button
+            onClick={() => run(() => approve.mutateAsync(), "Failed to approve the retirement")}
+            disabled={approve.isPending}
+          >
+            Approve retirement
+          </button>
+        </div>
+      )}
+      <p className="gate-detail">
+        Retirement must be approved by an admin, and not by whoever requested it.
+      </p>
     </section>
   );
 }

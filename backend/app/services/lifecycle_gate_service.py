@@ -264,11 +264,59 @@ def _deployment_requirements(
     ]
 
 
+def _operation_requirements(lifecycle: AISystemLifecycle) -> list[GateRequirement]:
+    """Retiring a system is a decision, not a drift -- it needs a stated
+    reason and a second pair of eyes."""
+    reason = (lifecycle.retirement_reason or "").strip()
+    return [
+        GateRequirement(
+            key="retirement_reason",
+            label="Retirement reason recorded",
+            satisfied=bool(reason),
+            detail=(
+                "Recorded."
+                if reason
+                else "Say why this system is being retired before starting retirement."
+            ),
+        ),
+        GateRequirement(
+            key="retirement_approved",
+            label="Retirement approved",
+            satisfied=lifecycle.retirement_approved_by is not None,
+            detail=(
+                "Approved."
+                if lifecycle.retirement_approved_by is not None
+                else "Request approval, then have a different admin approve the retirement."
+            ),
+        ),
+    ]
+
+
+def _retirement_requirements(
+    db: Session, ai_system_row_id: int, lifecycle: AISystemLifecycle
+) -> list[GateRequirement]:
+    """What must be true before the system's record moves to the archive."""
+    return [
+        _document_requirement(db, ai_system_row_id, DocumentType.RETIREMENT_SIGNOFF),
+        GateRequirement(
+            key="retention_until",
+            label="Retention period set",
+            satisfied=lifecycle.retention_until is not None,
+            detail=(
+                f"Kept until {lifecycle.retention_until}."
+                if lifecycle.retention_until is not None
+                else "Set how long this system's record must be kept before it can be deleted."
+            ),
+        ),
+    ]
+
+
 def gate_requirements(
     db: Session, ai_system_row_id: int, lifecycle: AISystemLifecycle
 ) -> list[GateRequirement]:
     """What must be satisfied to leave the stage this system is currently in.
-    The final stage has no gate, so returns an empty list."""
+    At Retirement -- the last stage -- these are the requirements to archive
+    the record instead."""
     stage = lifecycle.current_stage
 
     if stage == LifecycleStage.INCEPTION:
@@ -281,6 +329,10 @@ def gate_requirements(
         return _validation_requirements(db, ai_system_row_id, lifecycle)
     if stage == LifecycleStage.DEPLOYMENT:
         return _deployment_requirements(db, ai_system_row_id, lifecycle)
+    if stage == LifecycleStage.OPERATION_AND_MONITORING:
+        return _operation_requirements(lifecycle)
+    if stage == LifecycleStage.RETIREMENT and lifecycle.archived_at is None:
+        return _retirement_requirements(db, ai_system_row_id, lifecycle)
     return []
 
 
