@@ -1,12 +1,15 @@
 from fastapi import UploadFile
 from sqlalchemy.orm import Session
 
+from app.core.lifecycle_stages import LifecycleStage
 from app.models.sheet import Sheet, SheetRow
 from app.repositories import sheet_repository
 from app.schemas.sheet import ColumnDef
 from app.services import audit_service, sheet_service
 
 ENTITY_TYPE = "AISystemInventory"
+
+STAGE_COLUMN_KEY = "lifecycle_stage"
 
 DEFAULT_COLUMNS = [
     # System Overview
@@ -59,15 +62,25 @@ def set_columns(db: Session, columns: list[ColumnDef], actor_id: int | None) -> 
 
 
 def add_row(db: Session, data: dict, actor_id: int | None) -> SheetRow:
+    from app.services import ai_system_lifecycle_service
+
     sheet = get_or_create_sheet(db)
-    row = sheet_service.add_row(db, sheet.id, data)
+    # Every system starts at Inception; the stage only moves through a gate.
+    row = sheet_service.add_row(
+        db, sheet.id, {**data, STAGE_COLUMN_KEY: LifecycleStage.INCEPTION}
+    )
+    ai_system_lifecycle_service.get_or_create(db, row.id)
     audit_service.log(db, ENTITY_TYPE, sheet.id, "row_added", actor_id, {"row_id": row.id})
     return row
 
 
 def update_row(db: Session, row_id: int, data: dict, actor_id: int | None) -> SheetRow:
     sheet = get_or_create_sheet(db)
-    row = sheet_service.update_row(db, sheet.id, row_id, data)
+    # The stage cell is server-owned -- editing it in the grid would sidestep
+    # every gate, so a supplied value is ignored rather than rejected.
+    row = sheet_service.update_row(
+        db, sheet.id, row_id, {k: v for k, v in data.items() if k != STAGE_COLUMN_KEY}
+    )
     audit_service.log(db, ENTITY_TYPE, sheet.id, "row_updated", actor_id, {"row_id": row_id})
     return row
 
@@ -79,7 +92,11 @@ def delete_row(db: Session, row_id: int, actor_id: int | None) -> None:
     # Imported here rather than at module scope: both assessment services
     # import this one (to validate the AI system row), so a top-level import
     # would be circular.
-    from app.services import impact_assessment_service, risk_assessment_service
+    from app.services import (
+        ai_system_lifecycle_service,
+        impact_assessment_service,
+        risk_assessment_service,
+    )
 
     risk_assessment = risk_assessment_service.get_for_ai_system(db, row_id)
     if risk_assessment is not None:
@@ -88,6 +105,8 @@ def delete_row(db: Session, row_id: int, actor_id: int | None) -> None:
     impact_assessment = impact_assessment_service.get_for_ai_system(db, row_id)
     if impact_assessment is not None:
         impact_assessment_service.delete(db, impact_assessment.id, actor_id)
+
+    ai_system_lifecycle_service.delete_for_ai_system(db, row_id)
 
     sheet = get_or_create_sheet(db)
     sheet_service.delete_row(db, sheet.id, row_id)

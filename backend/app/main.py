@@ -13,6 +13,7 @@ from app.core.exceptions import (
 from app.dependencies import get_current_user
 from app.routers import (
     ai_system_inventory,
+    ai_system_lifecycle,
     audit_log,
     auth,
     dashboard,
@@ -82,6 +83,7 @@ app.include_router(procedures.router, prefix="/api/v1", dependencies=_protected)
 app.include_router(folders.router, prefix="/api/v1", dependencies=_protected)
 app.include_router(evidence.router, prefix="/api/v1", dependencies=_protected)
 app.include_router(ai_system_inventory.router, prefix="/api/v1", dependencies=_protected)
+app.include_router(ai_system_lifecycle.router, prefix="/api/v1", dependencies=_protected)
 app.include_router(data_inventory.router, prefix="/api/v1", dependencies=_protected)
 app.include_router(risk_assessments.router, prefix="/api/v1", dependencies=_protected)
 app.include_router(

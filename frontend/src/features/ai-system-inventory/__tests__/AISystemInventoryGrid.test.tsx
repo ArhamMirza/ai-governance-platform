@@ -1,5 +1,6 @@
 import { QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, waitFor } from "@testing-library/react";
+import { MemoryRouter } from "react-router-dom";
 import { describe, expect, it, vi } from "vitest";
 
 import { httpClient } from "../../../shared/api/httpClient";
@@ -49,9 +50,11 @@ describe("AISystemInventoryGrid", () => {
     const queryClient = createTestQueryClient();
 
     render(
-      <QueryClientProvider client={queryClient}>
-        <AISystemInventoryGrid />
-      </QueryClientProvider>,
+      <MemoryRouter>
+        <QueryClientProvider client={queryClient}>
+          <AISystemInventoryGrid />
+        </QueryClientProvider>
+      </MemoryRouter>,
     );
 
     await waitFor(() => {

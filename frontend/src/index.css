@@ -1636,6 +1636,194 @@ article h3 + p {
 
 /* ---------- Modal ---------- */
 
+/* ---------- Life cycle stage tracker ---------- */
+
+.stage-tracker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin: 0 0 24px;
+  padding: 0;
+  list-style: none;
+}
+
+.stage-step {
+  flex: 1 1 130px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--bg-surface);
+  font-size: 12.5px;
+  color: var(--text-muted);
+}
+
+.stage-step-marker {
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 700;
+  background: var(--bg-page);
+  color: var(--text-faint);
+  border: 1px solid var(--border);
+}
+
+.stage-step.is-done {
+  border-color: var(--success);
+}
+
+.stage-step.is-done .stage-step-marker {
+  background: var(--success);
+  border-color: transparent;
+  color: #fff;
+}
+
+.stage-step.is-current {
+  border-color: var(--primary);
+  background: var(--primary-subtle);
+  color: var(--text);
+}
+
+.stage-step.is-current .stage-step-marker {
+  background: var(--primary);
+  border-color: transparent;
+  color: #fff;
+}
+
+.stage-step-label {
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+/* ---------- Stage gate ---------- */
+
+.stage-gate {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 18px 20px;
+  margin-bottom: 24px;
+}
+
+.stage-gate h3 {
+  margin-top: 0;
+}
+
+.gate-requirements {
+  margin: 0 0 16px;
+  padding: 0;
+  list-style: none;
+}
+
+.gate-requirements li {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.gate-requirements li:last-child {
+  border-bottom: none;
+}
+
+.gate-marker {
+  flex-shrink: 0;
+  font-weight: 700;
+  width: 18px;
+  text-align: center;
+}
+
+.gate-requirements .is-satisfied .gate-marker {
+  color: var(--success);
+}
+
+.gate-requirements .is-unsatisfied .gate-marker {
+  color: var(--text-faint);
+}
+
+.gate-detail {
+  display: block;
+  font-size: 12.5px;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+.gate-upload {
+  margin-top: 8px;
+}
+
+.gate-upload label {
+  display: block;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-faint);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  margin-bottom: 4px;
+}
+
+.stage-gate-actions,
+.stage-revert {
+  display: flex;
+  gap: 8px;
+  align-items: flex-end;
+  flex-wrap: wrap;
+}
+
+.stage-revert {
+  margin-top: 12px;
+  flex-direction: column;
+  align-items: stretch;
+  max-width: 420px;
+}
+
+.stage-fields {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 18px 20px;
+  margin-bottom: 20px;
+}
+
+.stage-fields h4 {
+  margin-top: 0;
+}
+
+.stage-fields label {
+  display: block;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-faint);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  margin-bottom: 4px;
+}
+
+.stage-fields textarea,
+.stage-fields select,
+.stage-fields input {
+  width: 100%;
+}
+
+.stage-field-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.assessment-links li {
+  padding: 6px 0;
+}
+
 /* ---------- Confirm dialog ---------- */
 
 .confirm-dialog {

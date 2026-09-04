@@ -1,3 +1,4 @@
+from app.models.ai_system_lifecycle import AISystemLifecycle
 from app.models.audit_log import AuditLogEntry
 from app.models.evidence import Evidence
 from app.models.folder import Folder
@@ -15,6 +16,7 @@ from app.models.sheet import Sheet, SheetRow
 from app.models.user import User
 
 __all__ = [
+    "AISystemLifecycle",
     "AuditLogEntry",
     "Evidence",
     "Folder",

@@ -42,7 +42,12 @@ def test_add_row(client: TestClient) -> None:
 
     assert response.status_code == 201
     body = response.json()
-    assert body["data"] == {"name": "Resume Screener", "risk_tier": "high"}
+    # Every new system starts at Inception -- the stage is server-owned.
+    assert body["data"] == {
+        "name": "Resume Screener",
+        "risk_tier": "high",
+        "lifecycle_stage": "inception",
+    }
 
     listing = client.get("/api/v1/ai-system-inventory").json()
     assert len(listing["rows"]) == 1
@@ -67,7 +72,11 @@ def test_update_row(client: TestClient) -> None:
     )
 
     assert response.status_code == 200
-    assert response.json()["data"] == {"name": "Resume Screener", "risk_tier": "high"}
+    assert response.json()["data"] == {
+        "name": "Resume Screener",
+        "risk_tier": "high",
+        "lifecycle_stage": "inception",
+    }
 
 
 def test_delete_row(client: TestClient) -> None:
@@ -85,11 +94,27 @@ def test_delete_row(client: TestClient) -> None:
 def test_set_columns_replaces_defaults(client: TestClient) -> None:
     response = client.put(
         "/api/v1/ai-system-inventory/columns",
-        json={"columns": [{"key": "name", "label": "Name", "data_type": "text"}]},
+        json={
+            "columns": [
+                {"key": "name", "label": "Name", "data_type": "text"},
+                {"key": "lifecycle_stage", "label": "Lifecycle Stage", "data_type": "text"},
+            ]
+        },
     )
 
     assert response.status_code == 200
-    assert [c["key"] for c in response.json()["columns"]] == ["name"]
+    assert [c["key"] for c in response.json()["columns"]] == ["name", "lifecycle_stage"]
+
+
+def test_set_columns_rejects_dropping_the_lifecycle_stage_column(client: TestClient) -> None:
+    """The stage drives the gates, so the column can't be removed."""
+    response = client.put(
+        "/api/v1/ai-system-inventory/columns",
+        json={"columns": [{"key": "name", "label": "Name", "data_type": "text"}]},
+    )
+
+    assert response.status_code == 400
+    assert "lifecycle_stage" in response.text
 
 
 def test_upload_replaces_columns_and_rows(client: TestClient) -> None:

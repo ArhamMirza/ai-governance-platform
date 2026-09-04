@@ -26,12 +26,13 @@ def upload_evidence(
     entity_id: int = Form(...),
     folder_id: int | None = Form(default=None),
     description: str | None = Form(default=None),
+    document_type: str | None = Form(default=None),
     file: UploadFile = File(...),
     db: Session = Depends(get_db),
     actor_id: int | None = Depends(get_current_actor_id),
 ) -> EvidenceRead:
     return evidence_service.upload_evidence(
-        db, entity_type, entity_id, folder_id, file, description, actor_id
+        db, entity_type, entity_id, folder_id, file, description, actor_id, document_type
     )
 
 
