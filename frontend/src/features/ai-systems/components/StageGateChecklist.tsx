@@ -1,7 +1,12 @@
 import { useState } from "react";
 
 import { ApiError } from "../../../shared/api/httpClient";
-import { useAdvanceStage, useRevertStage, useUploadStageDocument } from "../hooks";
+import {
+  useAdvanceStage,
+  useArchiveSystem,
+  useRevertStage,
+  useUploadStageDocument,
+} from "../hooks";
 import type { AISystemLifecycle } from "../types";
 
 /** Requirement keys that are satisfied by uploading a document -- the key is
@@ -10,6 +15,7 @@ const DOCUMENT_REQUIREMENTS: Record<string, string> = {
   design_document: "design document",
   validation_report: "validation report",
   monitoring_plan: "monitoring plan",
+  retirement_signoff: "retirement sign-off",
 };
 
 function readError(err: unknown, fallback: string): string {
@@ -51,6 +57,7 @@ interface StageGateChecklistProps {
 export function StageGateChecklist({ rowId, lifecycle }: StageGateChecklistProps) {
   const advance = useAdvanceStage(rowId);
   const revert = useRevertStage(rowId);
+  const archiveSystem = useArchiveSystem(rowId);
   const [error, setError] = useState<string | null>(null);
   const [revertReason, setRevertReason] = useState("");
   const [showRevert, setShowRevert] = useState(false);
@@ -75,13 +82,37 @@ export function StageGateChecklist({ rowId, lifecycle }: StageGateChecklistProps
     }
   };
 
+  const handleArchive = async () => {
+    setError(null);
+    try {
+      await archiveSystem.mutateAsync();
+    } catch (err) {
+      setError(readError(err, "Failed to archive this system"));
+    }
+  };
+
   const isFinalStage = lifecycle.next_stage === null;
+
+  if (lifecycle.is_archived) {
+    return (
+      <div className="stage-gate">
+        <h3>Archived</h3>
+        <p>
+          Retired{lifecycle.retired_at ? ` on ${lifecycle.retired_at}` : ""}. This record is
+          kept until {lifecycle.retention_until ?? "—"}
+          {lifecycle.retention_expired
+            ? " — the retention period has passed, so it can now be deleted."
+            : " and cannot be deleted before then."}
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="stage-gate">
       <h3>
         {isFinalStage
-          ? `${lifecycle.current_stage_label} — final stage`
+          ? "To archive this system"
           : `To leave ${lifecycle.current_stage_label}`}
       </h3>
 
@@ -112,7 +143,15 @@ export function StageGateChecklist({ rowId, lifecycle }: StageGateChecklistProps
       </ul>
 
       <div className="stage-gate-actions">
-        {!isFinalStage && (
+        {isFinalStage ? (
+          <button
+            type="submit"
+            onClick={handleArchive}
+            disabled={!lifecycle.can_archive || archiveSystem.isPending}
+          >
+            {archiveSystem.isPending ? "Archiving..." : "Complete retirement & archive"}
+          </button>
+        ) : (
           <button
             type="submit"
             onClick={handleAdvance}

@@ -2,6 +2,7 @@ import { Route, Routes } from "react-router-dom";
 
 import { AISystemDetailPage } from "../pages/AISystemDetailPage";
 import { AISystemInventoryPage } from "../pages/AISystemInventoryPage";
+import { ArchivePage } from "../pages/ArchivePage";
 import { DashboardPage } from "../pages/DashboardPage";
 import { DataInventoryPage } from "../pages/DataInventoryPage";
 import { FrameworksPage } from "../pages/FrameworksPage";
@@ -27,6 +28,7 @@ export function AppRoutes() {
         <Route path="/ai-systems" element={<AISystemInventoryPage />} />
         <Route path="/ai-systems/:rowId" element={<AISystemDetailPage />} />
         <Route path="/data-inventory" element={<DataInventoryPage />} />
+        <Route path="/archive" element={<ArchivePage />} />
         <Route path="/risk-assessments" element={<RiskAssessmentsPage />} />
         <Route
           path="/impact-assessments/:impactAssessmentId"

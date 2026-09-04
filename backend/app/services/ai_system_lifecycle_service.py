@@ -14,6 +14,7 @@ ENTITY_TYPE = "AISystem"
 # A distinct entity type per sign-off, so the segregation-of-duties lookup for
 # a release approval never sees a retirement approval (or vice versa).
 DEPLOYMENT_APPROVAL_ENTITY_TYPE = "AISystemDeploymentApproval"
+RETIREMENT_APPROVAL_ENTITY_TYPE = "AISystemRetirementApproval"
 
 STAGE_COLUMN_KEY = "lifecycle_stage"
 
@@ -190,6 +191,98 @@ def approve_deployment(
         db, DEPLOYMENT_APPROVAL_ENTITY_TYPE, ai_system_row_id, "approved", actor_id
     )
     return lifecycle
+
+
+def set_retirement(
+    db: Session,
+    ai_system_row_id: int,
+    retirement_reason: str | None,
+    retention_until: date | None,
+    actor_id: int | None,
+) -> AISystemLifecycle:
+    lifecycle = get_or_create(db, ai_system_row_id)
+    lifecycle.retirement_reason = retirement_reason
+    lifecycle.retention_until = retention_until
+    lifecycle = ai_system_lifecycle_repository.save(db, lifecycle)
+    audit_service.log(
+        db, ENTITY_TYPE, ai_system_row_id, "retirement_details_updated", actor_id,
+        {"retention_until": str(retention_until) if retention_until else None},
+    )
+    return lifecycle
+
+
+def request_retirement_approval(
+    db: Session, ai_system_row_id: int, actor_id: int | None
+) -> None:
+    get_or_create(db, ai_system_row_id)
+    audit_service.log(
+        db, RETIREMENT_APPROVAL_ENTITY_TYPE, ai_system_row_id,
+        "submitted_for_review", actor_id,
+    )
+
+
+def approve_retirement(
+    db: Session, ai_system_row_id: int, actor_id: int | None
+) -> AISystemLifecycle:
+    lifecycle = get_or_create(db, ai_system_row_id)
+    try:
+        audit_service.require_different_approver(
+            db, RETIREMENT_APPROVAL_ENTITY_TYPE, ai_system_row_id, actor_id
+        )
+    except ConflictError as exc:
+        raise ConflictError(
+            "You requested this retirement, so someone else has to approve it."
+        ) from exc
+    lifecycle.retirement_approved_by = actor_id
+    lifecycle.retirement_approved_at = datetime.now(UTC)
+    lifecycle = ai_system_lifecycle_repository.save(db, lifecycle)
+    audit_service.log(
+        db, RETIREMENT_APPROVAL_ENTITY_TYPE, ai_system_row_id, "approved", actor_id
+    )
+    return lifecycle
+
+
+def archive(db: Session, ai_system_row_id: int, actor_id: int | None) -> AISystemLifecycle:
+    """Completes retirement. The system leaves the active inventory, and its
+    record -- assessments, evidence, audit trail -- is kept read-only until
+    the retention date passes."""
+    lifecycle = get_or_create(db, ai_system_row_id)
+    if lifecycle.current_stage != LifecycleStage.RETIREMENT:
+        raise ConflictError("Only a system at the Retirement stage can be archived.")
+    if lifecycle.archived_at is not None:
+        raise ConflictError("This system is already archived.")
+
+    outstanding = lifecycle_gate_service.unmet(
+        lifecycle_gate_service.gate_requirements(db, ai_system_row_id, lifecycle)
+    )
+    if outstanding:
+        raise ValidationError(
+            "Cannot archive this system yet: "
+            + "; ".join(requirement.detail for requirement in outstanding)
+        )
+
+    now = datetime.now(UTC)
+    lifecycle.archived_at = now
+    lifecycle.retired_at = now.date()
+    lifecycle = ai_system_lifecycle_repository.save(db, lifecycle)
+    audit_service.log(
+        db, ENTITY_TYPE, ai_system_row_id, "archived", actor_id,
+        {"retention_until": str(lifecycle.retention_until)},
+    )
+    return lifecycle
+
+
+def is_archived(db: Session, ai_system_row_id: int) -> bool:
+    lifecycle = ai_system_lifecycle_repository.get_for_ai_system(db, ai_system_row_id)
+    return lifecycle is not None and lifecycle.archived_at is not None
+
+
+def retention_expired(lifecycle: AISystemLifecycle, today: date | None = None) -> bool:
+    """An archived record whose retention period has run out -- it can be
+    deleted, and the dashboard says so."""
+    if lifecycle.archived_at is None or lifecycle.retention_until is None:
+        return False
+    return lifecycle.retention_until < (today or datetime.now(UTC).date())
 
 
 def delete_for_ai_system(db: Session, ai_system_row_id: int) -> None:

@@ -8,6 +8,7 @@ from app.models.impact_assessment import ImpactAssessmentStatus
 from app.models.risk_assessment import RiskAssessment
 from app.models.sheet import SheetRow
 from app.repositories import (
+    ai_system_lifecycle_repository,
     impact_assessment_repository,
     policy_repository,
     procedure_repository,
@@ -25,6 +26,7 @@ from app.schemas.dashboard import (
 )
 from app.services import (
     ai_system_inventory_service,
+    ai_system_lifecycle_service,
     risk_analytics_service,
     risk_criteria_service,
 )
@@ -40,6 +42,7 @@ def _attention(
     unassessed_count: int,
     no_impact_assessment_count: int,
     review_overdue_count: int,
+    retention_expired_count: int,
     in_review_count: int,
     high_risk_count: int,
 ) -> list[AttentionItem]:
@@ -63,6 +66,12 @@ def _attention(
             label="Assessments overdue for annual review",
             count=review_overdue_count,
             severity="danger",
+        ),
+        AttentionItem(
+            key="retention_expired",
+            label="Archived systems past their retention date",
+            count=retention_expired_count,
+            severity="warning",
         ),
         AttentionItem(
             key="unassessed_ai_systems",
@@ -164,6 +173,11 @@ def get_summary(db: Session, actor_id: int) -> DashboardSummary:
     )
 
     today = datetime.now(UTC).date()
+    retention_expired_count = sum(
+        1
+        for lifecycle in ai_system_lifecycle_repository.list_all(db)
+        if ai_system_lifecycle_service.retention_expired(lifecycle, today)
+    )
     review_overdue_count = sum(
         1
         for assessment in [*impact_assessments, *risk_assessments]
@@ -206,6 +220,7 @@ def get_summary(db: Session, actor_id: int) -> DashboardSummary:
             unassessed_count=len(ai_system_rows) - assessed_count,
             no_impact_assessment_count=len(ai_system_rows) - impact_assessed_count,
             review_overdue_count=review_overdue_count,
+            retention_expired_count=retention_expired_count,
             in_review_count=in_review_count,
             high_risk_count=high_risk_count,
         ),

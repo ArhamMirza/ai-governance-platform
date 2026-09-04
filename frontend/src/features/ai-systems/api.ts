@@ -1,8 +1,10 @@
 import { httpClient } from "../../shared/api/httpClient";
 import type {
   AISystemLifecycle,
+  ArchivedAISystem,
   DeploymentRecordInput,
   MonitoringInput,
+  RetirementInput,
 } from "./types";
 
 const base = (rowId: number) => `/ai-systems/${rowId}/lifecycle`;
@@ -20,6 +22,15 @@ export const aiSystemLifecycleApi = {
     httpClient.post<AISystemLifecycle>(`${base(rowId)}/request-deployment-approval`),
   approveDeployment: (rowId: number) =>
     httpClient.post<AISystemLifecycle>(`${base(rowId)}/approve-deployment`),
+  setRetirement: (rowId: number, data: RetirementInput) =>
+    httpClient.put<AISystemLifecycle>(`${base(rowId)}/retirement`, data),
+  requestRetirementApproval: (rowId: number) =>
+    httpClient.post<AISystemLifecycle>(`${base(rowId)}/request-retirement-approval`),
+  approveRetirement: (rowId: number) =>
+    httpClient.post<AISystemLifecycle>(`${base(rowId)}/approve-retirement`),
+  archive: (rowId: number) =>
+    httpClient.post<AISystemLifecycle>(`${base(rowId)}/archive`),
+  listArchive: () => httpClient.get<ArchivedAISystem[]>("/ai-systems/archive"),
 };
 
 /** Uploads a document carrying the document_type a stage gate looks for.

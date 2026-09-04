@@ -24,6 +24,18 @@ const usersNavItem: NavItem = {
   ),
 };
 
+const archiveNavItem: NavItem = {
+  to: "/archive",
+  label: "Archive",
+  icon: (
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="4" width="18" height="4" rx="1" />
+      <path d="M5 8v11a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8" />
+      <path d="M10 12h4" />
+    </svg>
+  ),
+};
+
 const navItems: NavItem[] = [
   {
     to: "/",
@@ -109,8 +121,8 @@ export function Layout({ children }: { children: ReactNode }) {
   const { data: user } = useCurrentUser();
   const logout = useLogout();
   const items = hasPermission(user?.role, "manage_users")
-    ? [...navItems, usersNavItem]
-    : navItems;
+    ? [...navItems, archiveNavItem, usersNavItem]
+    : [...navItems, archiveNavItem];
 
   return (
     <div className="app-shell">

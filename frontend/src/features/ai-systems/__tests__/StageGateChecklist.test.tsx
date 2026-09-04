@@ -3,7 +3,12 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
 import { StageGateChecklist } from "../components/StageGateChecklist";
-import { useAdvanceStage, useRevertStage, useUploadStageDocument } from "../hooks";
+import {
+  useAdvanceStage,
+  useArchiveSystem,
+  useRevertStage,
+  useUploadStageDocument,
+} from "../hooks";
 import type { AISystemLifecycle } from "../types";
 
 vi.mock("../hooks");
@@ -23,6 +28,14 @@ function makeLifecycle(overrides: Partial<AISystemLifecycle> = {}): AISystemLife
     deployment_approved_at: null,
     monitoring_owner_id: null,
     incident_escalation_path: null,
+    retirement_reason: null,
+    retirement_approved_by: null,
+    retirement_approved_at: null,
+    retired_at: null,
+    retention_until: null,
+    archived_at: null,
+    is_archived: false,
+    retention_expired: false,
     requirements: [
       {
         key: "impact_assessment_completed",
@@ -32,11 +45,17 @@ function makeLifecycle(overrides: Partial<AISystemLifecycle> = {}): AISystemLife
       },
     ],
     can_advance: false,
+    can_archive: false,
     ...overrides,
   };
 }
 
-function mockHooks({ advance = vi.fn(), revert = vi.fn(), upload = vi.fn() } = {}) {
+function mockHooks({
+  advance = vi.fn(),
+  revert = vi.fn(),
+  upload = vi.fn(),
+  archive = vi.fn(),
+} = {}) {
   vi.mocked(useAdvanceStage).mockReturnValue({
     mutateAsync: advance,
     isPending: false,
@@ -49,7 +68,11 @@ function mockHooks({ advance = vi.fn(), revert = vi.fn(), upload = vi.fn() } = {
     mutate: upload,
     isPending: false,
   } as never);
-  return { advance, revert, upload };
+  vi.mocked(useArchiveSystem).mockReturnValue({
+    mutateAsync: archive,
+    isPending: false,
+  } as never);
+  return { advance, revert, upload, archive };
 }
 
 describe("StageGateChecklist", () => {
@@ -134,19 +157,73 @@ describe("StageGateChecklist", () => {
     await waitFor(() => expect(revert).toHaveBeenCalledWith("Scope changed"));
   });
 
-  it("shows no Advance button at the final stage", () => {
+  it("offers Archive instead of Advance at the final stage", () => {
     mockHooks();
     const lifecycle = makeLifecycle({
       current_stage: "retirement",
       current_stage_label: "Retirement",
       next_stage: null,
       next_stage_label: null,
+      requirements: [
+        {
+          key: "retention_until",
+          label: "Retention period set",
+          satisfied: false,
+          detail: "Set how long this system's record must be kept.",
+        },
+      ],
+    });
+
+    render(<StageGateChecklist rowId={1} lifecycle={lifecycle} />);
+
+    expect(screen.getByText("To archive this system")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Advance/ })).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Complete retirement & archive" }),
+    ).toBeDisabled();
+  });
+
+  it("archives once the retirement requirements pass", async () => {
+    const { archive } = mockHooks();
+    const user = userEvent.setup();
+    const lifecycle = makeLifecycle({
+      current_stage: "retirement",
+      next_stage: null,
+      next_stage_label: null,
+      can_archive: true,
+      requirements: [
+        {
+          key: "retention_until",
+          label: "Retention period set",
+          satisfied: true,
+          detail: "Kept until 2030-01-01.",
+        },
+      ],
+    });
+
+    render(<StageGateChecklist rowId={1} lifecycle={lifecycle} />);
+    await user.click(screen.getByRole("button", { name: "Complete retirement & archive" }));
+
+    await waitFor(() => expect(archive).toHaveBeenCalled());
+  });
+
+  it("shows a read-only archived notice with the retention date", () => {
+    mockHooks();
+    const lifecycle = makeLifecycle({
+      current_stage: "retirement",
+      next_stage: null,
+      next_stage_label: null,
+      is_archived: true,
+      archived_at: "2026-01-01T00:00:00Z",
+      retired_at: "2026-01-01",
+      retention_until: "2031-01-01",
       requirements: [],
     });
 
     render(<StageGateChecklist rowId={1} lifecycle={lifecycle} />);
 
-    expect(screen.getByText("Retirement — final stage")).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /Advance/ })).not.toBeInTheDocument();
+    expect(screen.getByText("Archived")).toBeInTheDocument();
+    expect(screen.getByText(/2031-01-01/)).toBeInTheDocument();
+    expect(screen.queryByRole("button")).not.toBeInTheDocument();
   });
 });

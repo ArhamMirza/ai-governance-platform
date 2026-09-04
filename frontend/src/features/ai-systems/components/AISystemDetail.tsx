@@ -7,7 +7,11 @@ import { useAllImpactAssessments } from "../../impact-assessments/hooks";
 import { useRiskAssessments } from "../../risk-assessments/hooks";
 import { useLifecycle } from "../hooks";
 import { LifecycleStageTracker } from "./LifecycleStageTracker";
-import { DeploymentRecordFields, MonitoringFields } from "./StageFields";
+import {
+  DeploymentRecordFields,
+  MonitoringFields,
+  RetirementFields,
+} from "./StageFields";
 import { StageGateChecklist } from "./StageGateChecklist";
 
 const ENTITY_TYPE = "AISystem";
@@ -58,6 +62,12 @@ export function AISystemDetail({ rowId }: AISystemDetailProps) {
       {["deployment", "operation_and_monitoring", "retirement"].includes(
         lifecycle.current_stage,
       ) && <MonitoringFields rowId={rowId} lifecycle={lifecycle} />}
+
+      {/* Retirement is decided during Operation & Monitoring, so the fields
+          appear a stage before they gate anything. */}
+      {["operation_and_monitoring", "retirement"].includes(lifecycle.current_stage) && (
+        <RetirementFields rowId={rowId} lifecycle={lifecycle} />
+      )}
 
       <h3>Assessments</h3>
       <ul className="assessment-links">

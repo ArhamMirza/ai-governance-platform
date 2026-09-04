@@ -1,6 +1,7 @@
 from fastapi import UploadFile
 from sqlalchemy.orm import Session
 
+from app.core.exceptions import ConflictError
 from app.core.lifecycle_stages import LifecycleStage
 from app.models.sheet import Sheet, SheetRow
 from app.repositories import sheet_repository
@@ -49,9 +50,32 @@ def get_or_create_sheet(db: Session) -> Sheet:
     return sheet_service.create_sheet(db, ENTITY_TYPE, "AI System Inventory", DEFAULT_COLUMNS)
 
 
-def list_rows(db: Session) -> list[SheetRow]:
+def _archived_row_ids(db: Session) -> set[int]:
+    from app.repositories import ai_system_lifecycle_repository
+
+    return {
+        lifecycle.ai_system_row_id
+        for lifecycle in ai_system_lifecycle_repository.list_all(db)
+        if lifecycle.archived_at is not None
+    }
+
+
+def list_rows(db: Session, include_archived: bool = False) -> list[SheetRow]:
+    """Archived systems are retired records, not part of the active estate --
+    they're excluded from the inventory grid and from coverage counts, and
+    listed on their own in the archive."""
     sheet = get_or_create_sheet(db)
-    return sheet_service.list_rows(db, sheet.id)
+    rows = sheet_service.list_rows(db, sheet.id)
+    if include_archived:
+        return rows
+    archived = _archived_row_ids(db)
+    return [row for row in rows if row.id not in archived]
+
+
+def list_archived_rows(db: Session) -> list[SheetRow]:
+    sheet = get_or_create_sheet(db)
+    archived = _archived_row_ids(db)
+    return [row for row in sheet_service.list_rows(db, sheet.id) if row.id in archived]
 
 
 def set_columns(db: Session, columns: list[ColumnDef], actor_id: int | None) -> Sheet:
@@ -97,6 +121,17 @@ def delete_row(db: Session, row_id: int, actor_id: int | None) -> None:
         impact_assessment_service,
         risk_assessment_service,
     )
+
+    # Retention is the whole point of the archive: an archived record can't be
+    # deleted until the period the organization set has actually run out.
+    lifecycle = ai_system_lifecycle_service.get_or_create(db, row_id)
+    if lifecycle.archived_at is not None and not ai_system_lifecycle_service.retention_expired(
+        lifecycle
+    ):
+        raise ConflictError(
+            "This archived system is kept until "
+            f"{lifecycle.retention_until}. It can't be deleted before then."
+        )
 
     risk_assessment = risk_assessment_service.get_for_ai_system(db, row_id)
     if risk_assessment is not None:

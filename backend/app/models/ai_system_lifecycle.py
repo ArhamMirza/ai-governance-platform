@@ -41,6 +41,20 @@ class AISystemLifecycle(Base):
     monitoring_owner_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
     incident_escalation_path: Mapped[str | None] = mapped_column(Text, nullable=True)
 
+    # Retirement, and the archive it leaves behind. A retired system's record
+    # is kept for retention_until so it stays auditable after the system is
+    # switched off; only then can it be deleted.
+    retirement_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+    retirement_approved_by: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    retirement_approved_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    retired_at: Mapped[date | None] = mapped_column(Date, nullable=True)
+    retention_until: Mapped[date | None] = mapped_column(Date, nullable=True)
+    archived_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True, index=True
+    )
+
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(UTC)
     )
