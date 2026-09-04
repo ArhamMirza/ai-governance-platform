@@ -1,5 +1,11 @@
+import { Link } from "react-router-dom";
+
 import { DataGrid } from "../../sheets/components/DataGrid";
 import { aiSystemInventoryAdapter } from "../api";
+
+// Server-owned: the stage only moves by passing a stage gate, so it is shown
+// here rather than edited here.
+const READ_ONLY_COLUMNS = ["lifecycle_stage"];
 
 const QUERY_KEY = ["ai-system-inventory"];
 const LONG_TEXT_COLUMNS = [
@@ -30,6 +36,8 @@ export function AISystemInventoryGrid() {
       adapter={aiSystemInventoryAdapter}
       longTextColumnKeys={LONG_TEXT_COLUMNS}
       columnGroups={COLUMN_GROUPS}
+      readOnlyColumnKeys={READ_ONLY_COLUMNS}
+      rowActions={(row) => <Link to={`/ai-systems/${row.id}`}>Open</Link>}
       confirmDelete={(row) => {
         const name =
           typeof row.data.name === "string" && row.data.name ? row.data.name : "this AI system";

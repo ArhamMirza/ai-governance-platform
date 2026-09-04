@@ -64,6 +64,7 @@ def upload_evidence(
     file: UploadFile,
     description: str | None,
     actor_id: int | None,
+    document_type: str | None = None,
 ) -> Evidence:
     if folder_id is not None:
         folder = folder_repository.get(db, folder_id)
@@ -96,6 +97,7 @@ def upload_evidence(
         size_bytes=len(contents),
         storage_path=str(storage_path),
         description=description,
+        document_type=document_type,
         uploaded_by=actor_id,
     )
     evidence = evidence_repository.create(db, evidence)

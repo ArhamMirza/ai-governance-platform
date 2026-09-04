@@ -24,6 +24,19 @@ def list_at_level(
     )
 
 
+def list_for_entity(
+    db: Session, entity_type: str, entity_id: int, document_type: str | None = None
+) -> list[Evidence]:
+    """Every document for an entity regardless of folder -- list_at_level is
+    single-level, but a stage gate doesn't care where the file was filed."""
+    query = select(Evidence).where(
+        Evidence.entity_type == entity_type, Evidence.entity_id == entity_id
+    )
+    if document_type is not None:
+        query = query.where(Evidence.document_type == document_type)
+    return list(db.scalars(query.order_by(Evidence.filename)))
+
+
 def has_evidence_in_folder(db: Session, folder_id: int) -> bool:
     return db.scalar(select(Evidence.id).where(Evidence.folder_id == folder_id)) is not None
 

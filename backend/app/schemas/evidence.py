@@ -14,5 +14,6 @@ class EvidenceRead(BaseModel):
     content_type: str
     size_bytes: int
     description: str | None
+    document_type: str | None
     uploaded_by: int | None
     uploaded_at: datetime

@@ -17,6 +17,12 @@ RISK_ASSESSMENT_ENTITY_TYPE = "RiskAssessment"
 # set_columns() refuses to drop them (see set_columns below).
 RESERVED_RISK_INPUT_COLUMNS = {"likelihood", "impact", "residual_likelihood", "residual_impact"}
 
+AI_SYSTEM_INVENTORY_ENTITY_TYPE = "AISystemInventory"
+
+# lifecycle_stage is owned by the life cycle service and gated by stage gates,
+# so it can't be dropped from the inventory sheet either.
+RESERVED_AI_SYSTEM_COLUMNS = {"lifecycle_stage"}
+
 # score_key -> (likelihood_key, impact_key). Computed and overwritten on every
 # add_row/update_row for a RiskAssessment sheet -- never taken from caller input.
 SCORE_COLUMN_PAIRS = {
@@ -99,6 +105,13 @@ def set_columns(db: Session, sheet_id: int, columns: list[ColumnDef]) -> Sheet:
         if dropped_reserved:
             raise ValidationError(
                 "Cannot remove reserved risk-scoring column(s): "
+                f"{', '.join(sorted(dropped_reserved))}"
+            )
+    if sheet.entity_type == AI_SYSTEM_INVENTORY_ENTITY_TYPE:
+        dropped_reserved = dropped_keys & RESERVED_AI_SYSTEM_COLUMNS
+        if dropped_reserved:
+            raise ValidationError(
+                "Cannot remove reserved life cycle column(s): "
                 f"{', '.join(sorted(dropped_reserved))}"
             )
     if dropped_keys:
