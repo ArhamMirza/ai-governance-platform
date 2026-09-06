@@ -9,6 +9,7 @@ import { ImpactAssessmentList } from "../../impact-assessments/components/Impact
 import { useRiskCriteria } from "../../risk-criteria/hooks";
 import { DataGrid } from "../../sheets/components/DataGrid";
 import type { SheetRow } from "../../sheets/types";
+import { formatUserOption } from "../../users/formatUserOption";
 import { useUserDirectory } from "../../users/hooks";
 import { makeRiskAssessmentSheetAdapter } from "../api";
 import {
@@ -54,7 +55,7 @@ export function RiskAssessmentDetail({ riskAssessmentId }: RiskAssessmentDetailP
 
   const ownerOptions = (directory ?? []).map((user) => ({
     value: String(user.id),
-    label: user.name,
+    label: formatUserOption(user),
   }));
 
   const handleDelete = async () => {

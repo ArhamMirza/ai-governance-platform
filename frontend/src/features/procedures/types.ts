@@ -23,6 +23,7 @@ export interface ProcedureHistoryEntry {
 export interface ProcedureCreateInput {
   title: string;
   description?: string | null;
+  owner_id?: number | null;
   policy_id?: number | null;
   effective_date?: string | null;
 }
@@ -30,6 +31,7 @@ export interface ProcedureCreateInput {
 export interface ProcedureUpdateInput {
   title?: string;
   description?: string | null;
+  owner_id?: number | null;
   policy_id?: number | null;
   effective_date?: string | null;
 }

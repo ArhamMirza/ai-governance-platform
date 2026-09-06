@@ -79,6 +79,17 @@ def test_update_procedure_metadata_does_not_bump_version(client: TestClient) -> 
     assert response.json()["version"] == 1
 
 
+def test_update_procedure_can_set_owner(client: TestClient, second_user: User) -> None:
+    procedure_id = create_procedure(client)["id"]
+
+    response = client.put(
+        f"/api/v1/procedures/{procedure_id}", json={"owner_id": second_user.id}
+    )
+
+    assert response.status_code == 200
+    assert response.json()["owner_id"] == second_user.id
+
+
 def test_uploading_a_document_bumps_version_and_appears_in_history(client: TestClient) -> None:
     procedure_id = create_procedure(client)["id"]
 

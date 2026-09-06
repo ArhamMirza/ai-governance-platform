@@ -15,6 +15,7 @@ class PolicyCreate(BaseModel):
 class PolicyUpdate(BaseModel):
     title: str | None = None
     description: str | None = None
+    owner_id: int | None = None
     effective_date: date | None = None
 
 

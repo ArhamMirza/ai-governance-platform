@@ -18,6 +18,8 @@ class AISystemLifecycleRead(BaseModel):
     next_stage_label: str | None
     entered_stage_at: datetime
 
+    owner_id: int | None
+
     deployment_environment: str | None
     deployment_version: str | None
     deployed_at: date | None
@@ -45,6 +47,10 @@ class AISystemLifecycleRead(BaseModel):
 
 class StageRevert(BaseModel):
     reason: str
+
+
+class OwnerUpdate(BaseModel):
+    owner_id: int | None = None
 
 
 class DeploymentRecordUpdate(BaseModel):

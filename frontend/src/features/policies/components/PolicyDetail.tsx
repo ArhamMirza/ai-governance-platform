@@ -3,7 +3,15 @@ import { AuditLogViewer } from "../../audit-log/components/AuditLogViewer";
 import { useCanApprove } from "../../audit-log/useCanApprove";
 import { DocumentBrowser } from "../../evidence/components/DocumentBrowser";
 import { FrameworkTagPicker } from "../../framework-tags/components/FrameworkTagPicker";
-import { useApprovePolicy, usePolicy, usePolicyVersions, useSubmitForReview } from "../hooks";
+import { formatUserOption } from "../../users/formatUserOption";
+import { useUserDirectory } from "../../users/hooks";
+import {
+  useApprovePolicy,
+  usePolicy,
+  usePolicyVersions,
+  useSubmitForReview,
+  useUpdatePolicy,
+} from "../hooks";
 
 interface PolicyDetailProps {
   policyId: number;
@@ -17,12 +25,16 @@ const HISTORY_ACTION_LABELS: Record<string, string> = {
 export function PolicyDetail({ policyId }: PolicyDetailProps) {
   const { data: policy, isLoading, isError } = usePolicy(policyId);
   const { data: history } = usePolicyVersions(policyId);
+  const { data: directory } = useUserDirectory();
   const submitForReview = useSubmitForReview(policyId);
   const approve = useApprovePolicy(policyId);
+  const updatePolicy = useUpdatePolicy(policyId);
   const { canApprove, reason } = useCanApprove("Policy", policyId);
 
   if (isLoading) return <p>Loading policy...</p>;
   if (isError || !policy) return <p>Failed to load policy.</p>;
+
+  const owner = directory?.find((user) => user.id === policy.owner_id);
 
   return (
     <article>
@@ -30,6 +42,28 @@ export function PolicyDetail({ policyId }: PolicyDetailProps) {
       <StatusBadge status={policy.status} />
       <p>{policy.description}</p>
       <p>Version {policy.version}</p>
+
+      <div>
+        <label htmlFor="policy-owner-edit">Owner</label>
+        {policy.status === "draft" ? (
+          <select
+            id="policy-owner-edit"
+            value={policy.owner_id ?? ""}
+            onChange={(e) =>
+              updatePolicy.mutate({ owner_id: e.target.value ? Number(e.target.value) : null })
+            }
+          >
+            <option value="">Unassigned</option>
+            {(directory ?? []).map((user) => (
+              <option key={user.id} value={user.id}>
+                {formatUserOption(user)}
+              </option>
+            ))}
+          </select>
+        ) : (
+          <p>{owner ? formatUserOption(owner) : "Unassigned"}</p>
+        )}
+      </div>
 
       <div className="detail-actions">
         {policy.status === "draft" && (

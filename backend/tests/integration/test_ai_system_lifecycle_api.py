@@ -301,6 +301,17 @@ def test_deployment_gate_requires_monitoring_setup(
     assert advance(client, row_id).json()["current_stage"] == "operation_and_monitoring"
 
 
+def test_owner_can_be_set_and_cleared(client: TestClient) -> None:
+    row_id = make_system(client)
+
+    response = client.put(LIFECYCLE.format(row_id=row_id) + "/owner", json={"owner_id": 1})
+    assert response.status_code == 200
+    assert response.json()["owner_id"] == 1
+
+    response = client.put(LIFECYCLE.format(row_id=row_id) + "/owner", json={"owner_id": None})
+    assert response.json()["owner_id"] is None
+
+
 # --- Reverting -------------------------------------------------------------
 
 

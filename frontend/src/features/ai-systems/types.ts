@@ -13,6 +13,8 @@ export interface AISystemLifecycle {
   next_stage_label: string | null;
   entered_stage_at: string;
 
+  owner_id: number | null;
+
   deployment_environment: string | null;
   deployment_version: string | null;
   deployed_at: string | null;
@@ -34,6 +36,10 @@ export interface AISystemLifecycle {
   requirements: GateRequirement[];
   can_advance: boolean;
   can_archive: boolean;
+}
+
+export interface OwnerInput {
+  owner_id?: number | null;
 }
 
 export interface DeploymentRecordInput {

@@ -62,6 +62,15 @@ def test_update_policy_metadata_does_not_bump_version(client: TestClient) -> Non
     assert response.json()["version"] == 1
 
 
+def test_update_policy_can_set_owner(client: TestClient, second_user: User) -> None:
+    policy_id = create_policy(client)["id"]
+
+    response = client.put(f"/api/v1/policies/{policy_id}", json={"owner_id": second_user.id})
+
+    assert response.status_code == 200
+    assert response.json()["owner_id"] == second_user.id
+
+
 def test_uploading_a_document_bumps_version_and_appears_in_history(client: TestClient) -> None:
     policy_id = create_policy(client)["id"]
 

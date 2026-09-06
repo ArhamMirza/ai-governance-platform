@@ -26,6 +26,11 @@ class AISystemLifecycle(Base):
         DateTime(timezone=True), default=lambda: datetime.now(UTC)
     )
 
+    # Overall ownership -- who is accountable for this system across every
+    # lifecycle stage, distinct from monitoring_owner_id below (which only
+    # covers day-2 operations once deployed).
+    owner_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+
     # Deployment record -- settable over the API so a CI/CD job can stamp it.
     deployment_environment: Mapped[str | None] = mapped_column(String(100), nullable=True)
     deployment_version: Mapped[str | None] = mapped_column(String(100), nullable=True)

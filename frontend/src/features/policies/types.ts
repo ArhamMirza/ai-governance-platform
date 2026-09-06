@@ -22,11 +22,13 @@ export interface PolicyHistoryEntry {
 export interface PolicyCreateInput {
   title: string;
   description?: string | null;
+  owner_id?: number | null;
   effective_date?: string | null;
 }
 
 export interface PolicyUpdateInput {
   title?: string;
   description?: string | null;
+  owner_id?: number | null;
   effective_date?: string | null;
 }

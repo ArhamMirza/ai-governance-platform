@@ -4,6 +4,7 @@ import type {
   ArchivedAISystem,
   DeploymentRecordInput,
   MonitoringInput,
+  OwnerInput,
   RetirementInput,
 } from "./types";
 
@@ -18,6 +19,8 @@ export const aiSystemLifecycleApi = {
     httpClient.put<AISystemLifecycle>(`${base(rowId)}/deployment-record`, data),
   setMonitoring: (rowId: number, data: MonitoringInput) =>
     httpClient.put<AISystemLifecycle>(`${base(rowId)}/monitoring`, data),
+  setOwner: (rowId: number, data: OwnerInput) =>
+    httpClient.put<AISystemLifecycle>(`${base(rowId)}/owner`, data),
   requestDeploymentApproval: (rowId: number) =>
     httpClient.post<AISystemLifecycle>(`${base(rowId)}/request-deployment-approval`),
   approveDeployment: (rowId: number) =>

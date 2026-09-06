@@ -1,6 +1,7 @@
 import { useState } from "react";
 
 import { ApiError } from "../../../shared/api/httpClient";
+import { formatUserOption } from "../../users/formatUserOption";
 import { useUserDirectory } from "../../users/hooks";
 import {
   useApproveDeployment,
@@ -9,6 +10,7 @@ import {
   useRequestRetirementApproval,
   useSetDeploymentRecord,
   useSetMonitoring,
+  useSetOwner,
   useSetRetirement,
 } from "../hooks";
 import type { AISystemLifecycle } from "../types";
@@ -26,6 +28,40 @@ function readError(err: unknown, fallback: string): string {
 interface StageFieldsProps {
   rowId: number;
   lifecycle: AISystemLifecycle;
+}
+
+/** Who is accountable for this system across its whole lifecycle. Shown
+ * unconditionally, unlike the stage-gated fields below -- ownership isn't
+ * a gate requirement, just an always-visible accountability record. */
+export function OwnerField({ rowId, lifecycle }: StageFieldsProps) {
+  const save = useSetOwner(rowId);
+  const { data: directory } = useUserDirectory();
+  const [ownerId, setOwnerId] = useState(
+    lifecycle.owner_id !== null ? String(lifecycle.owner_id) : "",
+  );
+
+  const handleChange = (value: string) => {
+    setOwnerId(value);
+    save.mutate({ owner_id: value ? Number(value) : null });
+  };
+
+  return (
+    <div className="stage-fields">
+      <label htmlFor="ai-system-owner">AI System Owner</label>
+      <select
+        id="ai-system-owner"
+        value={ownerId}
+        onChange={(e) => handleChange(e.target.value)}
+      >
+        <option value="">Unassigned</option>
+        {(directory ?? []).map((user) => (
+          <option key={user.id} value={user.id}>
+            {formatUserOption(user)}
+          </option>
+        ))}
+      </select>
+    </div>
+  );
 }
 
 /** The structured facts the Deployment gate checks. Also reachable over the
@@ -168,7 +204,7 @@ export function MonitoringFields({ rowId, lifecycle }: StageFieldsProps) {
           <option value="">Unassigned</option>
           {(directory ?? []).map((user) => (
             <option key={user.id} value={user.id}>
-              {user.name}
+              {formatUserOption(user)}
             </option>
           ))}
         </select>

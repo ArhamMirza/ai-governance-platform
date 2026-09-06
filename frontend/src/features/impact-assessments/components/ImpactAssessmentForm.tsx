@@ -3,6 +3,8 @@ import { useState } from "react";
 import { ApiError } from "../../../shared/api/httpClient";
 import { DocumentBrowser } from "../../evidence/components/DocumentBrowser";
 import { FrameworkTagPicker } from "../../framework-tags/components/FrameworkTagPicker";
+import { formatUserOption } from "../../users/formatUserOption";
+import { useUserDirectory } from "../../users/hooks";
 import { useDeleteImpactAssessment, useUpdateImpactAssessment } from "../hooks";
 import { IMPACT_FACTORS } from "../impactFactors";
 import type { ImpactAssessment, ImpactAssessmentUpdateInput, ImpactFactorAssessment } from "../types";
@@ -73,6 +75,7 @@ export function ImpactAssessmentForm({
 }: ImpactAssessmentFormProps) {
   const updateAssessment = useUpdateImpactAssessment(riskAssessmentId, assessment.id);
   const deleteAssessment = useDeleteImpactAssessment(riskAssessmentId);
+  const { data: directory } = useUserDirectory();
   const [error, setError] = useState<string | null>(null);
 
   const save = async (data: ImpactAssessmentUpdateInput) => {
@@ -118,6 +121,24 @@ export function ImpactAssessmentForm({
             ? `Completed ${assessment.assessment_date ?? "—"} · next review due ${assessment.next_review_date}`
             : "Marking this completed sets its review date one year out, and unlocks risk assessment for this AI system."}
         </p>
+      </div>
+
+      <div className="impact-assessment-field">
+        <label htmlFor={`impact-assessor-${assessment.id}`}>Assessor</label>
+        <select
+          id={`impact-assessor-${assessment.id}`}
+          value={assessment.assessor_id ?? ""}
+          onChange={(e) =>
+            save({ assessor_id: e.target.value ? Number(e.target.value) : null })
+          }
+        >
+          <option value="">Unassigned</option>
+          {(directory ?? []).map((user) => (
+            <option key={user.id} value={user.id}>
+              {formatUserOption(user)}
+            </option>
+          ))}
+        </select>
       </div>
 
       {NARRATIVE_FIELDS.map(({ key, label }) => (

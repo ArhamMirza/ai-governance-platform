@@ -3,11 +3,14 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 
 import { usePolicies } from "../../policies/hooks";
+import { formatUserOption } from "../../users/formatUserOption";
+import { useUserDirectory } from "../../users/hooks";
 import { useCreateProcedure } from "../hooks";
 
 const procedureFormSchema = z.object({
   title: z.string().min(1, "Title is required"),
   description: z.string().optional(),
+  owner_id: z.string().optional(),
   policy_id: z.string().optional(),
 });
 
@@ -20,6 +23,7 @@ interface ProcedureFormProps {
 export function ProcedureForm({ onCreated }: ProcedureFormProps) {
   const createProcedure = useCreateProcedure();
   const { data: policies } = usePolicies();
+  const { data: directory } = useUserDirectory();
   const {
     register,
     handleSubmit,
@@ -31,6 +35,7 @@ export function ProcedureForm({ onCreated }: ProcedureFormProps) {
     const procedure = await createProcedure.mutateAsync({
       title: values.title,
       description: values.description || null,
+      owner_id: values.owner_id ? Number(values.owner_id) : null,
       policy_id: values.policy_id ? Number(values.policy_id) : null,
     });
     reset();
@@ -47,6 +52,17 @@ export function ProcedureForm({ onCreated }: ProcedureFormProps) {
       <div>
         <label htmlFor="procedure-description">Description</label>
         <textarea id="procedure-description" {...register("description")} />
+      </div>
+      <div>
+        <label htmlFor="procedure-owner">Owner</label>
+        <select id="procedure-owner" {...register("owner_id")}>
+          <option value="">Unassigned</option>
+          {(directory ?? []).map((user) => (
+            <option key={user.id} value={user.id}>
+              {formatUserOption(user)}
+            </option>
+          ))}
+        </select>
       </div>
       <div>
         <label htmlFor="procedure-policy">Implements Policy (optional)</label>

@@ -58,6 +58,7 @@ describe("ProcedureForm", () => {
       expect(proceduresApi.create).toHaveBeenCalledWith({
         title: "New Procedure",
         description: null,
+        owner_id: null,
         policy_id: null,
       });
       expect(onCreated).toHaveBeenCalledWith(42);
@@ -94,6 +95,7 @@ describe("ProcedureForm", () => {
       expect(proceduresApi.create).toHaveBeenCalledWith({
         title: "Linked Procedure",
         description: null,
+        owner_id: null,
         policy_id: 5,
       });
     });
