@@ -54,6 +54,22 @@ export interface MyRiskItem {
   overdue: boolean;
 }
 
+export type PendingApprovalEntityType =
+  | "Policy"
+  | "Procedure"
+  | "AISystemDeployment"
+  | "AISystemRetirement"
+  | "RiskAssessment"
+  | "ImpactAssessment";
+
+export interface PendingApprovalItem {
+  entity_type: PendingApprovalEntityType;
+  entity_id: number;
+  title: string;
+  stage_label: string;
+  submitted_at: string | null;
+}
+
 export interface DashboardSummary {
   policies: StatusCounts;
   procedures: StatusCounts;
@@ -65,4 +81,5 @@ export interface DashboardSummary {
   matrix: MatrixCell[];
   criteria: RiskCriteria;
   my_risk_items: MyRiskItem[];
+  pending_approvals: PendingApprovalItem[];
 }

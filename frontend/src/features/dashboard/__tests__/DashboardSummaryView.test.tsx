@@ -58,6 +58,15 @@ const summary: DashboardSummary = {
       overdue: true,
     },
   ],
+  pending_approvals: [
+    {
+      entity_type: "Policy",
+      entity_id: 3,
+      title: "Vendor Policy",
+      stage_label: "Awaiting your approval as Chief AI Governance Officer",
+      submitted_at: "2026-01-01T00:00:00Z",
+    },
+  ],
 };
 
 const emptySummary: DashboardSummary = {
@@ -87,6 +96,7 @@ const emptySummary: DashboardSummary = {
   matrix: [],
   criteria,
   my_risk_items: [],
+  pending_approvals: [],
 };
 
 function renderView() {
@@ -171,6 +181,32 @@ describe("DashboardSummaryView", () => {
     const link = screen.getByRole("link", { name: "Bias" });
     expect(link).toHaveAttribute("href", "/risk-assessments/7");
     expect(screen.getByText("Overdue")).toBeInTheDocument();
+  });
+
+  it("shows pending approvals, linking to the right record", async () => {
+    vi.mocked(dashboardApi.getSummary).mockResolvedValue(summary);
+
+    renderView();
+
+    await waitFor(() => {
+      expect(screen.getByText("Pending My Approval")).toBeInTheDocument();
+    });
+    const link = screen.getByRole("link", { name: "Vendor Policy" });
+    expect(link).toHaveAttribute("href", "/policies/3");
+    expect(
+      screen.getByText("Awaiting your approval as Chief AI Governance Officer"),
+    ).toBeInTheDocument();
+  });
+
+  it("hides the Pending My Approval panel when there is nothing pending", async () => {
+    vi.mocked(dashboardApi.getSummary).mockResolvedValue(emptySummary);
+
+    renderView();
+
+    await waitFor(() => {
+      expect(screen.getByText("Nothing needs attention")).toBeInTheDocument();
+    });
+    expect(screen.queryByText("Pending My Approval")).not.toBeInTheDocument();
   });
 
   it("hides the My Risk Items panel when there are none", async () => {

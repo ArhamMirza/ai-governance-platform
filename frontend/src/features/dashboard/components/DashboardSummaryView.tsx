@@ -5,7 +5,22 @@ import { SegmentedBar, type Segment } from "../../../shared/components/Segmented
 import { StatCard } from "../../../shared/components/StatCard";
 import { RiskMatrix } from "../../risk-assessments/components/RiskMatrix";
 import { useDashboardSummary } from "../hooks";
-import type { AttentionItem, MyRiskItem, StatusCounts } from "../types";
+import type {
+  AttentionItem,
+  MyRiskItem,
+  PendingApprovalEntityType,
+  PendingApprovalItem,
+  StatusCounts,
+} from "../types";
+
+const PENDING_APPROVAL_LINKS: Record<PendingApprovalEntityType, (id: number) => string> = {
+  Policy: (id) => `/policies/${id}`,
+  Procedure: (id) => `/procedures/${id}`,
+  AISystemDeployment: (id) => `/ai-systems/${id}`,
+  AISystemRetirement: (id) => `/ai-systems/${id}`,
+  RiskAssessment: (id) => `/risk-assessments/${id}`,
+  ImpactAssessment: (id) => `/impact-assessments/${id}`,
+};
 
 const ATTENTION_LINKS: Record<string, string> = {
   overdue_treatments: "/risk-assessments",
@@ -77,6 +92,27 @@ function AttentionPanel({ items }: { items: AttentionItem[] }) {
   );
 }
 
+function PendingApprovalsPanel({ items }: { items: PendingApprovalItem[] }) {
+  if (items.length === 0) return null;
+
+  return (
+    <div className="dashboard-card">
+      <h3>Pending My Approval</h3>
+      <p>Things waiting on your sign-off right now.</p>
+      <ul className="pending-approvals-list">
+        {items.map((item) => (
+          <li key={`${item.entity_type}-${item.entity_id}`}>
+            <Link to={PENDING_APPROVAL_LINKS[item.entity_type](item.entity_id)}>
+              {item.title}
+            </Link>
+            <span className="pending-approval-stage">{item.stage_label}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 function MyRiskItemsPanel({ items }: { items: MyRiskItem[] }) {
   if (items.length === 0) return null;
 
@@ -136,6 +172,8 @@ export function DashboardSummaryView() {
   return (
     <div className="dashboard">
       <AttentionPanel items={summary.attention} />
+
+      <PendingApprovalsPanel items={summary.pending_approvals} />
 
       <MyRiskItemsPanel items={summary.my_risk_items} />
 
