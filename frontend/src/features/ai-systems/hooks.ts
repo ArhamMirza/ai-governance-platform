@@ -1,7 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { aiSystemLifecycleApi, uploadStageDocument } from "./api";
-import type { DeploymentRecordInput, MonitoringInput, RetirementInput } from "./types";
+import type {
+  DeploymentRecordInput,
+  MonitoringInput,
+  OwnerInput,
+  RetirementInput,
+} from "./types";
 
 export function lifecycleKey(rowId: number) {
   return ["ai-systems", rowId, "lifecycle"] as const;
@@ -57,6 +62,14 @@ export function useSetMonitoring(rowId: number) {
   const invalidate = useInvalidateLifecycle(rowId);
   return useMutation({
     mutationFn: (data: MonitoringInput) => aiSystemLifecycleApi.setMonitoring(rowId, data),
+    onSuccess: invalidate,
+  });
+}
+
+export function useSetOwner(rowId: number) {
+  const invalidate = useInvalidateLifecycle(rowId);
+  return useMutation({
+    mutationFn: (data: OwnerInput) => aiSystemLifecycleApi.setOwner(rowId, data),
     onSuccess: invalidate,
   });
 }

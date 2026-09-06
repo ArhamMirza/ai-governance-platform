@@ -10,6 +10,7 @@ import { LifecycleStageTracker } from "./LifecycleStageTracker";
 import {
   DeploymentRecordFields,
   MonitoringFields,
+  OwnerField,
   RetirementFields,
 } from "./StageFields";
 import { StageGateChecklist } from "./StageGateChecklist";
@@ -51,6 +52,8 @@ export function AISystemDetail({ rowId }: AISystemDetailProps) {
       </div>
 
       <LifecycleStageTracker currentStage={lifecycle.current_stage} />
+
+      <OwnerField rowId={rowId} lifecycle={lifecycle} />
 
       <StageGateChecklist rowId={rowId} lifecycle={lifecycle} />
 

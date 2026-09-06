@@ -11,6 +11,7 @@ from app.schemas.ai_system_lifecycle import (
     DeploymentRecordUpdate,
     GateRequirementRead,
     MonitoringUpdate,
+    OwnerUpdate,
     RetirementUpdate,
     StageRevert,
 )
@@ -35,6 +36,7 @@ def _to_read(db: Session, lifecycle: AISystemLifecycle) -> AISystemLifecycleRead
         next_stage=str(upcoming) if upcoming else None,
         next_stage_label=label(upcoming) if upcoming else None,
         entered_stage_at=lifecycle.entered_stage_at,
+        owner_id=lifecycle.owner_id,
         deployment_environment=lifecycle.deployment_environment,
         deployment_version=lifecycle.deployment_version,
         deployed_at=lifecycle.deployed_at,
@@ -136,6 +138,17 @@ def set_monitoring(
     lifecycle = ai_system_lifecycle_service.set_monitoring(
         db, row_id, data.monitoring_owner_id, data.incident_escalation_path, actor_id
     )
+    return _to_read(db, lifecycle)
+
+
+@router.put("/{row_id}/lifecycle/owner", response_model=AISystemLifecycleRead)
+def set_owner(
+    row_id: int,
+    data: OwnerUpdate,
+    db: Session = Depends(get_db),
+    actor_id: int | None = Depends(get_current_actor_id),
+) -> AISystemLifecycleRead:
+    lifecycle = ai_system_lifecycle_service.set_owner(db, row_id, data.owner_id, actor_id)
     return _to_read(db, lifecycle)
 
 

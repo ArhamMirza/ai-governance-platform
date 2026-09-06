@@ -158,6 +158,21 @@ def set_monitoring(
     return lifecycle
 
 
+def set_owner(
+    db: Session,
+    ai_system_row_id: int,
+    owner_id: int | None,
+    actor_id: int | None,
+) -> AISystemLifecycle:
+    lifecycle = get_or_create(db, ai_system_row_id)
+    lifecycle.owner_id = owner_id
+    lifecycle = ai_system_lifecycle_repository.save(db, lifecycle)
+    audit_service.log(
+        db, ENTITY_TYPE, ai_system_row_id, "owner_updated", actor_id, {"owner_id": owner_id}
+    )
+    return lifecycle
+
+
 def request_deployment_approval(
     db: Session, ai_system_row_id: int, actor_id: int | None
 ) -> None:

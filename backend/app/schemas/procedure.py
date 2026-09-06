@@ -16,6 +16,7 @@ class ProcedureCreate(BaseModel):
 class ProcedureUpdate(BaseModel):
     title: str | None = None
     description: str | None = None
+    owner_id: int | None = None
     policy_id: int | None = None
     effective_date: date | None = None
 
