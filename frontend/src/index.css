@@ -1824,6 +1824,123 @@ article h3 + p {
   padding: 6px 0;
 }
 
+/* ---------- Governance roles ---------- */
+
+.governance-role-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 14px;
+}
+
+.governance-role-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 16px 18px;
+  margin-bottom: 14px;
+}
+
+.governance-role-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.governance-role-card-header h3 {
+  margin: 0;
+}
+
+.governance-role-card textarea {
+  width: 100%;
+  margin-bottom: 10px;
+}
+
+.governance-role-field {
+  margin-bottom: 10px;
+}
+
+.governance-role-field label {
+  display: block;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-faint);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  margin-bottom: 4px;
+}
+
+.governance-role-field select {
+  width: 100%;
+}
+
+.governance-role-field-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.governance-role-field-row select {
+  flex: 1;
+}
+
+.governance-role-holders {
+  margin: 0 0 12px;
+  padding: 0;
+  list-style: none;
+}
+
+.governance-role-holders li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 5px 0;
+  font-size: 13px;
+}
+
+/* ---------- Org chart ---------- */
+
+.org-chart-wrapper {
+  overflow-x: auto;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 16px;
+}
+
+.org-chart-edge {
+  fill: none;
+  stroke: var(--border-strong);
+  stroke-width: 2;
+}
+
+.org-chart-box {
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  background: var(--bg-page);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 8px 10px;
+  font-size: 12.5px;
+  overflow: hidden;
+}
+
+.org-chart-box strong {
+  font-size: 13px;
+}
+
+.org-chart-box select {
+  margin-top: auto;
+  font-size: 11px;
+  padding: 3px 4px;
+}
+
 /* ---------- Confirm dialog ---------- */
 
 .confirm-dialog {

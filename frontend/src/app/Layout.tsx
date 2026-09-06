@@ -36,6 +36,20 @@ const archiveNavItem: NavItem = {
   ),
 };
 
+const governanceRolesNavItem: NavItem = {
+  to: "/governance",
+  label: "Roles & Responsibilities",
+  icon: (
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="6" r="3" />
+      <path d="M12 9v3" />
+      <circle cx="5" cy="18" r="2.5" />
+      <circle cx="19" cy="18" r="2.5" />
+      <path d="M12 12l-6 4.2M12 12l6 4.2" />
+    </svg>
+  ),
+};
+
 const navItems: NavItem[] = [
   {
     to: "/",
@@ -104,6 +118,7 @@ const navItems: NavItem[] = [
       </svg>
     ),
   },
+  governanceRolesNavItem,
   {
     to: "/frameworks",
     label: "Frameworks",

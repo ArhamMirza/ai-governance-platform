@@ -9,11 +9,13 @@ from sqlalchemy.pool import StaticPool
 
 from app.core.database import Base, get_db
 from app.core.framework_reference_data import as_rows
+from app.core.governance_role_seed_data import DEFAULT_ROLES
 from app.core.security import hash_password
 from app.dependencies import get_current_user
 from app.main import app
 from app.models.framework_control import FrameworkControl
 from app.models.framework_soa_entry import FrameworkSoaEntry
+from app.models.governance_role import GovernanceRole
 from app.models.user import User, UserRole
 from app.services import evidence_service
 
@@ -50,6 +52,20 @@ def db_session() -> Generator[Session, None, None]:
         session.bulk_insert_mappings(
             FrameworkSoaEntry,
             [{"framework_control_id": control_id} for control_id in annex_a_ids],
+        )
+        session.commit()
+
+        caigo = GovernanceRole(
+            name=DEFAULT_ROLES[0][0],
+            responsibilities=DEFAULT_ROLES[0][1],
+            max_holders=DEFAULT_ROLES[0][2],
+        )
+        session.add(caigo)
+        session.commit()
+        session.add_all(
+            GovernanceRole(name=name, responsibilities=responsibilities, max_holders=max_holders,
+                           parent_role_id=caigo.id)
+            for name, responsibilities, max_holders in DEFAULT_ROLES[1:]
         )
         session.commit()
 

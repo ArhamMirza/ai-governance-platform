@@ -6,6 +6,7 @@ import { ArchivePage } from "../pages/ArchivePage";
 import { DashboardPage } from "../pages/DashboardPage";
 import { DataInventoryPage } from "../pages/DataInventoryPage";
 import { FrameworksPage } from "../pages/FrameworksPage";
+import { GovernanceRolesPage } from "../pages/GovernanceRolesPage";
 import { ImpactAssessmentDetailPage } from "../pages/ImpactAssessmentDetailPage";
 import { PoliciesPage } from "../pages/PoliciesPage";
 import { PolicyDetailPage } from "../pages/PolicyDetailPage";
@@ -39,6 +40,7 @@ export function AppRoutes() {
           element={<RiskAssessmentDetailPage />}
         />
         <Route path="/frameworks" element={<FrameworksPage />} />
+        <Route path="/governance" element={<GovernanceRolesPage />} />
         <Route path="/users" element={<UsersPage />} />
       </Routes>
     </Layout>

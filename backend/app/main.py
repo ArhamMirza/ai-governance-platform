@@ -24,6 +24,7 @@ from app.routers import (
     framework_mapping,
     framework_soa,
     framework_tags,
+    governance_roles,
     health,
     impact_assessments,
     policies,
@@ -98,3 +99,4 @@ app.include_router(framework_tags.router, prefix="/api/v1", dependencies=_protec
 app.include_router(framework_mapping.router, prefix="/api/v1", dependencies=_protected)
 app.include_router(framework_soa.router, prefix="/api/v1", dependencies=_protected)
 app.include_router(users.router, prefix="/api/v1", dependencies=_protected)
+app.include_router(governance_roles.router, prefix="/api/v1", dependencies=_protected)
