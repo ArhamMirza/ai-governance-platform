@@ -206,7 +206,7 @@ def test_validation_gate_blocks_on_an_untreated_high_risk(client: TestClient) ->
 
 
 def test_validation_gate_requires_report_approval_and_deployment_record(
-    client: TestClient, make_user, login_as
+    client: TestClient, login_as, caigo_admin
 ) -> None:
     row_id = make_system(client)
     reach_validation(client, row_id)
@@ -228,13 +228,16 @@ def test_validation_gate_requires_report_approval_and_deployment_record(
         },
     )
     client.post(LIFECYCLE.format(row_id=row_id) + "/request-deployment-approval")
-    login_as(make_user(role=UserRole.ADMIN))
+    login_as(caigo_admin)
     client.post(LIFECYCLE.format(row_id=row_id) + "/approve-deployment")
 
     assert advance(client, row_id).json()["current_stage"] == "deployment"
 
 
-def test_the_requester_cannot_approve_their_own_release(client: TestClient) -> None:
+def test_the_requester_cannot_approve_their_own_release(
+    client: TestClient, test_user, make_caigo
+) -> None:
+    make_caigo(test_user)
     row_id = make_system(client)
     reach_validation(client, row_id)
     client.post(LIFECYCLE.format(row_id=row_id) + "/request-deployment-approval")
@@ -244,6 +247,19 @@ def test_the_requester_cannot_approve_their_own_release(client: TestClient) -> N
     assert response.status_code == 409
     # Phrased for whoever is looking at the screen, not the internal entity type.
     assert "someone else has to approve it" in response.text
+
+
+def test_non_caigo_admin_cannot_approve_a_release(
+    client: TestClient, make_user, login_as
+) -> None:
+    row_id = make_system(client)
+    reach_validation(client, row_id)
+    client.post(LIFECYCLE.format(row_id=row_id) + "/request-deployment-approval")
+    login_as(make_user(role=UserRole.ADMIN))
+
+    response = client.post(LIFECYCLE.format(row_id=row_id) + "/approve-deployment")
+
+    assert response.status_code == 403
 
 
 def test_approving_a_release_requires_the_approve_permission(
@@ -261,7 +277,7 @@ def test_approving_a_release_requires_the_approve_permission(
 # --- Deployment ------------------------------------------------------------
 
 
-def reach_deployment(client: TestClient, row_id: int, make_user, login_as) -> None:
+def reach_deployment(client: TestClient, row_id: int, login_as, caigo_admin) -> None:
     reach_validation(client, row_id)
     upload(client, row_id, "validation_report")
     client.put(
@@ -273,16 +289,16 @@ def reach_deployment(client: TestClient, row_id: int, make_user, login_as) -> No
         },
     )
     client.post(LIFECYCLE.format(row_id=row_id) + "/request-deployment-approval")
-    login_as(make_user(role=UserRole.ADMIN))
+    login_as(caigo_admin)
     client.post(LIFECYCLE.format(row_id=row_id) + "/approve-deployment")
     advance(client, row_id)
 
 
 def test_deployment_gate_requires_monitoring_setup(
-    client: TestClient, make_user, login_as
+    client: TestClient, login_as, caigo_admin
 ) -> None:
     row_id = make_system(client)
-    reach_deployment(client, row_id, make_user, login_as)
+    reach_deployment(client, row_id, login_as, caigo_admin)
 
     body = lifecycle(client, row_id)
     assert body["current_stage"] == "deployment"
@@ -334,11 +350,11 @@ def test_reverting_needs_a_reason_and_steps_back_one_stage(client: TestClient) -
 
 
 def test_reverting_out_of_deployment_clears_the_release_approval(
-    client: TestClient, make_user, login_as
+    client: TestClient, login_as, caigo_admin
 ) -> None:
     """A stale approval must not carry a system back over the gate."""
     row_id = make_system(client)
-    reach_deployment(client, row_id, make_user, login_as)
+    reach_deployment(client, row_id, login_as, caigo_admin)
     assert lifecycle(client, row_id)["deployment_approved_by"] is not None
 
     body = client.post(

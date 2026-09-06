@@ -133,6 +133,18 @@ def make_caigo(db_session: Session) -> Callable[[User], None]:
 
 
 @pytest.fixture()
+def caigo_admin(db_session: Session, make_user: Callable[..., User]) -> User:
+    """A dedicated admin holding the Chief AI Governance Officer role --
+    for multi-stage lifecycle tests (deployment then retirement approval)
+    that need the *same* CAIGO identity reusable across several approval
+    calls, since CAIGO is capped at one holder."""
+    admin = make_user(role=UserRole.ADMIN)
+    role = db_session.query(GovernanceRole).filter_by(name=DEFAULT_ROLES[0][0]).one()
+    governance_role_service.assign_user(db_session, role.id, admin.id, actor_id=None)
+    return admin
+
+
+@pytest.fixture()
 def login_as() -> Callable[[User], None]:
     """Switches the identity `client` authenticates as, for tests that need
     more than one user (e.g. submit as test_user, approve as second_user)."""

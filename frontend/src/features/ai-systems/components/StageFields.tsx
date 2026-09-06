@@ -1,6 +1,7 @@
 import { useState } from "react";
 
 import { ApiError } from "../../../shared/api/httpClient";
+import { useCanApprove } from "../../audit-log/useCanApprove";
 import { formatUserOption } from "../../users/formatUserOption";
 import { useUserDirectory } from "../../users/hooks";
 import {
@@ -70,6 +71,10 @@ export function DeploymentRecordFields({ rowId, lifecycle }: StageFieldsProps) {
   const save = useSetDeploymentRecord(rowId);
   const requestApproval = useRequestDeploymentApproval(rowId);
   const approve = useApproveDeployment(rowId);
+  const { canApprove, reason: approvalReason } = useCanApprove(
+    "AISystemDeploymentApproval",
+    rowId,
+  );
   const [environment, setEnvironment] = useState(lifecycle.deployment_environment ?? "");
   const [version, setVersion] = useState(lifecycle.deployment_version ?? "");
   const [deployedAt, setDeployedAt] = useState(lifecycle.deployed_at ?? "");
@@ -152,16 +157,23 @@ export function DeploymentRecordFields({ rowId, lifecycle }: StageFieldsProps) {
           >
             Request approval
           </button>
-          <button
-            onClick={() => run(() => approve.mutateAsync(), "Failed to approve the release")}
-            disabled={approve.isPending}
-          >
-            Approve release
-          </button>
+          {canApprove ? (
+            <button
+              onClick={() =>
+                run(() => approve.mutateAsync(), "Failed to approve the release")
+              }
+              disabled={approve.isPending}
+            >
+              Approve release
+            </button>
+          ) : (
+            <p className="approval-note">{approvalReason}</p>
+          )}
         </div>
       )}
       <p className="gate-detail">
-        The release must be approved by an admin, and not by whoever requested it.
+        The release must be approved by the Chief AI Governance Officer, and not by
+        whoever requested it.
       </p>
     </section>
   );
@@ -233,6 +245,10 @@ export function RetirementFields({ rowId, lifecycle }: StageFieldsProps) {
   const save = useSetRetirement(rowId);
   const requestApproval = useRequestRetirementApproval(rowId);
   const approve = useApproveRetirement(rowId);
+  const { canApprove, reason: approvalReason } = useCanApprove(
+    "AISystemRetirementApproval",
+    rowId,
+  );
   const [reason, setReason] = useState(lifecycle.retirement_reason ?? "");
   const [retentionUntil, setRetentionUntil] = useState(lifecycle.retention_until ?? "");
   const [error, setError] = useState<string | null>(null);
@@ -313,16 +329,23 @@ export function RetirementFields({ rowId, lifecycle }: StageFieldsProps) {
           >
             Request approval
           </button>
-          <button
-            onClick={() => run(() => approve.mutateAsync(), "Failed to approve the retirement")}
-            disabled={approve.isPending}
-          >
-            Approve retirement
-          </button>
+          {canApprove ? (
+            <button
+              onClick={() =>
+                run(() => approve.mutateAsync(), "Failed to approve the retirement")
+              }
+              disabled={approve.isPending}
+            >
+              Approve retirement
+            </button>
+          ) : (
+            <p className="approval-note">{approvalReason}</p>
+          )}
         </div>
       )}
       <p className="gate-detail">
-        Retirement must be approved by an admin, and not by whoever requested it.
+        Retirement must be approved by the Chief AI Governance Officer, and not by
+        whoever requested it.
       </p>
     </section>
   );
