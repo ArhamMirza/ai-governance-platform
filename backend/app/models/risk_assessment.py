@@ -10,6 +10,8 @@ from app.core.database import Base
 class RiskAssessmentStatus(StrEnum):
     DRAFT = "draft"
     IN_PROGRESS = "in_progress"
+    PENDING_OWNER_APPROVAL = "pending_owner_approval"
+    PENDING_CAIGO_APPROVAL = "pending_caigo_approval"
     COMPLETED = "completed"
 
 
@@ -25,6 +27,18 @@ class RiskAssessment(Base):
     # Same yearly cadence as ImpactAssessment (see app.core.review_cadence) so
     # the two assessments for one AI system stay aligned.
     next_review_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+
+    # Two-stage approval: the AI System Owner signs off first (skipped when
+    # the owner is also the assessor), then the Chief AI Governance Officer
+    # gives the final sign-off that moves status to COMPLETED.
+    owner_approved_by: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    owner_approved_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    caigo_approved_by: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    caigo_approved_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(UTC)
     )

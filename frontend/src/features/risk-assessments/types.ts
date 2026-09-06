@@ -2,7 +2,12 @@ import type { FrameworkControl } from "../framework-controls/types";
 import type { MatrixCell } from "./components/RiskMatrix";
 import type { RiskCriteria } from "./riskSeverity";
 
-export type RiskAssessmentStatus = "draft" | "in_progress" | "completed";
+export type RiskAssessmentStatus =
+  | "draft"
+  | "in_progress"
+  | "pending_owner_approval"
+  | "pending_caigo_approval"
+  | "completed";
 
 export interface RiskAssessment {
   id: number;
@@ -15,6 +20,10 @@ export interface RiskAssessment {
   next_review_date: string | null;
   review_overdue: boolean;
   overall_risk_rating: number | null;
+  owner_approved_by: number | null;
+  owner_approved_at: string | null;
+  caigo_approved_by: number | null;
+  caigo_approved_at: string | null;
   created_at: string;
   updated_at: string;
 }

@@ -106,3 +106,53 @@ export function useUpdateImpactFactor(
     onSuccess: invalidate,
   });
 }
+
+function useInvalidateImpactAssessmentApproval(
+  riskAssessmentId: number | null,
+  impactAssessmentId: number,
+) {
+  const invalidate = useInvalidateImpactAssessments(riskAssessmentId, impactAssessmentId);
+  const queryClient = useQueryClient();
+  return () => {
+    invalidate();
+    queryClient.invalidateQueries({
+      queryKey: ["audit-log", "ImpactAssessmentOwnerApproval", impactAssessmentId],
+    });
+    queryClient.invalidateQueries({
+      queryKey: ["audit-log", "ImpactAssessmentCaigoApproval", impactAssessmentId],
+    });
+  };
+}
+
+export function useSubmitImpactAssessmentForOwnerApproval(
+  riskAssessmentId: number | null,
+  impactAssessmentId: number,
+) {
+  const invalidate = useInvalidateImpactAssessmentApproval(riskAssessmentId, impactAssessmentId);
+  return useMutation({
+    mutationFn: () => impactAssessmentsApi.submitForOwnerApproval(impactAssessmentId),
+    onSuccess: invalidate,
+  });
+}
+
+export function useApproveImpactAssessmentOwnerStage(
+  riskAssessmentId: number | null,
+  impactAssessmentId: number,
+) {
+  const invalidate = useInvalidateImpactAssessmentApproval(riskAssessmentId, impactAssessmentId);
+  return useMutation({
+    mutationFn: () => impactAssessmentsApi.approveOwnerStage(impactAssessmentId),
+    onSuccess: invalidate,
+  });
+}
+
+export function useApproveImpactAssessmentCaigoStage(
+  riskAssessmentId: number | null,
+  impactAssessmentId: number,
+) {
+  const invalidate = useInvalidateImpactAssessmentApproval(riskAssessmentId, impactAssessmentId);
+  return useMutation({
+    mutationFn: () => impactAssessmentsApi.approveCaigoStage(impactAssessmentId),
+    onSuccess: invalidate,
+  });
+}

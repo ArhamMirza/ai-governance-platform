@@ -1,6 +1,10 @@
 import type { FrameworkControl } from "../framework-controls/types";
 
-export type ImpactAssessmentStatus = "draft" | "completed";
+export type ImpactAssessmentStatus =
+  | "draft"
+  | "pending_owner_approval"
+  | "pending_caigo_approval"
+  | "completed";
 
 export interface ImpactFactorAssessment {
   id: number;
@@ -27,6 +31,10 @@ export interface ImpactAssessment {
   affected_interested_parties: string | null;
   human_oversight_role: string | null;
   conclusion: string | null;
+  owner_approved_by: number | null;
+  owner_approved_at: string | null;
+  caigo_approved_by: number | null;
+  caigo_approved_at: string | null;
   created_at: string;
   updated_at: string;
   framework_tags: FrameworkControl[];

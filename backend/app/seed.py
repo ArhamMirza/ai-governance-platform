@@ -78,13 +78,15 @@ def _seed_impact_assessment(
         db,
         assessment.id,
         ImpactAssessmentUpdate(
-            status="completed",
             system_description=system_description,
             intended_purpose=intended_purpose,
             foreseeable_misuse=foreseeable_misuse,
         ),
         actor_id=None,
     )
+    impact_assessment_service.submit_for_owner_approval(db, assessment.id, actor_id=None)
+    impact_assessment_service.approve_owner_stage(db, assessment.id, actor_id=None)
+    impact_assessment_service.approve_caigo_stage(db, assessment.id, actor_id=None)
     _tag(db, "ImpactAssessment", assessment.id, "iso_42001:8.4", "iso_42001:A.5.2")
 
 

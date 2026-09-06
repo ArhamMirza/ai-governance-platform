@@ -40,6 +40,10 @@ def _to_read(db: Session, risk_assessment: RiskAssessment) -> RiskAssessmentRead
             risk_assessment.next_review_date, datetime.now(UTC).date()
         ),
         overall_risk_rating=overall_risk_rating,
+        owner_approved_by=risk_assessment.owner_approved_by,
+        owner_approved_at=risk_assessment.owner_approved_at,
+        caigo_approved_by=risk_assessment.caigo_approved_by,
+        caigo_approved_at=risk_assessment.caigo_approved_at,
         created_at=risk_assessment.created_at,
         updated_at=risk_assessment.updated_at,
     )
@@ -83,6 +87,42 @@ def update_risk_assessment(
 ) -> RiskAssessmentRead:
     risk_assessment = risk_assessment_service.update_risk_assessment(
         db, risk_assessment_id, data, actor_id
+    )
+    return _to_read(db, risk_assessment)
+
+
+@router.post("/{risk_assessment_id}/submit-for-owner-approval", response_model=RiskAssessmentRead)
+def submit_for_owner_approval(
+    risk_assessment_id: int,
+    db: Session = Depends(get_db),
+    actor_id: int | None = Depends(get_current_actor_id),
+) -> RiskAssessmentRead:
+    risk_assessment = risk_assessment_service.submit_for_owner_approval(
+        db, risk_assessment_id, actor_id
+    )
+    return _to_read(db, risk_assessment)
+
+
+@router.post("/{risk_assessment_id}/approve-owner-stage", response_model=RiskAssessmentRead)
+def approve_owner_stage(
+    risk_assessment_id: int,
+    db: Session = Depends(get_db),
+    actor_id: int | None = Depends(get_current_actor_id),
+) -> RiskAssessmentRead:
+    risk_assessment = risk_assessment_service.approve_owner_stage(
+        db, risk_assessment_id, actor_id
+    )
+    return _to_read(db, risk_assessment)
+
+
+@router.post("/{risk_assessment_id}/approve-caigo-stage", response_model=RiskAssessmentRead)
+def approve_caigo_stage(
+    risk_assessment_id: int,
+    db: Session = Depends(get_db),
+    actor_id: int | None = Depends(get_current_actor_id),
+) -> RiskAssessmentRead:
+    risk_assessment = risk_assessment_service.approve_caigo_stage(
+        db, risk_assessment_id, actor_id
     )
     return _to_read(db, risk_assessment)
 
