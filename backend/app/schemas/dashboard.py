@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from pydantic import BaseModel
 
 from app.schemas.risk_criteria import RiskCriteriaRead
@@ -72,6 +74,17 @@ class MyRiskItem(BaseModel):
     overdue: bool
 
 
+class PendingApprovalItem(BaseModel):
+    """One record currently waiting on the requesting user's approval,
+    across every entity type that has an approval gate."""
+
+    entity_type: str
+    entity_id: int
+    title: str
+    stage_label: str
+    submitted_at: datetime | None
+
+
 class DashboardSummary(BaseModel):
     policies: StatusCounts
     procedures: StatusCounts
@@ -84,3 +97,4 @@ class DashboardSummary(BaseModel):
     # Bundled so the client shades the matrix with the same bands used to count.
     criteria: RiskCriteriaRead
     my_risk_items: list[MyRiskItem]
+    pending_approvals: list[PendingApprovalItem]

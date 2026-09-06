@@ -13,3 +13,28 @@ def list_for_entity(
     if actions is not None:
         query = query.where(AuditLogEntry.action.in_(actions))
     return list(db.scalars(query.order_by(AuditLogEntry.timestamp)))
+
+
+def latest_entry_by_entity(
+    db: Session, entity_type: str, entity_ids: list[int], actions: list[str]
+) -> dict[int, AuditLogEntry]:
+    """Latest matching log entry per entity_id, for these actions -- one
+    query for many entities, so a caller checking "who last submitted this,
+    and when" across a batch of candidate records doesn't do it one at a
+    time (see sheet_repository.list_rows_for_sheets for the same
+    batch-by-id shape)."""
+    if not entity_ids:
+        return {}
+    query = (
+        select(AuditLogEntry)
+        .where(
+            AuditLogEntry.entity_type == entity_type,
+            AuditLogEntry.entity_id.in_(entity_ids),
+            AuditLogEntry.action.in_(actions),
+        )
+        .order_by(AuditLogEntry.entity_id, AuditLogEntry.timestamp)
+    )
+    result: dict[int, AuditLogEntry] = {}
+    for entry in db.scalars(query):
+        result[entry.entity_id] = entry
+    return result

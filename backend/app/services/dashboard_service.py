@@ -27,6 +27,7 @@ from app.schemas.dashboard import (
 from app.services import (
     ai_system_inventory_service,
     ai_system_lifecycle_service,
+    pending_approvals_service,
     risk_analytics_service,
     risk_criteria_service,
 )
@@ -227,4 +228,5 @@ def get_summary(db: Session, actor_id: int) -> DashboardSummary:
         matrix=risk_analytics_service.matrix_cells(all_risk_rows),
         criteria=risk_criteria_service.get_criteria(db),
         my_risk_items=_my_risk_items(risk_assessments, rows_by_sheet, actor_id),
+        pending_approvals=pending_approvals_service.get_pending_approvals(db, actor_id),
     )
