@@ -1,0 +1,186 @@
+import pytest
+from sqlalchemy.orm import Session
+
+from app.core.exceptions import ConflictError, NotFoundError, ValidationError
+from app.models.user import UserRole
+from app.services import governance_role_service
+
+
+def get_role_id(db: Session, name: str) -> int:
+    return next(r.id for r in governance_role_service.list_roles(db) if r.name == name)
+
+
+def test_seeded_roles_report_to_caigo(db_session: Session) -> None:
+    roles = governance_role_service.list_roles(db_session)
+    by_name = {r.name: r for r in roles}
+
+    caigo = by_name["Chief AI Governance Officer"]
+    assert caigo.parent_role_id is None
+    assert caigo.max_holders == 1
+    for name in ("Data Owner", "AI System Owner", "Risk Owner", "Implementation Team"):
+        assert by_name[name].parent_role_id == caigo.id
+        assert by_name[name].max_holders is None
+
+
+def test_assigning_caigo_requires_an_admin_account(db_session: Session, make_user) -> None:
+    caigo_id = get_role_id(db_session, "Chief AI Governance Officer")
+    viewer = make_user(role=UserRole.VIEWER)
+
+    with pytest.raises(ValidationError):
+        governance_role_service.assign_user(db_session, caigo_id, viewer.id, actor_id=None)
+
+
+def test_assigning_caigo_succeeds_for_an_admin(db_session: Session, make_user) -> None:
+    caigo_id = get_role_id(db_session, "Chief AI Governance Officer")
+    admin = make_user(role=UserRole.ADMIN)
+
+    governance_role_service.assign_user(db_session, caigo_id, admin.id, actor_id=None)
+
+    holders = governance_role_service.holders_for_role(db_session, caigo_id)
+    assert [h.id for h in holders] == [admin.id]
+
+
+def test_caigo_is_capped_at_one_holder(db_session: Session, make_user) -> None:
+    caigo_id = get_role_id(db_session, "Chief AI Governance Officer")
+    first_admin = make_user(role=UserRole.ADMIN)
+    second_admin = make_user(role=UserRole.ADMIN)
+    governance_role_service.assign_user(db_session, caigo_id, first_admin.id, actor_id=None)
+
+    with pytest.raises(ConflictError):
+        governance_role_service.assign_user(db_session, caigo_id, second_admin.id, actor_id=None)
+
+
+def test_a_role_without_a_cap_accepts_multiple_holders(db_session: Session, make_user) -> None:
+    risk_owner_id = get_role_id(db_session, "Risk Owner")
+    first = make_user()
+    second = make_user()
+
+    governance_role_service.assign_user(db_session, risk_owner_id, first.id, actor_id=None)
+    governance_role_service.assign_user(db_session, risk_owner_id, second.id, actor_id=None)
+
+    holders = governance_role_service.holders_for_role(db_session, risk_owner_id)
+    assert {h.id for h in holders} == {first.id, second.id}
+
+
+def test_assigning_the_same_user_twice_is_rejected(db_session: Session, make_user) -> None:
+    risk_owner_id = get_role_id(db_session, "Risk Owner")
+    user = make_user()
+    governance_role_service.assign_user(db_session, risk_owner_id, user.id, actor_id=None)
+
+    with pytest.raises(ConflictError):
+        governance_role_service.assign_user(db_session, risk_owner_id, user.id, actor_id=None)
+
+
+def test_unassign_removes_the_holder(db_session: Session, make_user) -> None:
+    risk_owner_id = get_role_id(db_session, "Risk Owner")
+    user = make_user()
+    governance_role_service.assign_user(db_session, risk_owner_id, user.id, actor_id=None)
+
+    governance_role_service.unassign_user(db_session, risk_owner_id, user.id, actor_id=None)
+
+    assert governance_role_service.holders_for_role(db_session, risk_owner_id) == []
+
+
+def test_a_user_can_hold_more_than_one_role(db_session: Session, make_user) -> None:
+    risk_owner_id = get_role_id(db_session, "Risk Owner")
+    ai_system_owner_id = get_role_id(db_session, "AI System Owner")
+    user = make_user()
+
+    governance_role_service.assign_user(db_session, risk_owner_id, user.id, actor_id=None)
+    governance_role_service.assign_user(db_session, ai_system_owner_id, user.id, actor_id=None)
+
+    names = {r.name for r in governance_role_service.list_roles_for_user(db_session, user.id)}
+    assert names == {"Risk Owner", "AI System Owner"}
+
+
+def test_role_names_by_user_covers_every_holder(db_session: Session, make_user) -> None:
+    risk_owner_id = get_role_id(db_session, "Risk Owner")
+    user = make_user()
+    governance_role_service.assign_user(db_session, risk_owner_id, user.id, actor_id=None)
+
+    badges = governance_role_service.role_names_by_user(db_session)
+
+    assert badges[user.id] == ["Risk Owner"]
+
+
+def test_create_role_rejects_a_duplicate_name(db_session: Session) -> None:
+    with pytest.raises(ConflictError):
+        governance_role_service.create_role(
+            db_session, "Risk Owner", "Duplicate.", None, None, actor_id=None
+        )
+
+
+def test_create_role_with_a_parent_reports_correctly(db_session: Session) -> None:
+    caigo_id = get_role_id(db_session, "Chief AI Governance Officer")
+
+    role = governance_role_service.create_role(
+        db_session, "Vendor Manager", "Owns third-party AI vendor relationships.",
+        caigo_id, None, actor_id=None,
+    )
+
+    assert role.parent_role_id == caigo_id
+
+
+def test_update_role_can_reparent(db_session: Session) -> None:
+    risk_owner_id = get_role_id(db_session, "Risk Owner")
+    data_owner_id = get_role_id(db_session, "Data Owner")
+
+    updated = governance_role_service.update_role(
+        db_session, risk_owner_id, None, None, data_owner_id, True, None, False, actor_id=None,
+    )
+
+    assert updated.parent_role_id == data_owner_id
+
+
+def test_a_role_cannot_report_to_itself(db_session: Session) -> None:
+    risk_owner_id = get_role_id(db_session, "Risk Owner")
+
+    with pytest.raises(ValidationError):
+        governance_role_service.update_role(
+            db_session, risk_owner_id, None, None, risk_owner_id, True, None, False, actor_id=None,
+        )
+
+
+def test_a_role_cannot_be_reparented_under_its_own_descendant(db_session: Session) -> None:
+    caigo_id = get_role_id(db_session, "Chief AI Governance Officer")
+    risk_owner_id = get_role_id(db_session, "Risk Owner")
+    # Risk Owner already reports to CAIGO; reparenting CAIGO under Risk Owner
+    # would make CAIGO its own grandchild.
+    with pytest.raises(ValidationError):
+        governance_role_service.update_role(
+            db_session, caigo_id, None, None, risk_owner_id, True, None, False, actor_id=None,
+        )
+
+
+def test_cannot_cap_a_role_below_its_current_holder_count(
+    db_session: Session, make_user
+) -> None:
+    risk_owner_id = get_role_id(db_session, "Risk Owner")
+    governance_role_service.assign_user(db_session, risk_owner_id, make_user().id, actor_id=None)
+    governance_role_service.assign_user(db_session, risk_owner_id, make_user().id, actor_id=None)
+
+    with pytest.raises(ValidationError):
+        governance_role_service.update_role(
+            db_session, risk_owner_id, None, None, None, False, 1, True, actor_id=None,
+        )
+
+
+def test_delete_is_blocked_while_a_role_has_children(db_session: Session) -> None:
+    caigo_id = get_role_id(db_session, "Chief AI Governance Officer")
+
+    with pytest.raises(ConflictError):
+        governance_role_service.delete_role(db_session, caigo_id, actor_id=None)
+
+
+def test_delete_removes_a_childless_role_and_its_assignments(
+    db_session: Session, make_user
+) -> None:
+    risk_owner_id = get_role_id(db_session, "Risk Owner")
+    user = make_user()
+    governance_role_service.assign_user(db_session, risk_owner_id, user.id, actor_id=None)
+
+    governance_role_service.delete_role(db_session, risk_owner_id, actor_id=None)
+
+    with pytest.raises(NotFoundError):
+        governance_role_service.get_role(db_session, risk_owner_id)
+    assert governance_role_service.list_roles_for_user(db_session, user.id) == []

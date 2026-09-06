@@ -22,4 +22,7 @@ export interface UpdateUserInput {
 export interface DirectoryUser {
   id: number;
   name: string;
+  /** Governance role names this user holds (Risk Owner, AI System Owner,
+   * ...) -- see formatUserOption in this feature for how pickers show it. */
+  governance_roles: string[];
 }

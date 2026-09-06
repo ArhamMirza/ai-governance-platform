@@ -21,3 +21,7 @@ class UserDirectoryEntry(BaseModel):
 
     id: int
     name: str
+    # Governance role names this user holds (Risk Owner, AI System Owner,
+    # ...) -- every owner/assessor picker in the app badges its options with
+    # this so the right person is obvious without hard-filtering the list.
+    governance_roles: list[str] = []

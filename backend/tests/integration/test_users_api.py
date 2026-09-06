@@ -20,8 +20,9 @@ def test_directory_is_visible_to_any_logged_in_user(
     assert response.status_code == 200
     names = {entry["name"] for entry in response.json()}
     assert "Ada" in names
-    # Directory entries expose id/name only -- not email, role, or status.
-    assert set(response.json()[0].keys()) == {"id", "name"}
+    # Directory entries expose id/name/governance_roles only -- not
+    # email, role, or status.
+    assert set(response.json()[0].keys()) == {"id", "name", "governance_roles"}
 
 
 def test_admin_can_create_a_user(client: TestClient) -> None:

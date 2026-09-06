@@ -6,7 +6,7 @@ from app.dependencies import get_current_user, require_manage_users_user
 from app.models.user import User
 from app.schemas.auth import UserRead
 from app.schemas.user import UserCreate, UserDirectoryEntry, UserUpdate
-from app.services import user_service
+from app.services import governance_role_service, user_service
 
 router = APIRouter(prefix="/users", tags=["users"])
 
@@ -25,7 +25,13 @@ def list_directory(db: Session = Depends(get_db)) -> list[UserDirectoryEntry]:
     """Any logged-in user can see id+name of everyone -- used to populate
     pickers like risk item ownership. Deliberately excludes email/role/
     active-status, which GET /users (admin-only) still guards."""
-    return user_service.list_users(db)
+    roles_by_user = governance_role_service.role_names_by_user(db)
+    return [
+        UserDirectoryEntry(
+            id=user.id, name=user.name, governance_roles=roles_by_user.get(user.id, [])
+        )
+        for user in user_service.list_users(db)
+    ]
 
 
 @router.post("", response_model=UserRead, status_code=201)
