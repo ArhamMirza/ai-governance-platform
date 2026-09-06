@@ -132,10 +132,21 @@ def test_update_risk_assessment(mock_repo, mock_audit, db) -> None:
     mock_repo.save.side_effect = lambda _db, ra: ra
 
     result = risk_assessment_service.update_risk_assessment(
-        db, 1, RiskAssessmentUpdate(status=RiskAssessmentStatus.COMPLETED), actor_id=1
+        db, 1, RiskAssessmentUpdate(status=RiskAssessmentStatus.IN_PROGRESS), actor_id=1
     )
 
-    assert result.status == RiskAssessmentStatus.COMPLETED
+    assert result.status == RiskAssessmentStatus.IN_PROGRESS
+
+
+@patch("app.services.risk_assessment_service.risk_assessment_repository")
+def test_update_risk_assessment_rejects_setting_completed_directly(mock_repo, db) -> None:
+    risk_assessment = make_risk_assessment()
+    mock_repo.get.return_value = risk_assessment
+
+    with pytest.raises(ValidationError):
+        risk_assessment_service.update_risk_assessment(
+            db, 1, RiskAssessmentUpdate(status=RiskAssessmentStatus.COMPLETED), actor_id=1
+        )
 
 
 @patch("app.services.risk_assessment_service.audit_service")

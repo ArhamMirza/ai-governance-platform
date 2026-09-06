@@ -18,6 +18,12 @@ export const riskAssessmentsApi = {
   remove: (id: number) => httpClient.delete<void>(`/risk-assessments/${id}`),
   closeRiskItem: (riskAssessmentId: number, rowId: number) =>
     httpClient.post<SheetRow>(`/risk-assessments/${riskAssessmentId}/rows/${rowId}/close`),
+  submitForOwnerApproval: (id: number) =>
+    httpClient.post<RiskAssessment>(`/risk-assessments/${id}/submit-for-owner-approval`),
+  approveOwnerStage: (id: number) =>
+    httpClient.post<RiskAssessment>(`/risk-assessments/${id}/approve-owner-stage`),
+  approveCaigoStage: (id: number) =>
+    httpClient.post<RiskAssessment>(`/risk-assessments/${id}/approve-caigo-stage`),
 };
 
 export function makeRiskAssessmentSheetAdapter(riskAssessmentId: number): SheetApiAdapter {

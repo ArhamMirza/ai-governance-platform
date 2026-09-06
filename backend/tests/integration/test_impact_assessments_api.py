@@ -1,6 +1,24 @@
 from fastapi.testclient import TestClient
+from sqlalchemy.orm import Session
 
+from app.services import impact_assessment_service
 from tests.helpers import complete_impact_assessment
+
+
+def approve_impact_assessment(db_session: Session, impact_assessment_id: int) -> None:
+    """Walks an assessment through owner and CAIGO approval with no real
+    actor, same no-op-on-None behavior audit_service.require_different_approver
+    already has -- for tests that only care about what completing does, not
+    who is allowed to do it."""
+    impact_assessment_service.submit_for_owner_approval(
+        db_session, impact_assessment_id, actor_id=None
+    )
+    impact_assessment_service.approve_owner_stage(
+        db_session, impact_assessment_id, actor_id=None
+    )
+    impact_assessment_service.approve_caigo_stage(
+        db_session, impact_assessment_id, actor_id=None
+    )
 
 FACTORS = [
     "Accountability",
@@ -88,34 +106,34 @@ def test_risk_assessment_sees_its_systems_impact_assessment(client: TestClient) 
     assert listing[0]["ai_system_row_id"] == ai_system["id"]
 
 
-def test_completing_sets_the_yearly_review_date(client: TestClient) -> None:
+def test_completing_sets_the_yearly_review_date(
+    client: TestClient, db_session: Session
+) -> None:
     created = create_impact_assessment(client)
 
-    response = client.put(
-        f"/api/v1/impact-assessments/{created['id']}", json={"status": "completed"}
-    )
+    approve_impact_assessment(db_session, created["id"])
 
-    assert response.status_code == 200
-    body = response.json()
+    body = client.get(f"/api/v1/impact-assessments/{created['id']}").json()
+    assert body["status"] == "completed"
     assert body["assessment_date"] is not None
     assert body["next_review_date"][:4] == str(int(body["assessment_date"][:4]) + 1)
     assert body["review_overdue"] is False
 
 
-def test_update_narrative_fields(client: TestClient) -> None:
+def test_update_narrative_fields(client: TestClient, db_session: Session) -> None:
     created = create_impact_assessment(client)
 
     response = client.put(
         f"/api/v1/impact-assessments/{created['id']}",
         json={
-            "status": "completed",
             "system_description": "Screens resumes for relevant experience.",
             "foreseeable_misuse": "Used as sole decision-maker without human review.",
         },
     )
-
     assert response.status_code == 200
-    body = response.json()
+    approve_impact_assessment(db_session, created["id"])
+
+    body = client.get(f"/api/v1/impact-assessments/{created['id']}").json()
     assert body["status"] == "completed"
     assert body["system_description"] == "Screens resumes for relevant experience."
     assert body["foreseeable_misuse"] == "Used as sole decision-maker without human review."

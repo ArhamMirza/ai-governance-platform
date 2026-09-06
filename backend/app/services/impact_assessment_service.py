@@ -14,7 +14,12 @@ from datetime import UTC, date, datetime
 from sqlalchemy.orm import Session
 
 from app.core import review_cadence
-from app.core.exceptions import ConflictError, NotFoundError, ValidationError
+from app.core.exceptions import (
+    AuthorizationError,
+    ConflictError,
+    NotFoundError,
+    ValidationError,
+)
 from app.core.impact_factors import IMPACT_FACTORS
 from app.models.impact_assessment import ImpactAssessment, ImpactAssessmentStatus
 from app.models.impact_factor_assessment import ImpactFactorAssessment
@@ -27,12 +32,23 @@ from app.repositories import (
 from app.schemas.impact_assessment import ImpactAssessmentCreate, ImpactAssessmentUpdate
 from app.services import (
     ai_system_inventory_service,
+    ai_system_lifecycle_service,
     audit_service,
     evidence_service,
     framework_service,
+    governance_role_service,
 )
 
 ENTITY_TYPE = "ImpactAssessment"
+
+OWNER_APPROVAL_ENTITY_TYPE = "ImpactAssessmentOwnerApproval"
+CAIGO_APPROVAL_ENTITY_TYPE = "ImpactAssessmentCaigoApproval"
+
+_GATED_STATUSES = {
+    ImpactAssessmentStatus.PENDING_OWNER_APPROVAL,
+    ImpactAssessmentStatus.PENDING_CAIGO_APPROVAL,
+    ImpactAssessmentStatus.COMPLETED,
+}
 
 MIN_SCORE = 1
 MAX_SCORE = 5
@@ -121,20 +137,121 @@ def update(
 ) -> ImpactAssessment:
     impact_assessment = _get_or_raise(db, impact_assessment_id)
     changes = data.model_dump(exclude_unset=True)
+    if changes.get("status") in _GATED_STATUSES:
+        raise ValidationError(
+            "Use the submit/approve endpoints to move an impact assessment through "
+            "owner and CAIGO approval -- it can't be set directly."
+        )
     for field, value in changes.items():
         setattr(impact_assessment, field, value)
 
-    # Completing an assessment stamps when it happened and when it is next
-    # due, so the review cadence can't be left unset by accident.
-    if impact_assessment.status == ImpactAssessmentStatus.COMPLETED:
-        if impact_assessment.assessment_date is None:
-            impact_assessment.assessment_date = _today()
-        impact_assessment.next_review_date = review_cadence.next_review_date(
-            impact_assessment.assessment_date
-        )
-
     impact_assessment = impact_assessment_repository.save(db, impact_assessment)
     audit_service.log(db, ENTITY_TYPE, impact_assessment_id, "updated", actor_id, changes)
+    return impact_assessment
+
+
+def _stamp_completed(impact_assessment: ImpactAssessment) -> None:
+    """Completing an assessment stamps when it happened and when it is next
+    due, so the review cadence can't be left unset by accident."""
+    if impact_assessment.assessment_date is None:
+        impact_assessment.assessment_date = _today()
+    impact_assessment.next_review_date = review_cadence.next_review_date(
+        impact_assessment.assessment_date
+    )
+
+
+def submit_for_owner_approval(
+    db: Session, impact_assessment_id: int, actor_id: int | None
+) -> ImpactAssessment:
+    """Implementation Team submits their work. If the AI system's owner is
+    the one submitting, they can't meaningfully approve their own work, so
+    this skips straight to the CAIGO stage instead of waiting on them."""
+    impact_assessment = _get_or_raise(db, impact_assessment_id)
+    if impact_assessment.status != ImpactAssessmentStatus.DRAFT:
+        raise ConflictError(
+            f"ImpactAssessment {impact_assessment_id} must be draft to submit for "
+            f"approval, currently '{impact_assessment.status}'"
+        )
+
+    lifecycle = ai_system_lifecycle_service.get_or_create(
+        db, impact_assessment.ai_system_row_id
+    )
+    owner_id = lifecycle.owner_id
+
+    audit_service.log(
+        db, OWNER_APPROVAL_ENTITY_TYPE, impact_assessment_id, "submitted_for_review", actor_id
+    )
+    if owner_id is not None and actor_id == owner_id:
+        impact_assessment.status = ImpactAssessmentStatus.PENDING_CAIGO_APPROVAL
+        audit_service.log(
+            db, CAIGO_APPROVAL_ENTITY_TYPE, impact_assessment_id, "submitted_for_review",
+            actor_id,
+        )
+    else:
+        impact_assessment.status = ImpactAssessmentStatus.PENDING_OWNER_APPROVAL
+
+    impact_assessment = impact_assessment_repository.save(db, impact_assessment)
+    audit_service.log(db, ENTITY_TYPE, impact_assessment_id, "submitted_for_review", actor_id)
+    return impact_assessment
+
+
+def approve_owner_stage(
+    db: Session, impact_assessment_id: int, actor_id: int | None
+) -> ImpactAssessment:
+    impact_assessment = _get_or_raise(db, impact_assessment_id)
+    if impact_assessment.status != ImpactAssessmentStatus.PENDING_OWNER_APPROVAL:
+        raise ConflictError(
+            f"ImpactAssessment {impact_assessment_id} must be pending owner approval, "
+            f"currently '{impact_assessment.status}'"
+        )
+
+    lifecycle = ai_system_lifecycle_service.get_or_create(
+        db, impact_assessment.ai_system_row_id
+    )
+    if actor_id is not None and actor_id != lifecycle.owner_id:
+        raise AuthorizationError(
+            "Only this AI system's owner can approve this stage."
+        )
+    audit_service.require_different_approver(
+        db, OWNER_APPROVAL_ENTITY_TYPE, impact_assessment_id, actor_id
+    )
+
+    impact_assessment.owner_approved_by = actor_id
+    impact_assessment.owner_approved_at = datetime.now(UTC)
+    impact_assessment.status = ImpactAssessmentStatus.PENDING_CAIGO_APPROVAL
+    impact_assessment = impact_assessment_repository.save(db, impact_assessment)
+    audit_service.log(
+        db, OWNER_APPROVAL_ENTITY_TYPE, impact_assessment_id, "approved", actor_id
+    )
+    audit_service.log(
+        db, CAIGO_APPROVAL_ENTITY_TYPE, impact_assessment_id, "submitted_for_review", actor_id
+    )
+    return impact_assessment
+
+
+def approve_caigo_stage(
+    db: Session, impact_assessment_id: int, actor_id: int | None
+) -> ImpactAssessment:
+    impact_assessment = _get_or_raise(db, impact_assessment_id)
+    if impact_assessment.status != ImpactAssessmentStatus.PENDING_CAIGO_APPROVAL:
+        raise ConflictError(
+            f"ImpactAssessment {impact_assessment_id} must be pending CAIGO approval, "
+            f"currently '{impact_assessment.status}'"
+        )
+
+    governance_role_service.require_caigo(db, actor_id)
+    audit_service.require_different_approver(
+        db, CAIGO_APPROVAL_ENTITY_TYPE, impact_assessment_id, actor_id
+    )
+
+    impact_assessment.caigo_approved_by = actor_id
+    impact_assessment.caigo_approved_at = datetime.now(UTC)
+    impact_assessment.status = ImpactAssessmentStatus.COMPLETED
+    _stamp_completed(impact_assessment)
+    impact_assessment = impact_assessment_repository.save(db, impact_assessment)
+    audit_service.log(
+        db, CAIGO_APPROVAL_ENTITY_TYPE, impact_assessment_id, "approved", actor_id
+    )
     return impact_assessment
 
 

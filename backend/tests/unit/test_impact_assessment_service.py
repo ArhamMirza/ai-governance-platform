@@ -26,6 +26,14 @@ def make_impact_assessment(db: Session, ai_system_row_id: int | None = None):
     )
 
 
+def complete(db: Session, impact_assessment_id: int):
+    impact_assessment_service.submit_for_owner_approval(db, impact_assessment_id, actor_id=None)
+    impact_assessment_service.approve_owner_stage(db, impact_assessment_id, actor_id=None)
+    return impact_assessment_service.approve_caigo_stage(
+        db, impact_assessment_id, actor_id=None
+    )
+
+
 def test_create_for_ai_system_seeds_all_impact_factors(db_session: Session) -> None:
     created = make_impact_assessment(db_session)
 
@@ -68,9 +76,7 @@ def test_impact_assessments_are_scoped_to_the_ai_system(db_session: Session) -> 
 def test_risk_assessment_resolves_to_its_systems_impact_assessment(db_session: Session) -> None:
     ai_system_row_id = make_ai_system_row(db_session)
     impact = make_impact_assessment(db_session, ai_system_row_id)
-    impact_assessment_service.update(
-        db_session, impact.id, ImpactAssessmentUpdate(status="completed"), actor_id=None
-    )
+    complete(db_session, impact.id)
     risk_assessment = risk_assessment_service.create_risk_assessment(
         db_session, RiskAssessmentCreate(ai_system_row_id=ai_system_row_id), actor_id=None
     )
@@ -98,9 +104,7 @@ def test_completing_stamps_the_assessment_and_next_review_dates(db_session: Sess
     created = make_impact_assessment(db_session)
     assert created.assessment_date is None and created.next_review_date is None
 
-    completed = impact_assessment_service.update(
-        db_session, created.id, ImpactAssessmentUpdate(status="completed"), actor_id=None
-    )
+    completed = complete(db_session, created.id)
 
     assert completed.assessment_date is not None
     assert completed.next_review_date == next_review_date(completed.assessment_date)
@@ -114,9 +118,7 @@ def test_has_completed_for_ai_system_ignores_drafts(db_session: Session) -> None
         db_session, ai_system_row_id
     )
 
-    impact_assessment_service.update(
-        db_session, created.id, ImpactAssessmentUpdate(status="completed"), actor_id=None
-    )
+    complete(db_session, created.id)
 
     assert impact_assessment_service.has_completed_for_ai_system(db_session, ai_system_row_id)
 

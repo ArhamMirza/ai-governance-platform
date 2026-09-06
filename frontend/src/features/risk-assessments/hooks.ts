@@ -64,6 +64,46 @@ export function useUpdateRiskAssessment(id: number) {
   });
 }
 
+function useInvalidateRiskAssessmentApproval(id: number) {
+  const queryClient = useQueryClient();
+  return () => {
+    queryClient.invalidateQueries({ queryKey: riskAssessmentsKey });
+    queryClient.invalidateQueries({ queryKey: riskAssessmentKey(id) });
+    queryClient.invalidateQueries({ queryKey: ["risk-portfolio-summary"] });
+    queryClient.invalidateQueries({ queryKey: ["dashboard-summary"] });
+    queryClient.invalidateQueries({
+      queryKey: ["audit-log", "RiskAssessmentOwnerApproval", id],
+    });
+    queryClient.invalidateQueries({
+      queryKey: ["audit-log", "RiskAssessmentCaigoApproval", id],
+    });
+  };
+}
+
+export function useSubmitRiskAssessmentForOwnerApproval(id: number) {
+  const invalidate = useInvalidateRiskAssessmentApproval(id);
+  return useMutation({
+    mutationFn: () => riskAssessmentsApi.submitForOwnerApproval(id),
+    onSuccess: invalidate,
+  });
+}
+
+export function useApproveRiskAssessmentOwnerStage(id: number) {
+  const invalidate = useInvalidateRiskAssessmentApproval(id);
+  return useMutation({
+    mutationFn: () => riskAssessmentsApi.approveOwnerStage(id),
+    onSuccess: invalidate,
+  });
+}
+
+export function useApproveRiskAssessmentCaigoStage(id: number) {
+  const invalidate = useInvalidateRiskAssessmentApproval(id);
+  return useMutation({
+    mutationFn: () => riskAssessmentsApi.approveCaigoStage(id),
+    onSuccess: invalidate,
+  });
+}
+
 export function useCloseRiskItem(riskAssessmentId: number) {
   const queryClient = useQueryClient();
   return useMutation({

@@ -42,6 +42,10 @@ def _to_read(db: Session, impact_assessment: ImpactAssessment) -> ImpactAssessme
         affected_interested_parties=impact_assessment.affected_interested_parties,
         human_oversight_role=impact_assessment.human_oversight_role,
         conclusion=impact_assessment.conclusion,
+        owner_approved_by=impact_assessment.owner_approved_by,
+        owner_approved_at=impact_assessment.owner_approved_at,
+        caigo_approved_by=impact_assessment.caigo_approved_by,
+        caigo_approved_at=impact_assessment.caigo_approved_at,
         created_at=impact_assessment.created_at,
         updated_at=impact_assessment.updated_at,
         framework_tags=framework_tags,
@@ -112,6 +116,48 @@ def update_impact_assessment(
 ) -> ImpactAssessmentRead:
     impact_assessment = impact_assessment_service.update(
         db, impact_assessment_id, data, actor_id
+    )
+    return _to_read(db, impact_assessment)
+
+
+@router.post(
+    "/{impact_assessment_id}/submit-for-owner-approval", response_model=ImpactAssessmentRead
+)
+def submit_for_owner_approval(
+    impact_assessment_id: int,
+    db: Session = Depends(get_db),
+    actor_id: int | None = Depends(get_current_actor_id),
+) -> ImpactAssessmentRead:
+    impact_assessment = impact_assessment_service.submit_for_owner_approval(
+        db, impact_assessment_id, actor_id
+    )
+    return _to_read(db, impact_assessment)
+
+
+@router.post(
+    "/{impact_assessment_id}/approve-owner-stage", response_model=ImpactAssessmentRead
+)
+def approve_owner_stage(
+    impact_assessment_id: int,
+    db: Session = Depends(get_db),
+    actor_id: int | None = Depends(get_current_actor_id),
+) -> ImpactAssessmentRead:
+    impact_assessment = impact_assessment_service.approve_owner_stage(
+        db, impact_assessment_id, actor_id
+    )
+    return _to_read(db, impact_assessment)
+
+
+@router.post(
+    "/{impact_assessment_id}/approve-caigo-stage", response_model=ImpactAssessmentRead
+)
+def approve_caigo_stage(
+    impact_assessment_id: int,
+    db: Session = Depends(get_db),
+    actor_id: int | None = Depends(get_current_actor_id),
+) -> ImpactAssessmentRead:
+    impact_assessment = impact_assessment_service.approve_caigo_stage(
+        db, impact_assessment_id, actor_id
     )
     return _to_read(db, impact_assessment)
 

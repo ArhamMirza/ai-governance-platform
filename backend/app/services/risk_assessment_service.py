@@ -5,7 +5,12 @@ from fastapi import UploadFile
 from sqlalchemy.orm import Session
 
 from app.core import review_cadence, risk_scoring
-from app.core.exceptions import ConflictError, NotFoundError, ValidationError
+from app.core.exceptions import (
+    AuthorizationError,
+    ConflictError,
+    NotFoundError,
+    ValidationError,
+)
 from app.models.risk_assessment import RiskAssessment, RiskAssessmentStatus
 from app.models.sheet import Sheet, SheetRow
 from app.repositories import evidence_repository, risk_assessment_repository, sheet_repository
@@ -18,9 +23,11 @@ from app.schemas.risk_assessment import (
 from app.schemas.sheet import ColumnDef
 from app.services import (
     ai_system_inventory_service,
+    ai_system_lifecycle_service,
     audit_service,
     evidence_service,
     framework_service,
+    governance_role_service,
     impact_assessment_service,
     risk_analytics_service,
     risk_criteria_service,
@@ -30,6 +37,16 @@ from app.services import (
 RISK_ITEM_ENTITY_TYPE = "RiskItem"
 
 ENTITY_TYPE = "RiskAssessment"
+
+OWNER_APPROVAL_ENTITY_TYPE = "RiskAssessmentOwnerApproval"
+CAIGO_APPROVAL_ENTITY_TYPE = "RiskAssessmentCaigoApproval"
+
+_PRE_APPROVAL_STATUSES = {RiskAssessmentStatus.DRAFT, RiskAssessmentStatus.IN_PROGRESS}
+_GATED_STATUSES = {
+    RiskAssessmentStatus.PENDING_OWNER_APPROVAL,
+    RiskAssessmentStatus.PENDING_CAIGO_APPROVAL,
+    RiskAssessmentStatus.COMPLETED,
+}
 
 DEFAULT_COLUMNS = [
     ColumnDef(key="category", label="Category"),
@@ -179,20 +196,120 @@ def update_risk_assessment(
 ) -> RiskAssessment:
     risk_assessment = _get_or_raise(db, risk_assessment_id)
     changes = data.model_dump(exclude_unset=True)
+    if changes.get("status") in _GATED_STATUSES:
+        raise ValidationError(
+            "Use the submit/approve endpoints to move a risk assessment through "
+            "owner and CAIGO approval -- it can't be set directly."
+        )
     for field, value in changes.items():
         setattr(risk_assessment, field, value)
 
-    # Same cadence rule as ImpactAssessment -- completing stamps the date and
-    # schedules the next review so the two stay on one clock.
-    if risk_assessment.status == RiskAssessmentStatus.COMPLETED:
-        if risk_assessment.assessment_date is None:
-            risk_assessment.assessment_date = datetime.now(UTC).date()
-        risk_assessment.next_review_date = review_cadence.next_review_date(
-            risk_assessment.assessment_date
-        )
-
     risk_assessment = risk_assessment_repository.save(db, risk_assessment)
     audit_service.log(db, "RiskAssessment", risk_assessment.id, "updated", actor_id, changes)
+    return risk_assessment
+
+
+def _stamp_completed(risk_assessment: RiskAssessment) -> None:
+    """Same cadence rule as ImpactAssessment -- completing stamps the date
+    and schedules the next review so the two stay on one clock."""
+    if risk_assessment.assessment_date is None:
+        risk_assessment.assessment_date = datetime.now(UTC).date()
+    risk_assessment.next_review_date = review_cadence.next_review_date(
+        risk_assessment.assessment_date
+    )
+
+
+def submit_for_owner_approval(
+    db: Session, risk_assessment_id: int, actor_id: int | None
+) -> RiskAssessment:
+    """Implementation Team submits their work. If the AI system's owner is
+    the one submitting, they can't meaningfully approve their own work, so
+    this skips straight to the CAIGO stage instead of waiting on them."""
+    risk_assessment = _get_or_raise(db, risk_assessment_id)
+    if risk_assessment.status not in _PRE_APPROVAL_STATUSES:
+        raise ConflictError(
+            f"RiskAssessment {risk_assessment_id} must be draft or in_progress to "
+            f"submit for approval, currently '{risk_assessment.status}'"
+        )
+
+    lifecycle = ai_system_lifecycle_service.get_or_create(
+        db, risk_assessment.ai_system_row_id
+    )
+    owner_id = lifecycle.owner_id
+
+    audit_service.log(
+        db, OWNER_APPROVAL_ENTITY_TYPE, risk_assessment_id, "submitted_for_review", actor_id
+    )
+    if owner_id is not None and actor_id == owner_id:
+        risk_assessment.status = RiskAssessmentStatus.PENDING_CAIGO_APPROVAL
+        audit_service.log(
+            db, CAIGO_APPROVAL_ENTITY_TYPE, risk_assessment_id, "submitted_for_review", actor_id
+        )
+    else:
+        risk_assessment.status = RiskAssessmentStatus.PENDING_OWNER_APPROVAL
+
+    risk_assessment = risk_assessment_repository.save(db, risk_assessment)
+    audit_service.log(db, ENTITY_TYPE, risk_assessment_id, "submitted_for_review", actor_id)
+    return risk_assessment
+
+
+def approve_owner_stage(
+    db: Session, risk_assessment_id: int, actor_id: int | None
+) -> RiskAssessment:
+    risk_assessment = _get_or_raise(db, risk_assessment_id)
+    if risk_assessment.status != RiskAssessmentStatus.PENDING_OWNER_APPROVAL:
+        raise ConflictError(
+            f"RiskAssessment {risk_assessment_id} must be pending owner approval, "
+            f"currently '{risk_assessment.status}'"
+        )
+
+    lifecycle = ai_system_lifecycle_service.get_or_create(
+        db, risk_assessment.ai_system_row_id
+    )
+    if actor_id is not None and actor_id != lifecycle.owner_id:
+        raise AuthorizationError(
+            "Only this AI system's owner can approve this stage."
+        )
+    audit_service.require_different_approver(
+        db, OWNER_APPROVAL_ENTITY_TYPE, risk_assessment_id, actor_id
+    )
+
+    risk_assessment.owner_approved_by = actor_id
+    risk_assessment.owner_approved_at = datetime.now(UTC)
+    risk_assessment.status = RiskAssessmentStatus.PENDING_CAIGO_APPROVAL
+    risk_assessment = risk_assessment_repository.save(db, risk_assessment)
+    audit_service.log(
+        db, OWNER_APPROVAL_ENTITY_TYPE, risk_assessment_id, "approved", actor_id
+    )
+    audit_service.log(
+        db, CAIGO_APPROVAL_ENTITY_TYPE, risk_assessment_id, "submitted_for_review", actor_id
+    )
+    return risk_assessment
+
+
+def approve_caigo_stage(
+    db: Session, risk_assessment_id: int, actor_id: int | None
+) -> RiskAssessment:
+    risk_assessment = _get_or_raise(db, risk_assessment_id)
+    if risk_assessment.status != RiskAssessmentStatus.PENDING_CAIGO_APPROVAL:
+        raise ConflictError(
+            f"RiskAssessment {risk_assessment_id} must be pending CAIGO approval, "
+            f"currently '{risk_assessment.status}'"
+        )
+
+    governance_role_service.require_caigo(db, actor_id)
+    audit_service.require_different_approver(
+        db, CAIGO_APPROVAL_ENTITY_TYPE, risk_assessment_id, actor_id
+    )
+
+    risk_assessment.caigo_approved_by = actor_id
+    risk_assessment.caigo_approved_at = datetime.now(UTC)
+    risk_assessment.status = RiskAssessmentStatus.COMPLETED
+    _stamp_completed(risk_assessment)
+    risk_assessment = risk_assessment_repository.save(db, risk_assessment)
+    audit_service.log(
+        db, CAIGO_APPROVAL_ENTITY_TYPE, risk_assessment_id, "approved", actor_id
+    )
     return risk_assessment
 
 

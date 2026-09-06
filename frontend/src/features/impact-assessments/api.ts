@@ -31,4 +31,10 @@ export const impactAssessmentsApi = {
       `/impact-assessments/${id}/factors/${encodeURIComponent(factor)}`,
       data,
     ),
+  submitForOwnerApproval: (id: number) =>
+    httpClient.post<ImpactAssessment>(`/impact-assessments/${id}/submit-for-owner-approval`),
+  approveOwnerStage: (id: number) =>
+    httpClient.post<ImpactAssessment>(`/impact-assessments/${id}/approve-owner-stage`),
+  approveCaigoStage: (id: number) =>
+    httpClient.post<ImpactAssessment>(`/impact-assessments/${id}/approve-caigo-stage`),
 };

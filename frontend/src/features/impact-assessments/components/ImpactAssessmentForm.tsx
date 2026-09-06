@@ -1,11 +1,20 @@
 import { useState } from "react";
 
 import { ApiError } from "../../../shared/api/httpClient";
+import { StatusBadge } from "../../../shared/components/StatusBadge";
+import { useCanApprove } from "../../audit-log/useCanApprove";
+import { useCanApproveAsOwner } from "../../audit-log/useCanApproveAsOwner";
 import { DocumentBrowser } from "../../evidence/components/DocumentBrowser";
 import { FrameworkTagPicker } from "../../framework-tags/components/FrameworkTagPicker";
 import { formatUserOption } from "../../users/formatUserOption";
 import { useUserDirectory } from "../../users/hooks";
-import { useDeleteImpactAssessment, useUpdateImpactAssessment } from "../hooks";
+import {
+  useApproveImpactAssessmentCaigoStage,
+  useApproveImpactAssessmentOwnerStage,
+  useDeleteImpactAssessment,
+  useSubmitImpactAssessmentForOwnerApproval,
+  useUpdateImpactAssessment,
+} from "../hooks";
 import { IMPACT_FACTORS } from "../impactFactors";
 import type { ImpactAssessment, ImpactAssessmentUpdateInput, ImpactFactorAssessment } from "../types";
 import { ImpactFactorCard } from "./ImpactFactorCard";
@@ -67,6 +76,51 @@ function NarrativeField({
   );
 }
 
+function ApprovalWorkflow({
+  riskAssessmentId,
+  assessment,
+}: {
+  riskAssessmentId: number | null;
+  assessment: ImpactAssessment;
+}) {
+  const submit = useSubmitImpactAssessmentForOwnerApproval(riskAssessmentId, assessment.id);
+  const approveOwnerStage = useApproveImpactAssessmentOwnerStage(riskAssessmentId, assessment.id);
+  const approveCaigoStage = useApproveImpactAssessmentCaigoStage(riskAssessmentId, assessment.id);
+  const ownerApproval = useCanApproveAsOwner(
+    "ImpactAssessmentOwnerApproval",
+    assessment.id,
+    assessment.ai_system_row_id,
+  );
+  const caigoApproval = useCanApprove("ImpactAssessmentCaigoApproval", assessment.id);
+
+  if (assessment.status === "draft") {
+    return (
+      <button onClick={() => submit.mutate()} disabled={submit.isPending}>
+        {submit.isPending ? "Submitting..." : "Submit for Approval"}
+      </button>
+    );
+  }
+  if (assessment.status === "pending_owner_approval") {
+    return ownerApproval.canApprove ? (
+      <button onClick={() => approveOwnerStage.mutate()} disabled={approveOwnerStage.isPending}>
+        {approveOwnerStage.isPending ? "Approving..." : "Approve"}
+      </button>
+    ) : (
+      <p className="approval-note">{ownerApproval.reason}</p>
+    );
+  }
+  if (assessment.status === "pending_caigo_approval") {
+    return caigoApproval.canApprove ? (
+      <button onClick={() => approveCaigoStage.mutate()} disabled={approveCaigoStage.isPending}>
+        {approveCaigoStage.isPending ? "Approving..." : "Approve"}
+      </button>
+    ) : (
+      <p className="approval-note">{caigoApproval.reason}</p>
+    );
+  }
+  return null;
+}
+
 export function ImpactAssessmentForm({
   riskAssessmentId,
   assessment,
@@ -107,19 +161,13 @@ export function ImpactAssessmentForm({
       {error && <p role="alert">{error}</p>}
 
       <div className="impact-assessment-field">
-        <label htmlFor={`impact-status-${assessment.id}`}>Status</label>
-        <select
-          id={`impact-status-${assessment.id}`}
-          value={assessment.status}
-          onChange={(e) => save({ status: e.target.value as "draft" | "completed" })}
-        >
-          <option value="draft">Draft</option>
-          <option value="completed">Completed</option>
-        </select>
+        <span>Status</span>
+        <StatusBadge status={assessment.status} />
+        <ApprovalWorkflow riskAssessmentId={riskAssessmentId} assessment={assessment} />
         <p className="impact-assessment-progress">
           {assessment.next_review_date
             ? `Completed ${assessment.assessment_date ?? "—"} · next review due ${assessment.next_review_date}`
-            : "Marking this completed sets its review date one year out, and unlocks risk assessment for this AI system."}
+            : "Completing this (Implementation Team submits, the AI System Owner approves, then the Chief AI Governance Officer signs off) sets its review date one year out and unlocks risk assessment for this AI system."}
         </p>
       </div>
 

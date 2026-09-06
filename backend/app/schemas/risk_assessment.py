@@ -15,6 +15,11 @@ class RiskAssessmentCreate(BaseModel):
 
 
 class RiskAssessmentUpdate(BaseModel):
+    """status may only move between draft and in_progress here -- reaching
+    pending_owner_approval, pending_caigo_approval or completed goes through
+    the dedicated submit/approve endpoints instead, which is where the
+    accountable person for each stage is actually checked."""
+
     status: RiskAssessmentStatus | None = None
     assessor_id: int | None = None
     assessment_date: date | None = None
@@ -35,6 +40,10 @@ class RiskAssessmentRead(BaseModel):
     next_review_date: date | None
     review_overdue: bool
     overall_risk_rating: float | None
+    owner_approved_by: int | None
+    owner_approved_at: datetime | None
+    caigo_approved_by: int | None
+    caigo_approved_at: datetime | None
     created_at: datetime
     updated_at: datetime
 

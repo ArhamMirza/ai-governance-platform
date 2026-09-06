@@ -29,6 +29,10 @@ const riskAssessment: RiskAssessment = {
   next_review_date: null,
   review_overdue: false,
   overall_risk_rating: 12,
+  owner_approved_by: null,
+  owner_approved_at: null,
+  caigo_approved_by: null,
+  caigo_approved_at: null,
   created_at: "2026-01-01T00:00:00Z",
   updated_at: "2026-01-01T00:00:00Z",
 };

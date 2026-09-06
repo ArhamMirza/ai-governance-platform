@@ -9,6 +9,8 @@ from app.core.database import Base
 
 class ImpactAssessmentStatus(StrEnum):
     DRAFT = "draft"
+    PENDING_OWNER_APPROVAL = "pending_owner_approval"
+    PENDING_CAIGO_APPROVAL = "pending_caigo_approval"
     COMPLETED = "completed"
 
 
@@ -30,6 +32,18 @@ class ImpactAssessment(Base):
     # Set from assessment_date on completion (see app.core.review_cadence) --
     # ISO 42001 expects assessments to be re-performed at planned intervals.
     next_review_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+
+    # Two-stage approval: the AI System Owner signs off first (skipped when
+    # the owner is also the assessor), then the Chief AI Governance Officer
+    # gives the final sign-off that moves status to COMPLETED.
+    owner_approved_by: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    owner_approved_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    caigo_approved_by: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    caigo_approved_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
 
     system_description: Mapped[str | None] = mapped_column(Text, nullable=True)
     intended_purpose: Mapped[str | None] = mapped_column(Text, nullable=True)
