@@ -27,6 +27,10 @@ const ATTENTION_LINKS: Record<string, string> = {
   unassessed_ai_systems: "/ai-systems",
   high_risk_assessments: "/risk-assessments",
   awaiting_review: "/policies",
+  vacant_governance_roles: "/governance",
+  ai_systems_without_owner: "/ai-systems",
+  risk_owner_not_a_real_account: "/risk-assessments",
+  data_owner_not_a_real_account: "/data-inventory",
 };
 
 const STATUS_TONES: Record<string, Segment["tone"]> = {

@@ -207,6 +207,18 @@ def role_names_by_user(db: Session) -> dict[int, list[str]]:
     return result
 
 
+def vacant_roles(db: Session) -> list[GovernanceRole]:
+    """Roles with zero holders -- bulk list_all + list_all_assignments (both
+    already exist) rather than count_holders per role, to avoid an N+1
+    query across every role."""
+    held_role_ids = {
+        a.governance_role_id for a in governance_role_repository.list_all_assignments(db)
+    }
+    return [
+        role for role in governance_role_repository.list_all(db) if role.id not in held_role_ids
+    ]
+
+
 def holders_for_role(db: Session, role_id: int) -> list[User]:
     holder_ids = [
         a.user_id for a in governance_role_repository.list_assignments_for_role(db, role_id)

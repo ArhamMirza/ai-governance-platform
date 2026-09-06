@@ -14,6 +14,7 @@ from app.repositories import (
     procedure_repository,
     risk_assessment_repository,
     sheet_repository,
+    user_repository,
 )
 from app.schemas.dashboard import (
     AISystemSummary,
@@ -27,6 +28,8 @@ from app.schemas.dashboard import (
 from app.services import (
     ai_system_inventory_service,
     ai_system_lifecycle_service,
+    data_inventory_service,
+    governance_role_service,
     pending_approvals_service,
     risk_analytics_service,
     risk_criteria_service,
@@ -46,6 +49,10 @@ def _attention(
     retention_expired_count: int,
     in_review_count: int,
     high_risk_count: int,
+    vacant_role_count: int,
+    ai_systems_without_owner_count: int,
+    risk_owner_invalid_count: int,
+    data_owner_invalid_count: int,
 ) -> list[AttentionItem]:
     """Actionable items, most urgent first. Zero-count items are dropped so the
     panel only ever shows things that need doing."""
@@ -92,6 +99,30 @@ def _attention(
             count=in_review_count,
             severity="warning",
         ),
+        AttentionItem(
+            key="vacant_governance_roles",
+            label="Governance roles with no one assigned",
+            count=vacant_role_count,
+            severity="warning",
+        ),
+        AttentionItem(
+            key="ai_systems_without_owner",
+            label="AI systems without an owner",
+            count=ai_systems_without_owner_count,
+            severity="warning",
+        ),
+        AttentionItem(
+            key="risk_owner_not_a_real_account",
+            label="Risk items whose owner isn't a real account",
+            count=risk_owner_invalid_count,
+            severity="warning",
+        ),
+        AttentionItem(
+            key="data_owner_not_a_real_account",
+            label="Datasets whose owner isn't a real account",
+            count=data_owner_invalid_count,
+            severity="warning",
+        ),
     ]
     return [item for item in candidates if item.count > 0]
 
@@ -127,6 +158,24 @@ def _my_risk_items(
     # Overdue first, otherwise oldest deadline first (None sorts last).
     items.sort(key=lambda item: (not item.overdue, item.treatment_deadline or "9999-99-99"))
     return items
+
+
+def _invalid_owner_count(rows: list[SheetRow], column_key: str, valid_user_ids: set[int]) -> int:
+    """Counts cells that are set but don't resolve to a real user -- a typo,
+    or someone who's since left. An unset owner is a separate, much noisier
+    "not yet assigned" signal and is deliberately not counted here."""
+    count = 0
+    for row in rows:
+        raw = row.data.get(column_key)
+        if raw is None or not str(raw).strip():
+            continue
+        try:
+            valid = int(raw) in valid_user_ids
+        except (TypeError, ValueError):
+            valid = False
+        if not valid:
+            count += 1
+    return count
 
 
 def get_summary(db: Session, actor_id: int) -> DashboardSummary:
@@ -174,9 +223,10 @@ def get_summary(db: Session, actor_id: int) -> DashboardSummary:
     )
 
     today = datetime.now(UTC).date()
+    lifecycles = ai_system_lifecycle_repository.list_all(db)
     retention_expired_count = sum(
         1
-        for lifecycle in ai_system_lifecycle_repository.list_all(db)
+        for lifecycle in lifecycles
         if ai_system_lifecycle_service.retention_expired(lifecycle, today)
     )
     review_overdue_count = sum(
@@ -188,6 +238,14 @@ def get_summary(db: Session, actor_id: int) -> DashboardSummary:
     risk_items = risk_analytics_service.summarize_rows(all_risk_rows, bands)
     in_review_count = sum(
         1 for record in [*policies, *procedures] if record.status == IN_REVIEW_STATUS
+    )
+
+    vacant_role_count = len(governance_role_service.vacant_roles(db))
+    ai_systems_without_owner_count = sum(1 for lc in lifecycles if lc.owner_id is None)
+    valid_user_ids = {u.id for u in user_repository.list_all(db)}
+    risk_owner_invalid_count = _invalid_owner_count(all_risk_rows, "risk_owner", valid_user_ids)
+    data_owner_invalid_count = _invalid_owner_count(
+        data_inventory_service.list_rows(db), "data_owner", valid_user_ids
     )
 
     return DashboardSummary(
@@ -224,6 +282,10 @@ def get_summary(db: Session, actor_id: int) -> DashboardSummary:
             retention_expired_count=retention_expired_count,
             in_review_count=in_review_count,
             high_risk_count=high_risk_count,
+            vacant_role_count=vacant_role_count,
+            ai_systems_without_owner_count=ai_systems_without_owner_count,
+            risk_owner_invalid_count=risk_owner_invalid_count,
+            data_owner_invalid_count=data_owner_invalid_count,
         ),
         matrix=risk_analytics_service.matrix_cells(all_risk_rows),
         criteria=risk_criteria_service.get_criteria(db),
