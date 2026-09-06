@@ -1,23 +1,32 @@
 import { useCurrentUser } from "../auth/hooks";
-import { hasPermission } from "../auth/permissions";
+import { useUserDirectory } from "../users/hooks";
 import { useAuditLog } from "./hooks";
 
+const CHIEF_AI_GOVERNANCE_OFFICER = "Chief AI Governance Officer";
+
 /**
- * Mirrors the backend's segregation-of-duties rule (audit_service.
- * require_different_approver): whoever most recently submitted this entity
- * for review can't be the one who approves it. Computed from the same audit
- * log AuditLogViewer already renders, so no extra request.
+ * Mirrors the backend's approval rule for Policy/Procedure and AI System
+ * deployment/retirement: only the Chief AI Governance Officer can approve
+ * (governance_role_service.require_caigo), and whoever most recently
+ * submitted this entity for review can't be the one who approves it
+ * (audit_service.require_different_approver). Computed from the same
+ * user directory and audit log already fetched elsewhere, so no extra
+ * request beyond what the page already loads.
  */
 export function useCanApprove(entityType: string, entityId: number) {
   const { data: me } = useCurrentUser();
+  const { data: directory } = useUserDirectory();
   const { data: entries } = useAuditLog(entityType, entityId);
 
-  const hasRole = hasPermission(me?.role, "approve");
+  const myDirectoryEntry = directory?.find((user) => user.id === me?.id);
+  const isCaigo = myDirectoryEntry?.governance_roles.includes(CHIEF_AI_GOVERNANCE_OFFICER) ?? false;
   const submissions = entries?.filter((entry) => entry.action === "submitted_for_review") ?? [];
   const lastSubmission = submissions.at(-1);
   const isSelfSubmission = me !== undefined && lastSubmission?.actor_id === me.id;
 
-  if (!hasRole) return { canApprove: false, reason: "Only admins can approve." };
+  if (!isCaigo) {
+    return { canApprove: false, reason: "Only the Chief AI Governance Officer can approve." };
+  }
   if (isSelfSubmission) {
     return { canApprove: false, reason: "A different user must approve this submission." };
   }

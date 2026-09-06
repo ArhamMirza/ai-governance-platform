@@ -21,10 +21,14 @@ def test_lists_entries_for_the_requested_entity(client: TestClient) -> None:
 
 
 def test_accumulates_multiple_actions_in_order(
-    client: TestClient, second_user: User, login_as: Callable[[User], None]
+    client: TestClient,
+    second_user: User,
+    login_as: Callable[[User], None],
+    make_caigo: Callable[[User], None],
 ) -> None:
     policy = client.post("/api/v1/policies", json={"title": "Data Retention Policy"}).json()
     client.post(f"/api/v1/policies/{policy['id']}/submit-for-review")
+    make_caigo(second_user)
     login_as(second_user)
     client.post(f"/api/v1/policies/{policy['id']}/approve")
 

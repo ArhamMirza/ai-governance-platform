@@ -5,7 +5,7 @@ from app.models.audit_log import AuditLogEntry
 from app.models.procedure import Procedure, ProcedureStatus
 from app.repositories import audit_log_repository, policy_repository, procedure_repository
 from app.schemas.procedure import ProcedureCreate, ProcedureUpdate
-from app.services import audit_service, framework_service
+from app.services import audit_service, framework_service, governance_role_service
 
 DOCUMENT_HISTORY_ACTIONS = ["document_added", "document_removed"]
 
@@ -89,6 +89,7 @@ def approve_procedure(db: Session, procedure_id: int, actor_id: int | None) -> P
             f"Procedure {procedure_id} must be in 'in_review' status to approve, "
             f"currently '{procedure.status}'"
         )
+    governance_role_service.require_caigo(db, actor_id)
     audit_service.require_different_approver(db, "Procedure", procedure_id, actor_id)
     procedure.status = ProcedureStatus.APPROVED
     procedure = procedure_repository.save(db, procedure)

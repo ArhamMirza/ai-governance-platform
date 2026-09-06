@@ -17,7 +17,7 @@ from app.models.framework_control import FrameworkControl
 from app.models.framework_soa_entry import FrameworkSoaEntry
 from app.models.governance_role import GovernanceRole
 from app.models.user import User, UserRole
-from app.services import evidence_service
+from app.services import evidence_service, governance_role_service
 
 TEST_DATABASE_URL = "sqlite:///:memory:"
 
@@ -117,6 +117,19 @@ def make_user(db_session: Session) -> Callable[..., User]:
         return _make_user(db_session, **overrides)
 
     return _make
+
+
+@pytest.fixture()
+def make_caigo(db_session: Session) -> Callable[[User], None]:
+    """Assigns a user as Chief AI Governance Officer -- tests exercising the
+    CAIGO-gated approval flow need a real holder, since approval now checks
+    governance_role_service.require_caigo rather than just admin/not-admin."""
+
+    def _make_caigo(user: User) -> None:
+        role = db_session.query(GovernanceRole).filter_by(name=DEFAULT_ROLES[0][0]).one()
+        governance_role_service.assign_user(db_session, role.id, user.id, actor_id=None)
+
+    return _make_caigo
 
 
 @pytest.fixture()
