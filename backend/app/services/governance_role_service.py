@@ -5,7 +5,7 @@ CHIEF_AI_GOVERNANCE_OFFICER's admin-only rule below for where they connect.
 
 from sqlalchemy.orm import Session
 
-from app.core.exceptions import ConflictError, NotFoundError, ValidationError
+from app.core.exceptions import AuthorizationError, ConflictError, NotFoundError, ValidationError
 from app.models.governance_role import GovernanceRole
 from app.models.governance_role_assignment import GovernanceRoleAssignment
 from app.models.user import User, UserRole
@@ -212,3 +212,22 @@ def holders_for_role(db: Session, role_id: int) -> list[User]:
         a.user_id for a in governance_role_repository.list_assignments_for_role(db, role_id)
     ]
     return [user for uid in holder_ids if (user := db.get(User, uid)) is not None]
+
+
+def is_caigo(db: Session, user_id: int) -> bool:
+    role = governance_role_repository.get_by_name(db, CHIEF_AI_GOVERNANCE_OFFICER)
+    if role is None:
+        return False
+    return any(user.id == user_id for user in holders_for_role(db, role.id))
+
+
+def require_caigo(db: Session, user_id: int | None) -> None:
+    """No real actor (seed script / direct service call) means nothing to
+    enforce -- mirrors audit_service.require_different_approver's same
+    no-op-on-None behavior."""
+    if user_id is None:
+        return
+    if not is_caigo(db, user_id):
+        raise AuthorizationError(
+            "Only the Chief AI Governance Officer can approve this."
+        )

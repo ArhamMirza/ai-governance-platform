@@ -105,7 +105,10 @@ def test_uploading_a_document_bumps_version_and_appears_in_history(client: TestC
 
 
 def test_full_review_workflow(
-    client: TestClient, second_user: User, login_as: Callable[[User], None]
+    client: TestClient,
+    second_user: User,
+    login_as: Callable[[User], None],
+    make_caigo: Callable[[User], None],
 ) -> None:
     procedure_id = create_procedure(client)["id"]
 
@@ -113,6 +116,7 @@ def test_full_review_workflow(
     assert submit_response.status_code == 200
     assert submit_response.json()["status"] == "in_review"
 
+    make_caigo(second_user)
     login_as(second_user)
     approve_response = client.post(f"/api/v1/procedures/{procedure_id}/approve")
     assert approve_response.status_code == 200
@@ -130,7 +134,10 @@ def test_cannot_approve_a_draft_procedure(
     assert response.status_code == 409
 
 
-def test_cannot_approve_your_own_submission(client: TestClient) -> None:
+def test_cannot_approve_your_own_submission(
+    client: TestClient, test_user: User, make_caigo: Callable[[User], None]
+) -> None:
+    make_caigo(test_user)
     procedure_id = create_procedure(client)["id"]
     client.post(f"/api/v1/procedures/{procedure_id}/submit-for-review")
 
@@ -138,6 +145,18 @@ def test_cannot_approve_your_own_submission(client: TestClient) -> None:
 
     assert response.status_code == 409
     assert "same user" in response.json()["detail"]
+
+
+def test_non_caigo_admin_cannot_approve(
+    client: TestClient, second_user: User, login_as: Callable[[User], None]
+) -> None:
+    procedure_id = create_procedure(client)["id"]
+    client.post(f"/api/v1/procedures/{procedure_id}/submit-for-review")
+    login_as(second_user)
+
+    response = client.post(f"/api/v1/procedures/{procedure_id}/approve")
+
+    assert response.status_code == 403
 
 
 def test_cannot_edit_after_submitted_for_review(client: TestClient) -> None:
@@ -159,10 +178,14 @@ def test_delete_draft_procedure(client: TestClient) -> None:
 
 
 def test_cannot_delete_approved_procedure(
-    client: TestClient, second_user: User, login_as: Callable[[User], None]
+    client: TestClient,
+    second_user: User,
+    login_as: Callable[[User], None],
+    make_caigo: Callable[[User], None],
 ) -> None:
     procedure_id = create_procedure(client)["id"]
     client.post(f"/api/v1/procedures/{procedure_id}/submit-for-review")
+    make_caigo(second_user)
     login_as(second_user)
     assert client.post(f"/api/v1/procedures/{procedure_id}/approve").status_code == 200
 

@@ -90,9 +90,12 @@ def test_submit_for_review_rejects_non_draft(mock_repo, db) -> None:
         policy_service.submit_for_review(db, 1, actor_id=1)
 
 
+@patch("app.services.policy_service.governance_role_service")
 @patch("app.services.policy_service.audit_service")
 @patch("app.services.policy_service.policy_repository")
-def test_approve_policy_transitions_in_review_to_approved(mock_repo, mock_audit, db) -> None:
+def test_approve_policy_transitions_in_review_to_approved(
+    mock_repo, mock_audit, mock_governance, db
+) -> None:
     policy = make_policy(status=PolicyStatus.IN_REVIEW)
     mock_repo.get.return_value = policy
     mock_repo.save.side_effect = lambda _db, p: p
@@ -100,6 +103,7 @@ def test_approve_policy_transitions_in_review_to_approved(mock_repo, mock_audit,
     result = policy_service.approve_policy(db, 1, actor_id=1)
 
     assert result.status == PolicyStatus.APPROVED
+    mock_governance.require_caigo.assert_called_once_with(db, 1)
 
 
 @patch("app.services.policy_service.policy_repository")

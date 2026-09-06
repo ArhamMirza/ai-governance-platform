@@ -1,7 +1,12 @@
 import pytest
 from sqlalchemy.orm import Session
 
-from app.core.exceptions import ConflictError, NotFoundError, ValidationError
+from app.core.exceptions import (
+    AuthorizationError,
+    ConflictError,
+    NotFoundError,
+    ValidationError,
+)
 from app.models.user import UserRole
 from app.services import governance_role_service
 
@@ -184,3 +189,24 @@ def test_delete_removes_a_childless_role_and_its_assignments(
     with pytest.raises(NotFoundError):
         governance_role_service.get_role(db_session, risk_owner_id)
     assert governance_role_service.list_roles_for_user(db_session, user.id) == []
+
+
+def test_is_caigo_true_only_for_the_actual_holder(db_session: Session, make_user) -> None:
+    caigo_id = get_role_id(db_session, "Chief AI Governance Officer")
+    caigo_holder = make_user(role=UserRole.ADMIN)
+    other_admin = make_user(role=UserRole.ADMIN)
+    governance_role_service.assign_user(db_session, caigo_id, caigo_holder.id, actor_id=None)
+
+    assert governance_role_service.is_caigo(db_session, caigo_holder.id) is True
+    assert governance_role_service.is_caigo(db_session, other_admin.id) is False
+
+
+def test_require_caigo_raises_for_a_non_caigo_admin(db_session: Session, make_user) -> None:
+    admin = make_user(role=UserRole.ADMIN)
+
+    with pytest.raises(AuthorizationError):
+        governance_role_service.require_caigo(db_session, admin.id)
+
+
+def test_require_caigo_is_a_noop_with_no_real_actor(db_session: Session) -> None:
+    governance_role_service.require_caigo(db_session, None)

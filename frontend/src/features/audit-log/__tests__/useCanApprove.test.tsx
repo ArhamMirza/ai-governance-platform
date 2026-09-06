@@ -4,11 +4,13 @@ import { describe, expect, it, vi } from "vitest";
 
 import { createTestQueryClient } from "../../../test/testQueryClient";
 import { useCurrentUser } from "../../auth/hooks";
+import { useUserDirectory } from "../../users/hooks";
 import { useAuditLog } from "../hooks";
 import { useCanApprove } from "../useCanApprove";
 import type { AuditLogEntry } from "../types";
 
 vi.mock("../../auth/hooks");
+vi.mock("../../users/hooks");
 vi.mock("../hooks");
 
 const admin = { id: 1, name: "Admin", email: "admin@example.com", role: "admin", is_active: true, created_at: "" };
@@ -31,6 +33,23 @@ function mockAuditLog(entries: AuditLogEntry[]) {
   vi.mocked(useAuditLog).mockReturnValue({ data: entries } as never);
 }
 
+function mockDirectory(caigoUserId: number | null) {
+  vi.mocked(useUserDirectory).mockReturnValue({
+    data: [
+      {
+        id: admin.id,
+        name: admin.name,
+        governance_roles: caigoUserId === admin.id ? ["Chief AI Governance Officer"] : [],
+      },
+      {
+        id: contributor.id,
+        name: contributor.name,
+        governance_roles: caigoUserId === contributor.id ? ["Chief AI Governance Officer"] : [],
+      },
+    ],
+  } as never);
+}
+
 function renderCanApprove() {
   const queryClient = createTestQueryClient();
   return renderHook(() => useCanApprove("Policy", 1), {
@@ -41,20 +60,22 @@ function renderCanApprove() {
 }
 
 describe("useCanApprove", () => {
-  it("denies a contributor regardless of who submitted", async () => {
-    vi.mocked(useCurrentUser).mockReturnValue({ data: contributor } as never);
-    mockAuditLog([entry({ action: "submitted_for_review", actor_id: admin.id })]);
+  it("denies an admin who is not the Chief AI Governance Officer", async () => {
+    vi.mocked(useCurrentUser).mockReturnValue({ data: admin } as never);
+    mockDirectory(null);
+    mockAuditLog([entry({ action: "submitted_for_review", actor_id: contributor.id })]);
 
     const { result } = renderCanApprove();
 
     await waitFor(() => {
       expect(result.current.canApprove).toBe(false);
     });
-    expect(result.current.reason).toMatch(/admin/i);
+    expect(result.current.reason).toMatch(/chief ai governance officer/i);
   });
 
-  it("denies an admin who submitted their own policy", async () => {
+  it("denies the CAIGO holder who submitted their own policy", async () => {
     vi.mocked(useCurrentUser).mockReturnValue({ data: admin } as never);
+    mockDirectory(admin.id);
     mockAuditLog([entry({ action: "submitted_for_review", actor_id: admin.id })]);
 
     const { result } = renderCanApprove();
@@ -65,8 +86,9 @@ describe("useCanApprove", () => {
     expect(result.current.reason).toMatch(/different user/i);
   });
 
-  it("allows an admin who did not submit it", async () => {
+  it("allows the CAIGO holder who did not submit it", async () => {
     vi.mocked(useCurrentUser).mockReturnValue({ data: admin } as never);
+    mockDirectory(admin.id);
     mockAuditLog([entry({ action: "submitted_for_review", actor_id: contributor.id })]);
 
     const { result } = renderCanApprove();
@@ -79,6 +101,7 @@ describe("useCanApprove", () => {
 
   it("uses the most recent submission when there were several", async () => {
     vi.mocked(useCurrentUser).mockReturnValue({ data: admin } as never);
+    mockDirectory(admin.id);
     mockAuditLog([
       entry({ id: 1, action: "submitted_for_review", actor_id: contributor.id }),
       entry({ id: 2, action: "submitted_for_review", actor_id: admin.id }),

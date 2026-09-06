@@ -123,9 +123,12 @@ def test_submit_for_review_rejects_non_draft(mock_repo, db) -> None:
         procedure_service.submit_for_review(db, 1, actor_id=1)
 
 
+@patch("app.services.procedure_service.governance_role_service")
 @patch("app.services.procedure_service.audit_service")
 @patch("app.services.procedure_service.procedure_repository")
-def test_approve_procedure_transitions_in_review_to_approved(mock_repo, mock_audit, db) -> None:
+def test_approve_procedure_transitions_in_review_to_approved(
+    mock_repo, mock_audit, mock_governance, db
+) -> None:
     procedure = make_procedure(status=ProcedureStatus.IN_REVIEW)
     mock_repo.get.return_value = procedure
     mock_repo.save.side_effect = lambda _db, p: p
@@ -133,6 +136,7 @@ def test_approve_procedure_transitions_in_review_to_approved(mock_repo, mock_aud
     result = procedure_service.approve_procedure(db, 1, actor_id=1)
 
     assert result.status == ProcedureStatus.APPROVED
+    mock_governance.require_caigo.assert_called_once_with(db, 1)
 
 
 @patch("app.services.procedure_service.procedure_repository")
