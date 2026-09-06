@@ -8,7 +8,7 @@ from app.core.exceptions import ConflictError, NotFoundError, ValidationError
 from app.core.lifecycle_stages import LifecycleStage, label, next_stage, previous_stage
 from app.models.ai_system_lifecycle import AISystemLifecycle
 from app.repositories import ai_system_lifecycle_repository, sheet_repository
-from app.services import audit_service, lifecycle_gate_service
+from app.services import audit_service, governance_role_service, lifecycle_gate_service
 
 ENTITY_TYPE = "AISystem"
 # A distinct entity type per sign-off, so the segregation-of-duties lookup for
@@ -189,6 +189,7 @@ def approve_deployment(
     """Whoever requested the release can't be the one who approves it -- the
     same rule policies and procedures already enforce."""
     lifecycle = get_or_create(db, ai_system_row_id)
+    governance_role_service.require_caigo(db, actor_id)
     try:
         audit_service.require_different_approver(
             db, DEPLOYMENT_APPROVAL_ENTITY_TYPE, ai_system_row_id, actor_id
@@ -240,6 +241,7 @@ def approve_retirement(
     db: Session, ai_system_row_id: int, actor_id: int | None
 ) -> AISystemLifecycle:
     lifecycle = get_or_create(db, ai_system_row_id)
+    governance_role_service.require_caigo(db, actor_id)
     try:
         audit_service.require_different_approver(
             db, RETIREMENT_APPROVAL_ENTITY_TYPE, ai_system_row_id, actor_id

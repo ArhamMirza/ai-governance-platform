@@ -2,13 +2,23 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
+import { useCanApprove } from "../../audit-log/useCanApprove";
 import { useUserDirectory } from "../../users/hooks";
-import { OwnerField } from "../components/StageFields";
-import { useSetOwner } from "../hooks";
+import { DeploymentRecordFields, OwnerField, RetirementFields } from "../components/StageFields";
+import {
+  useApproveDeployment,
+  useApproveRetirement,
+  useRequestDeploymentApproval,
+  useRequestRetirementApproval,
+  useSetDeploymentRecord,
+  useSetOwner,
+  useSetRetirement,
+} from "../hooks";
 import type { AISystemLifecycle } from "../types";
 
 vi.mock("../hooks");
 vi.mock("../../users/hooks");
+vi.mock("../../audit-log/useCanApprove");
 
 function makeLifecycle(overrides: Partial<AISystemLifecycle> = {}): AISystemLifecycle {
   return {
@@ -70,5 +80,87 @@ describe("OwnerField", () => {
     render(<OwnerField rowId={1} lifecycle={makeLifecycle({ owner_id: 7 })} />);
 
     expect(screen.getByLabelText("AI System Owner")).toHaveValue("7");
+  });
+});
+
+describe("DeploymentRecordFields approval gating", () => {
+  function mockDeploymentHooks() {
+    vi.mocked(useSetDeploymentRecord).mockReturnValue({
+      mutateAsync: vi.fn(),
+      isPending: false,
+    } as never);
+    vi.mocked(useRequestDeploymentApproval).mockReturnValue({
+      mutateAsync: vi.fn(),
+      isPending: false,
+    } as never);
+    vi.mocked(useApproveDeployment).mockReturnValue({
+      mutateAsync: vi.fn(),
+      isPending: false,
+    } as never);
+  }
+
+  it("shows the approve button when the current user can approve", () => {
+    mockDeploymentHooks();
+    vi.mocked(useCanApprove).mockReturnValue({ canApprove: true, reason: null });
+
+    render(<DeploymentRecordFields rowId={1} lifecycle={makeLifecycle()} />);
+
+    expect(screen.getByRole("button", { name: "Approve release" })).toBeInTheDocument();
+  });
+
+  it("hides the approve button and shows the reason when the user can't approve", () => {
+    mockDeploymentHooks();
+    vi.mocked(useCanApprove).mockReturnValue({
+      canApprove: false,
+      reason: "Only the Chief AI Governance Officer can approve.",
+    });
+
+    render(<DeploymentRecordFields rowId={1} lifecycle={makeLifecycle()} />);
+
+    expect(screen.queryByRole("button", { name: "Approve release" })).not.toBeInTheDocument();
+    expect(
+      screen.getByText("Only the Chief AI Governance Officer can approve."),
+    ).toBeInTheDocument();
+  });
+});
+
+describe("RetirementFields approval gating", () => {
+  function mockRetirementHooks() {
+    vi.mocked(useSetRetirement).mockReturnValue({
+      mutateAsync: vi.fn(),
+      isPending: false,
+    } as never);
+    vi.mocked(useRequestRetirementApproval).mockReturnValue({
+      mutateAsync: vi.fn(),
+      isPending: false,
+    } as never);
+    vi.mocked(useApproveRetirement).mockReturnValue({
+      mutateAsync: vi.fn(),
+      isPending: false,
+    } as never);
+  }
+
+  it("shows the approve button when the current user can approve", () => {
+    mockRetirementHooks();
+    vi.mocked(useCanApprove).mockReturnValue({ canApprove: true, reason: null });
+
+    render(<RetirementFields rowId={1} lifecycle={makeLifecycle()} />);
+
+    expect(screen.getByRole("button", { name: "Approve retirement" })).toBeInTheDocument();
+  });
+
+  it("hides the approve button and shows the reason when the user can't approve", () => {
+    mockRetirementHooks();
+    vi.mocked(useCanApprove).mockReturnValue({
+      canApprove: false,
+      reason: "Only the Chief AI Governance Officer can approve.",
+    });
+
+    render(<RetirementFields rowId={1} lifecycle={makeLifecycle()} />);
+
+    expect(screen.queryByRole("button", { name: "Approve retirement" })).not.toBeInTheDocument();
+    expect(
+      screen.getByText("Only the Chief AI Governance Officer can approve."),
+    ).toBeInTheDocument();
   });
 });
