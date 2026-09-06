@@ -136,6 +136,38 @@ describe("DashboardSummaryView", () => {
     expect(screen.getByRole("link", { name: "Risk treatments overdue" })).toBeInTheDocument();
   });
 
+  it("surfaces accountability coverage gaps in the attention panel", async () => {
+    vi.mocked(dashboardApi.getSummary).mockResolvedValue({
+      ...summary,
+      attention: [
+        ...summary.attention,
+        {
+          key: "vacant_governance_roles",
+          label: "Governance roles with no one assigned",
+          count: 2,
+          severity: "warning",
+        },
+        {
+          key: "ai_systems_without_owner",
+          label: "AI systems without an owner",
+          count: 1,
+          severity: "warning",
+        },
+      ],
+    });
+
+    renderView();
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole("link", { name: "Governance roles with no one assigned" }),
+      ).toHaveAttribute("href", "/governance");
+    });
+    expect(
+      screen.getByRole("link", { name: "AI systems without an owner" }),
+    ).toHaveAttribute("href", "/ai-systems");
+  });
+
   it("reports the risk reduction achieved by mitigation", async () => {
     vi.mocked(dashboardApi.getSummary).mockResolvedValue(summary);
 

@@ -210,3 +210,23 @@ def test_require_caigo_raises_for_a_non_caigo_admin(db_session: Session, make_us
 
 def test_require_caigo_is_a_noop_with_no_real_actor(db_session: Session) -> None:
     governance_role_service.require_caigo(db_session, None)
+
+
+def test_vacant_roles_lists_only_roles_with_no_holders(db_session: Session, make_user) -> None:
+    caigo_id = get_role_id(db_session, "Chief AI Governance Officer")
+    governance_role_service.assign_user(
+        db_session, caigo_id, make_user(role=UserRole.ADMIN).id, actor_id=None
+    )
+
+    vacant_names = {role.name for role in governance_role_service.vacant_roles(db_session)}
+
+    assert "Chief AI Governance Officer" not in vacant_names
+    assert vacant_names == {"Data Owner", "AI System Owner", "Risk Owner", "Implementation Team"}
+
+
+def test_vacant_roles_empty_once_every_role_is_held(db_session: Session, make_user) -> None:
+    for role in governance_role_service.list_roles(db_session):
+        user = make_user(role=UserRole.ADMIN)
+        governance_role_service.assign_user(db_session, role.id, user.id, actor_id=None)
+
+    assert governance_role_service.vacant_roles(db_session) == []
