@@ -37,6 +37,7 @@ from app.services import (
 
 APPROVED_STATUS = "approved"
 IN_REVIEW_STATUS = "in_review"
+RETIRED_STATUS = "retired"
 HIGH_RISK_TIER = "high"
 
 
@@ -229,15 +230,28 @@ def get_summary(db: Session, actor_id: int) -> DashboardSummary:
         for lifecycle in lifecycles
         if ai_system_lifecycle_service.retention_expired(lifecycle, today)
     )
+    # Retired policies and procedures are historical records, not part of the
+    # active governance set -- they don't count towards coverage and they
+    # aren't reviewed any more, the same way an archived AI system drops out of
+    # the active estate.
+    active_policies = [p for p in policies if p.status != RETIRED_STATUS]
+    active_procedures = [p for p in procedures if p.status != RETIRED_STATUS]
     review_overdue_count = sum(
         1
-        for assessment in [*impact_assessments, *risk_assessments]
-        if review_cadence.is_review_overdue(assessment.next_review_date, today)
+        for record in [
+            *impact_assessments,
+            *risk_assessments,
+            *active_policies,
+            *active_procedures,
+        ]
+        if review_cadence.is_review_overdue(record.next_review_date, today)
     )
 
     risk_items = risk_analytics_service.summarize_rows(all_risk_rows, bands)
     in_review_count = sum(
-        1 for record in [*policies, *procedures] if record.status == IN_REVIEW_STATUS
+        1
+        for record in [*active_policies, *active_procedures]
+        if record.status == IN_REVIEW_STATUS
     )
 
     vacant_role_count = len(governance_role_service.vacant_roles(db))
@@ -270,10 +284,14 @@ def get_summary(db: Session, actor_id: int) -> DashboardSummary:
             ai_systems_assessed=assessed_count,
             ai_systems_impact_assessed=impact_assessed_count,
             assessments_review_overdue=review_overdue_count,
-            policies_total=len(policies),
-            policies_approved=sum(1 for p in policies if p.status == APPROVED_STATUS),
-            procedures_total=len(procedures),
-            procedures_approved=sum(1 for p in procedures if p.status == APPROVED_STATUS),
+            policies_total=len(active_policies),
+            policies_approved=sum(
+                1 for p in active_policies if p.status == APPROVED_STATUS
+            ),
+            procedures_total=len(active_procedures),
+            procedures_approved=sum(
+                1 for p in active_procedures if p.status == APPROVED_STATUS
+            ),
         ),
         attention=_attention(
             overdue_count=risk_items.overdue_count,

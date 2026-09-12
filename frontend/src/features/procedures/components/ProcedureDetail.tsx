@@ -9,6 +9,7 @@ import {
   useApproveProcedure,
   useProcedure,
   useProcedureVersions,
+  useRetireProcedure,
   useSubmitForReview,
   useUpdateProcedure,
 } from "../hooks";
@@ -28,6 +29,7 @@ export function ProcedureDetail({ procedureId }: ProcedureDetailProps) {
   const { data: directory } = useUserDirectory();
   const submitForReview = useSubmitForReview(procedureId);
   const approve = useApproveProcedure(procedureId);
+  const retire = useRetireProcedure(procedureId);
   const updateProcedure = useUpdateProcedure(procedureId);
   const { canApprove, reason } = useCanApprove("Procedure", procedureId);
 
@@ -81,6 +83,11 @@ export function ProcedureDetail({ procedureId }: ProcedureDetailProps) {
           ) : (
             <p className="approval-note">{reason}</p>
           )
+        )}
+        {procedure.status === "approved" && canApprove && (
+          <button onClick={() => retire.mutate()} disabled={retire.isPending}>
+            Retire Procedure
+          </button>
         )}
       </div>
 

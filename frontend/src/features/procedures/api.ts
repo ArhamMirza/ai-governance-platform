@@ -16,6 +16,7 @@ export const proceduresApi = {
   submitForReview: (id: number) =>
     httpClient.post<Procedure>(`/procedures/${id}/submit-for-review`),
   approve: (id: number) => httpClient.post<Procedure>(`/procedures/${id}/approve`),
+  retire: (id: number) => httpClient.post<Procedure>(`/procedures/${id}/retire`),
   listVersions: (id: number) =>
     httpClient.get<ProcedureHistoryEntry[]>(`/procedures/${id}/versions`),
 };

@@ -7,6 +7,7 @@ import { formatUserOption } from "../../users/formatUserOption";
 import { useUserDirectory } from "../../users/hooks";
 import {
   useApprovePolicy,
+  useRetirePolicy,
   usePolicy,
   usePolicyVersions,
   useSubmitForReview,
@@ -28,6 +29,7 @@ export function PolicyDetail({ policyId }: PolicyDetailProps) {
   const { data: directory } = useUserDirectory();
   const submitForReview = useSubmitForReview(policyId);
   const approve = useApprovePolicy(policyId);
+  const retire = useRetirePolicy(policyId);
   const updatePolicy = useUpdatePolicy(policyId);
   const { canApprove, reason } = useCanApprove("Policy", policyId);
 
@@ -79,6 +81,11 @@ export function PolicyDetail({ policyId }: PolicyDetailProps) {
           ) : (
             <p className="approval-note">{reason}</p>
           )
+        )}
+        {policy.status === "approved" && canApprove && (
+          <button onClick={() => retire.mutate()} disabled={retire.isPending}>
+            Retire Policy
+          </button>
         )}
       </div>
 

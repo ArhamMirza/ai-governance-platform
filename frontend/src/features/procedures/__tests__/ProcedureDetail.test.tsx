@@ -22,6 +22,7 @@ const mockProcedure: Procedure = {
   owner_id: null,
   policy_id: null,
   effective_date: null,
+  next_review_date: null,
   created_at: "2026-01-01T00:00:00Z",
   updated_at: "2026-01-01T00:00:00Z",
 };

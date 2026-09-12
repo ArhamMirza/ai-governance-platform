@@ -1,5 +1,8 @@
+from datetime import UTC, datetime
+
 from sqlalchemy.orm import Session
 
+from app.core import review_cadence
 from app.core.exceptions import InvalidStatusTransitionError, NotFoundError
 from app.models.audit_log import AuditLogEntry
 from app.models.procedure import Procedure, ProcedureStatus
@@ -92,8 +95,27 @@ def approve_procedure(db: Session, procedure_id: int, actor_id: int | None) -> P
     governance_role_service.require_caigo(db, actor_id)
     audit_service.require_different_approver(db, "Procedure", procedure_id, actor_id)
     procedure.status = ProcedureStatus.APPROVED
+    # Approval schedules the next review rather than being the end of it --
+    # same cadence policies and the assessments use.
+    procedure.next_review_date = review_cadence.next_review_date(datetime.now(UTC).date())
     procedure = procedure_repository.save(db, procedure)
     audit_service.log(db, "Procedure", procedure.id, "approved", actor_id)
+    return procedure
+
+
+def retire_procedure(db: Session, procedure_id: int, actor_id: int | None) -> Procedure:
+    """Stands an approved procedure down once it has been superseded -- see
+    policy_service.retire_policy."""
+    procedure = _get_or_raise(db, procedure_id)
+    if procedure.status != ProcedureStatus.APPROVED:
+        raise InvalidStatusTransitionError(
+            f"Procedure {procedure_id} must be in 'approved' status to retire, "
+            f"currently '{procedure.status}'"
+        )
+    governance_role_service.require_caigo(db, actor_id)
+    procedure.status = ProcedureStatus.RETIRED
+    procedure = procedure_repository.save(db, procedure)
+    audit_service.log(db, "Procedure", procedure.id, "retired", actor_id)
     return procedure
 
 

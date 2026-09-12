@@ -1,10 +1,11 @@
-"""Shared review cadence for assessments.
+"""Shared review cadence for everything that gets approved.
 
 ISO 42001 expects impact and risk assessments to be performed before an AI
-system goes into use and re-performed at planned intervals. Both assessment
-types use the same yearly cadence and the same helpers so their dates stay
-aligned -- an organization reviewing one but not the other is exactly the
-drift this is meant to prevent.
+system goes into use and re-performed at planned intervals, and expects the
+same of the policies and procedures governing it. All four use the same yearly
+cadence and the same helpers so their dates stay aligned -- an organization
+reviewing one but not the others is exactly the drift this is meant to
+prevent.
 """
 
 from datetime import date

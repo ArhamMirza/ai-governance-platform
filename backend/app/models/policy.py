@@ -24,6 +24,10 @@ class Policy(Base):
     version: Mapped[int] = mapped_column(Integer, default=1)
     owner_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
     effective_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    # Set on approval (see app.core.review_cadence) -- ISO 42001 expects
+    # policies to be reviewed at planned intervals, not approved once. Null on
+    # anything approved before this was introduced, which never reads as due.
+    next_review_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(UTC)
     )

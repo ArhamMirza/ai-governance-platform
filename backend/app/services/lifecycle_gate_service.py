@@ -69,7 +69,9 @@ def _document_requirement(
     )
 
 
-def _inception_requirements(db: Session, ai_system_row_id: int) -> list[GateRequirement]:
+def _inception_requirements(
+    db: Session, ai_system_row_id: int, lifecycle: AISystemLifecycle
+) -> list[GateRequirement]:
     # Imported here rather than at module scope: risk_assessment_service
     # imports this module's siblings, and a top-level import is circular.
     from app.services import risk_assessment_service
@@ -84,7 +86,20 @@ def _inception_requirements(db: Session, ai_system_row_id: int) -> list[GateRequ
         else 0
     )
 
+    has_owner = lifecycle.owner_id is not None
+
     return [
+        GateRequirement(
+            key="ai_system_owner",
+            label="AI System Owner assigned",
+            satisfied=has_owner,
+            detail=(
+                "Assigned."
+                if has_owner
+                else "Assign the owner accountable for this system -- they approve "
+                "its impact and risk assessments."
+            ),
+        ),
         GateRequirement(
             key="impact_assessment_completed",
             label="Impact assessment completed",
@@ -327,7 +342,7 @@ def gate_requirements(
     stage = lifecycle.current_stage
 
     if stage == LifecycleStage.INCEPTION:
-        return _inception_requirements(db, ai_system_row_id)
+        return _inception_requirements(db, ai_system_row_id, lifecycle)
     if stage == LifecycleStage.DESIGN:
         return [_document_requirement(db, ai_system_row_id, DocumentType.DESIGN_DOCUMENT)]
     if stage == LifecycleStage.DEVELOPMENT:

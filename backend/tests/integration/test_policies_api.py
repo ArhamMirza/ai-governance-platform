@@ -1,10 +1,11 @@
 from collections.abc import Callable
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
-from app.models.user import User
+from app.models.policy import Policy
+from app.models.user import User, UserRole
 from app.services import governance_role_service
 
 
@@ -233,3 +234,129 @@ def test_cannot_delete_approved_policy(
     response = client.delete(f"/api/v1/policies/{policy_id}")
 
     assert response.status_code == 409
+
+
+def approved_policy(
+    client: TestClient,
+    second_user: User,
+    login_as: Callable[[User], None],
+    make_caigo: Callable[[User], None],
+) -> int:
+    """A policy signed off by a CAIGO who wasn't the submitter."""
+    policy_id = create_policy(client)["id"]
+    client.post(f"/api/v1/policies/{policy_id}/submit-for-review")
+    make_caigo(second_user)
+    login_as(second_user)
+    assert client.post(f"/api/v1/policies/{policy_id}/approve").status_code == 200
+    return policy_id
+
+
+def test_approval_schedules_the_next_review(
+    client: TestClient,
+    second_user: User,
+    login_as: Callable[[User], None],
+    make_caigo: Callable[[User], None],
+) -> None:
+    policy_id = approved_policy(client, second_user, login_as, make_caigo)
+
+    body = client.get(f"/api/v1/policies/{policy_id}").json()
+
+    assert body["next_review_date"] is not None
+    assert body["next_review_date"][:4] == str(date.today().year + 1)
+
+
+def test_a_policy_approved_before_review_dates_existed_is_never_overdue(
+    client: TestClient,
+    db_session: Session,
+    second_user: User,
+    login_as: Callable[[User], None],
+    make_caigo: Callable[[User], None],
+) -> None:
+    """The migration deliberately leaves existing approved records unstamped,
+    so they must not all land in the overdue count on deploy -- see its
+    docstring."""
+    policy_id = approved_policy(client, second_user, login_as, make_caigo)
+    db_session.get(Policy, policy_id).next_review_date = None
+    db_session.commit()
+
+    summary = client.get("/api/v1/dashboard/summary").json()
+
+    keys = [item["key"] for item in summary["attention"]]
+    assert "assessments_review_overdue" not in keys
+
+
+def test_retiring_requires_an_approved_policy(
+    client: TestClient, second_user: User, login_as: Callable[[User], None],
+    make_caigo: Callable[[User], None],
+) -> None:
+    policy_id = create_policy(client)["id"]
+    make_caigo(second_user)
+    login_as(second_user)
+
+    response = client.post(f"/api/v1/policies/{policy_id}/retire")
+
+    assert response.status_code == 409
+
+
+def test_retiring_requires_the_approve_permission(
+    client: TestClient,
+    second_user: User,
+    login_as: Callable[[User], None],
+    make_caigo: Callable[[User], None],
+    make_user,
+) -> None:
+    policy_id = approved_policy(client, second_user, login_as, make_caigo)
+    login_as(make_user(role=UserRole.CONTRIBUTOR))
+
+    response = client.post(f"/api/v1/policies/{policy_id}/retire")
+
+    assert response.status_code == 403
+
+
+def test_a_non_caigo_admin_cannot_retire(
+    client: TestClient,
+    second_user: User,
+    login_as: Callable[[User], None],
+    make_caigo: Callable[[User], None],
+    make_user,
+) -> None:
+    policy_id = approved_policy(client, second_user, login_as, make_caigo)
+    login_as(make_user(role=UserRole.ADMIN))
+
+    response = client.post(f"/api/v1/policies/{policy_id}/retire")
+
+    assert response.status_code == 403
+
+
+def test_caigo_can_retire_a_superseded_policy(
+    client: TestClient,
+    second_user: User,
+    login_as: Callable[[User], None],
+    make_caigo: Callable[[User], None],
+) -> None:
+    policy_id = approved_policy(client, second_user, login_as, make_caigo)
+
+    response = client.post(f"/api/v1/policies/{policy_id}/retire")
+
+    assert response.status_code == 200
+    assert response.json()["status"] == "retired"
+
+
+def test_a_retired_policy_leaves_the_coverage_ratio(
+    client: TestClient,
+    second_user: User,
+    login_as: Callable[[User], None],
+    make_caigo: Callable[[User], None],
+) -> None:
+    """A retired policy is a historical record, not part of what currently
+    governs the organization -- the same way an archived AI system drops out
+    of the active estate."""
+    policy_id = approved_policy(client, second_user, login_as, make_caigo)
+    before = client.get("/api/v1/dashboard/summary").json()["coverage"]
+    assert before["policies_total"] == 1
+
+    client.post(f"/api/v1/policies/{policy_id}/retire")
+
+    after = client.get("/api/v1/dashboard/summary").json()["coverage"]
+    assert after["policies_total"] == 0
+    assert after["policies_approved"] == 0
