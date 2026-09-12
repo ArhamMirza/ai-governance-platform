@@ -6,6 +6,7 @@ import openpyxl
 from fastapi import UploadFile
 from sqlalchemy.orm import Session
 
+from app.core.concurrency import create_or_get
 from app.core.exceptions import NotFoundError, ValidationError
 from app.models.sheet import Sheet, SheetRow
 from app.repositories import sheet_repository
@@ -104,6 +105,30 @@ def create_sheet(db: Session, entity_type: str, title: str, columns: list[Column
         columns=[column.model_dump() for column in columns],
     )
     return sheet_repository.create(db, sheet)
+
+
+def get_or_create_singleton_sheet(
+    db: Session, entity_type: str, title: str, columns: list[ColumnDef]
+) -> Sheet:
+    """The one sheet of its kind, provisioned on first use.
+
+    Two simultaneous first requests would otherwise each provision their own
+    -- the look-up and the insert are separate transactions, so neither sees
+    the other's. Sheet.SINGLETON_ENTITY_TYPES carries the unique index that
+    stops the second insert; the loser takes the winner's sheet, which is
+    the sheet it was asking for."""
+    existing = sheet_repository.get_by_entity_type(db, entity_type)
+    if existing is not None:
+        return existing
+    return create_or_get(
+        db,
+        lambda: Sheet(
+            entity_type=entity_type,
+            title=title,
+            columns=[column.model_dump() for column in columns],
+        ),
+        lambda: sheet_repository.get_by_entity_type(db, entity_type),
+    )
 
 
 def get_sheet(db: Session, sheet_id: int) -> Sheet:

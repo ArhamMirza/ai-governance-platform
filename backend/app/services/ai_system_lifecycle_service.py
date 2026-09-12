@@ -4,6 +4,7 @@ from datetime import UTC, date, datetime
 
 from sqlalchemy.orm import Session
 
+from app.core.concurrency import create_or_get
 from app.core.exceptions import ConflictError, NotFoundError, ValidationError
 from app.core.lifecycle_stages import LifecycleStage, label, next_stage, previous_stage
 from app.models.ai_system_lifecycle import AISystemLifecycle
@@ -36,10 +37,15 @@ def get_or_create(db: Session, ai_system_row_id: int) -> AISystemLifecycle:
     existing = ai_system_lifecycle_repository.get_for_ai_system(db, ai_system_row_id)
     if existing is not None:
         return existing
-    lifecycle = AISystemLifecycle(
-        ai_system_row_id=ai_system_row_id, current_stage=LifecycleStage.INCEPTION
+    # Two simultaneous first requests both get here; the unique constraint on
+    # ai_system_row_id lets one through and hands the other the row it made.
+    lifecycle = create_or_get(
+        db,
+        lambda: AISystemLifecycle(
+            ai_system_row_id=ai_system_row_id, current_stage=LifecycleStage.INCEPTION
+        ),
+        lambda: ai_system_lifecycle_repository.get_for_ai_system(db, ai_system_row_id),
     )
-    lifecycle = ai_system_lifecycle_repository.create(db, lifecycle)
     _write_stage_to_inventory(db, ai_system_row_id, lifecycle.current_stage)
     return lifecycle
 

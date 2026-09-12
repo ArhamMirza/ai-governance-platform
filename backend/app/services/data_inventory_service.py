@@ -17,6 +17,7 @@ from datetime import UTC, datetime
 from fastapi import UploadFile
 from sqlalchemy.orm import Session
 
+from app.core.concurrency import create_or_get
 from app.core.exceptions import AuthorizationError, ConflictError, NotFoundError, ValidationError
 from app.models.data_inventory_record import DataInventoryRecord, DataInventoryStatus
 from app.models.sheet import Sheet, SheetRow
@@ -54,10 +55,9 @@ DEFAULT_COLUMNS = [
 
 
 def get_or_create_sheet(db: Session) -> Sheet:
-    sheet = sheet_repository.get_by_entity_type(db, ENTITY_TYPE)
-    if sheet is not None:
-        return sheet
-    return sheet_service.create_sheet(db, ENTITY_TYPE, "Data Inventory", DEFAULT_COLUMNS)
+    return sheet_service.get_or_create_singleton_sheet(
+        db, ENTITY_TYPE, "Data Inventory", DEFAULT_COLUMNS
+    )
 
 
 def list_rows(db: Session) -> list[SheetRow]:
@@ -84,10 +84,15 @@ def get_or_create_record(db: Session, row_id: int) -> DataInventoryRecord:
     existing = data_inventory_record_repository.get_for_row(db, row_id)
     if existing is not None:
         return existing
-    record = DataInventoryRecord(
-        data_inventory_row_id=row_id, status=DataInventoryStatus.DRAFT
+    # Two simultaneous first requests both get here; the unique constraint on
+    # data_inventory_row_id lets one through and hands the other its record.
+    record = create_or_get(
+        db,
+        lambda: DataInventoryRecord(
+            data_inventory_row_id=row_id, status=DataInventoryStatus.DRAFT
+        ),
+        lambda: data_inventory_record_repository.get_for_row(db, row_id),
     )
-    record = data_inventory_record_repository.create(db, record)
     _write_status_to_row(db, row_id, record.status)
     return record
 

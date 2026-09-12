@@ -7,6 +7,7 @@ from datetime import UTC, datetime
 
 from sqlalchemy.orm import Session
 
+from app.core.concurrency import conflict_on_duplicate
 from app.core.exceptions import AuthorizationError, ConflictError, NotFoundError, ValidationError
 from app.models.governance_role import GovernanceRole
 from app.models.governance_role_assignment import GovernanceRoleAssignment
@@ -164,6 +165,13 @@ def delete_role(db: Session, role_id: int, actor_id: int | None) -> None:
     audit_service.log(db, ENTITY_TYPE, role_id, "deleted", actor_id, {"name": role.name})
 
 
+def _at_capacity_message(role: GovernanceRole) -> str:
+    return (
+        f"'{role.name}' already has its maximum of {role.max_holders} holder(s); "
+        "remove the current holder first."
+    )
+
+
 def assign_user(
     db: Session, role_id: int, user_id: int, actor_id: int | None
 ) -> GovernanceRoleAssignment:
@@ -175,10 +183,7 @@ def assign_user(
     if role.max_holders is not None:
         current = governance_role_repository.count_holders(db, role_id)
         if current >= role.max_holders:
-            raise ConflictError(
-                f"'{role.name}' already has its maximum of {role.max_holders} holder(s); "
-                "remove the current holder first."
-            )
+            raise ConflictError(_at_capacity_message(role))
     # The user's own framing: the Chief AI Governance Officer "will be the
     # admin" -- so this designated role can't land on a non-admin account.
     if role.name == CHIEF_AI_GOVERNANCE_OFFICER and user.role != UserRole.ADMIN:
@@ -189,7 +194,17 @@ def assign_user(
     assignment = GovernanceRoleAssignment(
         governance_role_id=role_id, user_id=user_id, assigned_by=actor_id
     )
-    assignment = governance_role_repository.create_assignment(db, assignment)
+    # Both checks above ran in transactions of their own, so a simultaneous
+    # assignment can pass them too. The unique constraint settles the
+    # duplicate; the cap is settled by counting with the row already in
+    # place, which is the repository's job because it has to happen before
+    # the commit.
+    with conflict_on_duplicate(db, f"{user.name} already holds '{role.name}'."):
+        assigned = governance_role_repository.create_assignment_within_cap(
+            db, assignment, role.max_holders
+        )
+    if not assigned:
+        raise ConflictError(_at_capacity_message(role))
     audit_service.log(
         db, ENTITY_TYPE, role_id, "user_assigned", actor_id,
         {"user_id": user_id, "role_name": role.name},
@@ -312,8 +327,11 @@ def delegate_caigo(
     if ends_at <= now:
         raise ValidationError("The delegation's end time must be in the future.")
 
-    existing = governance_role_repository.get_active_delegation(db, role.id, now)
-    if existing is not None:
+    # Every unrevoked delegation, not just the one active right now: a
+    # delegation whose window has closed is spent, but leaving it unrevoked
+    # would count as a second standing delegation under the unique index and
+    # block every delegation after it.
+    for existing in governance_role_repository.list_unrevoked_delegations(db, role.id):
         existing.revoked_at = now
         governance_role_repository.save_delegation(db, existing)
 
@@ -324,7 +342,15 @@ def delegate_caigo(
         ends_at=ends_at,
         created_by=actor_id,
     )
-    delegation = governance_role_repository.create_delegation(db, delegation)
+    # Two simultaneous delegations each revoke what they found and insert,
+    # which would leave the role with two stand-ins; the index stops the
+    # second, and whoever lost can name their delegate again.
+    with conflict_on_duplicate(
+        db,
+        "Someone else set up a backup approver at the same moment. "
+        "Check who holds it now before delegating again.",
+    ):
+        delegation = governance_role_repository.create_delegation(db, delegation)
     audit_service.log(
         db, ENTITY_TYPE, role.id, "caigo_delegated", actor_id,
         {"delegate_user_id": delegate_user_id, "ends_at": ends_at.isoformat()},

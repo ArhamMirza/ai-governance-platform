@@ -25,7 +25,12 @@ class ImpactAssessment(Base):
     __tablename__ = "impact_assessments"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    ai_system_row_id: Mapped[int] = mapped_column(ForeignKey("sheet_rows.id"), index=True)
+    # Unique for the same reason RiskAssessment.ai_system_row_id is: the
+    # "one per AI system" rule above is checked in a transaction of its own,
+    # so only the constraint survives two simultaneous requests.
+    ai_system_row_id: Mapped[int] = mapped_column(
+        ForeignKey("sheet_rows.id"), unique=True, index=True
+    )
     status: Mapped[str] = mapped_column(String(20), default=ImpactAssessmentStatus.DRAFT)
     assessor_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
     assessment_date: Mapped[date | None] = mapped_column(Date, nullable=True)

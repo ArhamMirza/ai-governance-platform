@@ -5,6 +5,7 @@ from fastapi import UploadFile
 from sqlalchemy.orm import Session
 
 from app.core import risk_scoring
+from app.core.concurrency import conflict_on_duplicate
 from app.core.exceptions import ConflictError, NotFoundError, ValidationError
 from app.models.risk_assessment import RiskAssessment, RiskAssessmentStatus
 from app.models.sheet import Sheet, SheetRow
@@ -34,6 +35,11 @@ ENTITY_TYPE = "RiskAssessment"
 
 OWNER_APPROVAL_ENTITY_TYPE = "RiskAssessmentOwnerApproval"
 CAIGO_APPROVAL_ENTITY_TYPE = "RiskAssessmentCaigoApproval"
+
+ONE_PER_AI_SYSTEM_MESSAGE = (
+    "This AI system already has a risk assessment. Add risk items to it "
+    "instead of creating another."
+)
 
 # Treating a risk is progress against an approved assessment, not a change to
 # what was approved -- these keys are what close_risk_item writes, and editing
@@ -160,10 +166,7 @@ def create_risk_assessment(
     # One per AI system -- further risks go in this assessment's sheet as new
     # rows, rather than spawning a parallel assessment.
     if get_for_ai_system(db, data.ai_system_row_id) is not None:
-        raise ConflictError(
-            "This AI system already has a risk assessment. Add risk items to it "
-            "instead of creating another."
-        )
+        raise ConflictError(ONE_PER_AI_SYSTEM_MESSAGE)
 
     sheet = sheet_service.create_sheet(db, ENTITY_TYPE, "Risk Items", DEFAULT_COLUMNS)
     risk_assessment = RiskAssessment(
@@ -172,7 +175,17 @@ def create_risk_assessment(
         assessor_id=data.assessor_id,
         assessment_date=data.assessment_date,
     )
-    risk_assessment = risk_assessment_repository.create(db, risk_assessment)
+    try:
+        # The check above and this insert are separate transactions, so a
+        # simultaneous request can pass the check too; the unique constraint
+        # decides, and the loser is told what the check would have told it.
+        with conflict_on_duplicate(db, ONE_PER_AI_SYSTEM_MESSAGE):
+            risk_assessment = risk_assessment_repository.create(db, risk_assessment)
+    except ConflictError:
+        # The sheet was already committed, so losing here would leave it
+        # behind with no assessment pointing at it.
+        sheet_repository.delete(db, sheet)
+        raise
     audit_service.log(
         db,
         "RiskAssessment",

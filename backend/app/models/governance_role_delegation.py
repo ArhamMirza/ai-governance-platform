@@ -1,9 +1,11 @@
 from datetime import UTC, datetime
 
-from sqlalchemy import DateTime, ForeignKey, Integer
+from sqlalchemy import DateTime, ForeignKey, Index, Integer, text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.database import Base
+
+_UNREVOKED = text("revoked_at IS NULL")
 
 
 class GovernanceRoleDelegation(Base):
@@ -15,6 +17,20 @@ class GovernanceRoleDelegation(Base):
     auditable."""
 
     __tablename__ = "governance_role_delegations"
+    __table_args__ = (
+        # A role has at most one standing delegation. Revoked rows are the
+        # history, so they're excluded rather than counted -- which is also
+        # why delegate_caigo revokes every unrevoked row and not just the
+        # one that is active right now: an expired-but-unrevoked row would
+        # otherwise block every delegation that came after it.
+        Index(
+            "uq_one_standing_delegation_per_role",
+            "governance_role_id",
+            unique=True,
+            sqlite_where=_UNREVOKED,
+            postgresql_where=_UNREVOKED,
+        ),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True)
     governance_role_id: Mapped[int] = mapped_column(
