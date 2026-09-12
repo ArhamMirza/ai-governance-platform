@@ -2,14 +2,19 @@ import { useState } from "react";
 
 import { ApiError } from "../../../shared/api/httpClient";
 import { formatUserOption } from "../../users/formatUserOption";
-import { useUserDirectory } from "../../users/hooks";
+import { useUserDirectory, useUsers } from "../../users/hooks";
 import {
   useAssignGovernanceRole,
+  useCaigoDelegation,
   useDeleteGovernanceRole,
+  useRevokeCaigoDelegation,
+  useSetCaigoDelegation,
   useUnassignGovernanceRole,
   useUpdateGovernanceRole,
 } from "../hooks";
 import type { GovernanceRole } from "../types";
+
+const CHIEF_AI_GOVERNANCE_OFFICER = "Chief AI Governance Officer";
 
 function readError(err: unknown, fallback: string): string {
   if (!(err instanceof ApiError)) return fallback;
@@ -25,6 +30,93 @@ interface GovernanceRoleCardProps {
   role: GovernanceRole;
   allRoles: GovernanceRole[];
   canManage: boolean;
+}
+
+function CaigoDelegationSection({ canManage }: { canManage: boolean }) {
+  const { data: delegation, isLoading } = useCaigoDelegation();
+  const { data: admins } = useUsers({ enabled: canManage });
+  const setDelegation = useSetCaigoDelegation();
+  const revokeDelegation = useRevokeCaigoDelegation();
+
+  const [delegateUserId, setDelegateUserId] = useState("");
+  const [endsAt, setEndsAt] = useState("");
+  const [error, setError] = useState<string | null>(null);
+
+  const run = async (action: () => Promise<unknown>, fallback: string) => {
+    setError(null);
+    try {
+      await action();
+    } catch (err) {
+      setError(readError(err, fallback));
+    }
+  };
+
+  if (isLoading) return null;
+
+  const eligibleAdmins = (admins ?? []).filter((u) => u.role === "admin" && u.is_active);
+
+  return (
+    <div className="governance-role-field">
+      <h4>Backup approver</h4>
+      {error && <p role="alert">{error}</p>}
+      {delegation ? (
+        <p>
+          {delegation.delegate_name} covers this role until{" "}
+          {new Date(delegation.ends_at).toLocaleString()}.
+          {canManage && (
+            <button
+              onClick={() =>
+                run(() => revokeDelegation.mutateAsync(), "Failed to revoke this delegation")
+              }
+              disabled={revokeDelegation.isPending}
+            >
+              Revoke
+            </button>
+          )}
+        </p>
+      ) : (
+        <p className="framework-tags-empty">No backup approver is currently active.</p>
+      )}
+
+      {canManage && (
+        <div className="governance-role-field-row">
+          <select
+            aria-label="Backup approver"
+            value={delegateUserId}
+            onChange={(e) => setDelegateUserId(e.target.value)}
+          >
+            <option value="">Select an admin</option>
+            {eligibleAdmins.map((user) => (
+              <option key={user.id} value={user.id}>
+                {user.name}
+              </option>
+            ))}
+          </select>
+          <input
+            aria-label="Backup approver expires at"
+            type="datetime-local"
+            value={endsAt}
+            onChange={(e) => setEndsAt(e.target.value)}
+          />
+          <button
+            disabled={!delegateUserId || !endsAt || setDelegation.isPending}
+            onClick={() =>
+              run(async () => {
+                await setDelegation.mutateAsync({
+                  delegate_user_id: Number(delegateUserId),
+                  ends_at: new Date(endsAt).toISOString(),
+                });
+                setDelegateUserId("");
+                setEndsAt("");
+              }, "Failed to set this backup approver")
+            }
+          >
+            Set Backup Approver
+          </button>
+        </div>
+      )}
+    </div>
+  );
 }
 
 export function GovernanceRoleCard({ role, allRoles, canManage }: GovernanceRoleCardProps) {
@@ -134,6 +226,8 @@ export function GovernanceRoleCard({ role, allRoles, canManage }: GovernanceRole
           ))}
         </ul>
       )}
+
+      {role.name === CHIEF_AI_GOVERNANCE_OFFICER && <CaigoDelegationSection canManage={canManage} />}
 
       {canManage && !atCapacity && (
         <div className="governance-role-field-row">

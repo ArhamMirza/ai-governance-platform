@@ -3,9 +3,13 @@ system's owner approves (skipped if the owner is the one submitting), then
 the Chief AI Governance Officer gives the final sign-off.
 """
 
+from datetime import UTC, datetime, timedelta
+
 from fastapi.testclient import TestClient
+from sqlalchemy.orm import Session
 
 from app.models.user import User, UserRole
+from app.services import governance_role_service
 from tests.integration.test_risk_assessments_api import (
     create_ai_system_row,
     create_risk_assessment,
@@ -105,6 +109,27 @@ def test_non_caigo_admin_cannot_approve_the_caigo_stage(
     response = client.post(f"/api/v1/risk-assessments/{created['id']}/approve-caigo-stage")
 
     assert response.status_code == 403
+
+
+def test_an_active_caigo_delegate_can_approve_the_caigo_stage(
+    client: TestClient, db_session: Session, make_user, login_as
+) -> None:
+    created = create_risk_assessment(client)
+    owner = make_user()
+    set_owner(client, created["ai_system_row_id"], owner.id)
+    client.post(f"/api/v1/risk-assessments/{created['id']}/submit-for-owner-approval")
+    login_as(owner)
+    client.post(f"/api/v1/risk-assessments/{created['id']}/approve-owner-stage")
+
+    delegate = make_user(role=UserRole.ADMIN)
+    governance_role_service.delegate_caigo(
+        db_session, delegate.id, datetime.now(UTC) + timedelta(days=1), actor_id=None
+    )
+    login_as(delegate)
+    response = client.post(f"/api/v1/risk-assessments/{created['id']}/approve-caigo-stage")
+
+    assert response.status_code == 200
+    assert response.json()["status"] == "completed"
 
 
 def test_the_owner_approver_cannot_also_approve_the_caigo_stage_themselves(

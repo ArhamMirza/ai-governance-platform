@@ -35,3 +35,16 @@ export interface GovernanceRoleUpdateInput {
   parent_role_id?: number | null;
   max_holders?: number | null;
 }
+
+export interface CaigoDelegation {
+  id: number;
+  delegate_user_id: number;
+  delegate_name: string;
+  starts_at: string;
+  ends_at: string;
+}
+
+export interface CaigoDelegationInput {
+  delegate_user_id: number;
+  ends_at: string;
+}

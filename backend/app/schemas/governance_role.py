@@ -43,3 +43,16 @@ class OrgChartNode(BaseModel):
     parent_role_id: int | None
     max_holders: int | None
     holders: list[RoleHolder]
+
+
+class CaigoDelegationCreate(BaseModel):
+    delegate_user_id: int
+    ends_at: datetime
+
+
+class CaigoDelegationRead(BaseModel):
+    id: int
+    delegate_user_id: int
+    delegate_name: str
+    starts_at: datetime
+    ends_at: datetime

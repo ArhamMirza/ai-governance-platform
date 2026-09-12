@@ -1,3 +1,5 @@
+from datetime import UTC, datetime, timedelta
+
 import pytest
 from sqlalchemy.orm import Session
 
@@ -230,3 +232,94 @@ def test_vacant_roles_empty_once_every_role_is_held(db_session: Session, make_us
         governance_role_service.assign_user(db_session, role.id, user.id, actor_id=None)
 
     assert governance_role_service.vacant_roles(db_session) == []
+
+
+def test_delegating_caigo_requires_an_admin_account(db_session: Session, make_user) -> None:
+    viewer = make_user(role=UserRole.VIEWER)
+
+    with pytest.raises(ValidationError):
+        governance_role_service.delegate_caigo(
+            db_session, viewer.id, datetime.now(UTC) + timedelta(days=1), actor_id=None
+        )
+
+
+def test_delegating_caigo_rejects_an_end_time_in_the_past(
+    db_session: Session, make_user
+) -> None:
+    admin = make_user(role=UserRole.ADMIN)
+
+    with pytest.raises(ValidationError):
+        governance_role_service.delegate_caigo(
+            db_session, admin.id, datetime.now(UTC) - timedelta(days=1), actor_id=None
+        )
+
+
+def test_is_caigo_true_for_an_active_delegate(db_session: Session, make_user) -> None:
+    delegate = make_user(role=UserRole.ADMIN)
+    governance_role_service.delegate_caigo(
+        db_session, delegate.id, datetime.now(UTC) + timedelta(days=1), actor_id=None
+    )
+
+    assert governance_role_service.is_caigo(db_session, delegate.id) is True
+
+
+def test_is_caigo_false_once_the_delegation_has_expired(
+    db_session: Session, make_user
+) -> None:
+    delegate = make_user(role=UserRole.ADMIN)
+    governance_role_service.delegate_caigo(
+        db_session, delegate.id, datetime.now(UTC) + timedelta(seconds=1), actor_id=None
+    )
+    delegation = governance_role_service.get_caigo_delegation(db_session)
+    # Backdate it rather than sleeping the test past the real clock.
+    delegation.starts_at = datetime.now(UTC) - timedelta(days=2)
+    delegation.ends_at = datetime.now(UTC) - timedelta(days=1)
+    db_session.commit()
+
+    assert governance_role_service.is_caigo(db_session, delegate.id) is False
+
+
+def test_is_caigo_false_after_the_delegation_is_revoked(
+    db_session: Session, make_user
+) -> None:
+    delegate = make_user(role=UserRole.ADMIN)
+    governance_role_service.delegate_caigo(
+        db_session, delegate.id, datetime.now(UTC) + timedelta(days=1), actor_id=None
+    )
+
+    governance_role_service.revoke_caigo_delegation(db_session, actor_id=None)
+
+    assert governance_role_service.is_caigo(db_session, delegate.id) is False
+
+
+def test_revoking_with_no_active_delegation_is_rejected(db_session: Session) -> None:
+    with pytest.raises(ValidationError):
+        governance_role_service.revoke_caigo_delegation(db_session, actor_id=None)
+
+
+def test_setting_a_new_delegation_revokes_the_old_one(db_session: Session, make_user) -> None:
+    first = make_user(role=UserRole.ADMIN)
+    second = make_user(role=UserRole.ADMIN)
+    governance_role_service.delegate_caigo(
+        db_session, first.id, datetime.now(UTC) + timedelta(days=1), actor_id=None
+    )
+
+    governance_role_service.delegate_caigo(
+        db_session, second.id, datetime.now(UTC) + timedelta(days=1), actor_id=None
+    )
+
+    assert governance_role_service.is_caigo(db_session, first.id) is False
+    assert governance_role_service.is_caigo(db_session, second.id) is True
+
+
+def test_role_names_by_user_badges_the_active_delegate(
+    db_session: Session, make_user
+) -> None:
+    delegate = make_user(role=UserRole.ADMIN)
+    governance_role_service.delegate_caigo(
+        db_session, delegate.id, datetime.now(UTC) + timedelta(days=1), actor_id=None
+    )
+
+    badges = governance_role_service.role_names_by_user(db_session)
+
+    assert badges[delegate.id] == ["Chief AI Governance Officer"]

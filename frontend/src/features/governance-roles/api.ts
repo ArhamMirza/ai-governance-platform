@@ -1,5 +1,7 @@
 import { httpClient } from "../../shared/api/httpClient";
 import type {
+  CaigoDelegation,
+  CaigoDelegationInput,
   GovernanceRole,
   GovernanceRoleCreateInput,
   GovernanceRoleUpdateInput,
@@ -20,4 +22,10 @@ export const governanceRolesApi = {
     }),
   unassign: (roleId: number, userId: number) =>
     httpClient.delete<GovernanceRole>(`/governance-roles/${roleId}/assignments/${userId}`),
+  getCaigoDelegation: () =>
+    httpClient.get<CaigoDelegation | null>("/governance-roles/caigo-delegation"),
+  setCaigoDelegation: (data: CaigoDelegationInput) =>
+    httpClient.post<CaigoDelegation>("/governance-roles/caigo-delegation", data),
+  revokeCaigoDelegation: () =>
+    httpClient.delete<void>("/governance-roles/caigo-delegation"),
 };
