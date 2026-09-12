@@ -1,6 +1,6 @@
 import { useState } from "react";
 
-import { ApiError } from "../../../shared/api/httpClient";
+import { readError } from "../../../shared/api/readError";
 import { StatusBadge } from "../../../shared/components/StatusBadge";
 import { useCanApprove } from "../../audit-log/useCanApprove";
 import { useCanApproveAsOwner } from "../../audit-log/useCanApproveAsOwner";
@@ -38,16 +38,6 @@ interface ImpactAssessmentFormProps {
   onDeleted: () => void;
   /** Hidden where deleting would strand a dependent risk assessment. */
   allowDelete?: boolean;
-}
-
-function readError(err: unknown, fallback: string): string {
-  if (!(err instanceof ApiError)) return fallback;
-  try {
-    const parsed = JSON.parse(err.message) as { detail?: string };
-    return parsed.detail ?? err.message;
-  } catch {
-    return err.message || fallback;
-  }
 }
 
 function NarrativeField({

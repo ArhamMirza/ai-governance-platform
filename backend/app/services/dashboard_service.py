@@ -290,5 +290,14 @@ def get_summary(db: Session, actor_id: int) -> DashboardSummary:
         matrix=risk_analytics_service.matrix_cells(all_risk_rows),
         criteria=risk_criteria_service.get_criteria(db),
         my_risk_items=_my_risk_items(risk_assessments, rows_by_sheet, actor_id),
-        pending_approvals=pending_approvals_service.get_pending_approvals(db, actor_id),
+        pending_approvals=pending_approvals_service.get_pending_approvals(
+            db,
+            actor_id,
+            policies=policies,
+            procedures=procedures,
+            lifecycles=lifecycles,
+            ai_system_rows=ai_system_rows,
+            risk_assessments=risk_assessments,
+            impact_assessments=impact_assessments,
+        ),
     )

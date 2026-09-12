@@ -100,6 +100,17 @@ def test_unassigning_requires_manage_users(client: TestClient, make_user, login_
     assert response.status_code == 403
 
 
+def test_renaming_caigo_is_rejected(client: TestClient, make_user, login_as) -> None:
+    login_as(make_user(role=UserRole.ADMIN))
+    caigo = role_id(client, "Chief AI Governance Officer")
+
+    response = client.patch(
+        f"/api/v1/governance-roles/{caigo}", json={"name": "Head of AI Governance"}
+    )
+
+    assert response.status_code == 400
+
+
 def test_deleting_a_role_with_children_is_blocked(client: TestClient, make_user, login_as) -> None:
     login_as(make_user(role=UserRole.ADMIN))
     caigo = role_id(client, "Chief AI Governance Officer")

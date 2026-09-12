@@ -1,6 +1,6 @@
 import { useState } from "react";
 
-import { ApiError } from "../../../shared/api/httpClient";
+import { readError } from "../../../shared/api/readError";
 import { useOrgChart, useUpdateGovernanceRole } from "../hooks";
 import type { OrgChartNode } from "../types";
 
@@ -62,16 +62,6 @@ function layout(nodes: OrgChartNode[]): { positioned: PositionedNode[]; width: n
   const width = Math.max(cursorX - H_GAP, BOX_WIDTH);
   const height = (maxDepth + 1) * (BOX_HEIGHT + V_GAP) - V_GAP;
   return { positioned, width, height };
-}
-
-function readError(err: unknown, fallback: string): string {
-  if (!(err instanceof ApiError)) return fallback;
-  try {
-    const parsed = JSON.parse(err.message) as { detail?: string };
-    return parsed.detail ?? err.message;
-  } catch {
-    return err.message || fallback;
-  }
 }
 
 interface OrgChartProps {

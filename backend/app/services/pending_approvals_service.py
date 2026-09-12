@@ -8,31 +8,33 @@ this list never shows something the user would in fact be rejected for
 trying to approve -- see policy_service.approve_policy,
 ai_system_lifecycle_service.approve_deployment/approve_retirement, and
 risk_assessment_service/impact_assessment_service's approve_owner_stage/
-approve_caigo_stage for the source of truth each check reproduces."""
+approve_caigo_stage for the source of truth each check reproduces.
+
+Every list this needs (policies, procedures, lifecycles, AI system rows,
+risk/impact assessments) is already fetched by dashboard_service.get_summary
+for its own counts -- callers pass those same lists in rather than this
+service re-querying them, so building the dashboard doesn't hit every table
+twice."""
 
 from sqlalchemy.orm import Session
 
 from app.core.lifecycle_stages import LifecycleStage
 from app.models.ai_system_lifecycle import AISystemLifecycle
-from app.models.impact_assessment import ImpactAssessmentStatus
-from app.models.policy import PolicyStatus
-from app.models.procedure import ProcedureStatus
-from app.models.risk_assessment import RiskAssessmentStatus
+from app.models.impact_assessment import ImpactAssessment, ImpactAssessmentStatus
+from app.models.policy import Policy, PolicyStatus
+from app.models.procedure import Procedure, ProcedureStatus
+from app.models.risk_assessment import RiskAssessment, RiskAssessmentStatus
 from app.models.sheet import SheetRow
-from app.repositories import (
-    ai_system_lifecycle_repository,
-    audit_log_repository,
-    impact_assessment_repository,
-    policy_repository,
-    procedure_repository,
-    risk_assessment_repository,
-)
+from app.repositories import audit_log_repository
 from app.schemas.dashboard import PendingApprovalItem
-from app.services import ai_system_inventory_service, governance_role_service
+from app.services import governance_role_service
 
 SUBMITTED = "submitted_for_review"
 CAIGO_STAGE_LABEL = "Awaiting your approval as Chief AI Governance Officer"
 OWNER_STAGE_LABEL = "Awaiting your approval as this AI system's owner"
+
+RISK_OWNER_APPROVAL_ENTITY_TYPE = "RiskAssessmentOwnerApproval"
+IMPACT_OWNER_APPROVAL_ENTITY_TYPE = "ImpactAssessmentOwnerApproval"
 
 
 def _ai_system_name(ai_system_rows_by_id: dict[int, SheetRow], ai_system_row_id: int) -> str:
@@ -72,37 +74,84 @@ def _caigo_stage_items(
     return items
 
 
-def get_pending_approvals(db: Session, user_id: int) -> list[PendingApprovalItem]:
+def _owner_stage_items(
+    db: Session,
+    user_id: int,
+    entity_type: str,
+    audit_entity_type: str,
+    candidates: list[tuple[int, int]],
+    lifecycle_by_row: dict[int, AISystemLifecycle],
+    ai_system_rows_by_id: dict[int, SheetRow],
+) -> list[PendingApprovalItem]:
+    """Mirrors approve_owner_stage's own gate: only this AI system's current
+    owner may act on it (checked here), AND
+    audit_service.require_different_approver still rejects them if they were
+    also the one who submitted it -- e.g. the owner changed after
+    submission and the new owner happens to be the original submitter.
+    Reproduced here as a filter for the same reason _caigo_stage_items
+    filters on submitter: so this list never shows something the user would
+    in fact be rejected for trying to approve. candidates is a list of
+    (entity_id, ai_system_row_id) pairs."""
+    eligible = [
+        (entity_id, ai_system_row_id)
+        for entity_id, ai_system_row_id in candidates
+        if (lc := lifecycle_by_row.get(ai_system_row_id)) is not None and lc.owner_id == user_id
+    ]
+    latest = audit_log_repository.latest_entry_by_entity(
+        db, audit_entity_type, [entity_id for entity_id, _ in eligible], [SUBMITTED]
+    )
+    items = []
+    for entity_id, ai_system_row_id in eligible:
+        entry = latest.get(entity_id)
+        if entry is not None and entry.actor_id == user_id:
+            continue
+        items.append(
+            PendingApprovalItem(
+                entity_type=entity_type,
+                entity_id=entity_id,
+                title=_ai_system_name(ai_system_rows_by_id, ai_system_row_id),
+                stage_label=OWNER_STAGE_LABEL,
+                submitted_at=None,
+            )
+        )
+    return items
+
+
+def get_pending_approvals(
+    db: Session,
+    user_id: int,
+    *,
+    policies: list[Policy],
+    procedures: list[Procedure],
+    lifecycles: list[AISystemLifecycle],
+    ai_system_rows: list[SheetRow],
+    risk_assessments: list[RiskAssessment],
+    impact_assessments: list[ImpactAssessment],
+) -> list[PendingApprovalItem]:
     items: list[PendingApprovalItem] = []
     is_caigo = governance_role_service.is_caigo(db, user_id)
-    ai_system_rows_by_id = {row.id: row for row in ai_system_inventory_service.list_rows(db)}
+    ai_system_rows_by_id = {row.id: row for row in ai_system_rows}
 
     if is_caigo:
-        policies = [
-            p for p in policy_repository.list_all(db) if p.status == PolicyStatus.IN_REVIEW
-        ]
+        pending_policies = [p for p in policies if p.status == PolicyStatus.IN_REVIEW]
         items += _caigo_stage_items(
             db,
             user_id,
             "Policy",
             "Policy",
-            [p.id for p in policies],
-            {p.id: p.title for p in policies},
+            [p.id for p in pending_policies],
+            {p.id: p.title for p in pending_policies},
         )
 
-        procedures = [
-            p for p in procedure_repository.list_all(db) if p.status == ProcedureStatus.IN_REVIEW
-        ]
+        pending_procedures = [p for p in procedures if p.status == ProcedureStatus.IN_REVIEW]
         items += _caigo_stage_items(
             db,
             user_id,
             "Procedure",
             "Procedure",
-            [p.id for p in procedures],
-            {p.id: p.title for p in procedures},
+            [p.id for p in pending_procedures],
+            {p.id: p.title for p in pending_procedures},
         )
-
-    lifecycles = ai_system_lifecycle_repository.list_all(db)
 
     if is_caigo:
         deployment_candidates = [
@@ -143,23 +192,18 @@ def get_pending_approvals(db: Session, user_id: int) -> list[PendingApprovalItem
 
     lifecycle_by_row: dict[int, AISystemLifecycle] = {lc.ai_system_row_id: lc for lc in lifecycles}
 
-    def owner_stage_item(entity_type: str, entity_id: int, ai_system_row_id: int) -> None:
-        lc = lifecycle_by_row.get(ai_system_row_id)
-        if lc is not None and lc.owner_id == user_id:
-            items.append(
-                PendingApprovalItem(
-                    entity_type=entity_type,
-                    entity_id=entity_id,
-                    title=_ai_system_name(ai_system_rows_by_id, ai_system_row_id),
-                    stage_label=OWNER_STAGE_LABEL,
-                    submitted_at=None,
-                )
-            )
-
-    risk_assessments = risk_assessment_repository.list_all(db)
-    for ra in risk_assessments:
-        if ra.status == RiskAssessmentStatus.PENDING_OWNER_APPROVAL:
-            owner_stage_item("RiskAssessment", ra.id, ra.ai_system_row_id)
+    pending_owner_ras = [
+        ra for ra in risk_assessments if ra.status == RiskAssessmentStatus.PENDING_OWNER_APPROVAL
+    ]
+    items += _owner_stage_items(
+        db,
+        user_id,
+        "RiskAssessment",
+        RISK_OWNER_APPROVAL_ENTITY_TYPE,
+        [(ra.id, ra.ai_system_row_id) for ra in pending_owner_ras],
+        lifecycle_by_row,
+        ai_system_rows_by_id,
+    )
 
     if is_caigo:
         caigo_pending_ras = [
@@ -179,10 +223,20 @@ def get_pending_approvals(db: Session, user_id: int) -> list[PendingApprovalItem
             },
         )
 
-    impact_assessments = impact_assessment_repository.list_all(db)
-    for ia in impact_assessments:
-        if ia.status == ImpactAssessmentStatus.PENDING_OWNER_APPROVAL:
-            owner_stage_item("ImpactAssessment", ia.id, ia.ai_system_row_id)
+    pending_owner_ias = [
+        ia
+        for ia in impact_assessments
+        if ia.status == ImpactAssessmentStatus.PENDING_OWNER_APPROVAL
+    ]
+    items += _owner_stage_items(
+        db,
+        user_id,
+        "ImpactAssessment",
+        IMPACT_OWNER_APPROVAL_ENTITY_TYPE,
+        [(ia.id, ia.ai_system_row_id) for ia in pending_owner_ias],
+        lifecycle_by_row,
+        ai_system_rows_by_id,
+    )
 
     if is_caigo:
         caigo_pending_ias = [
@@ -203,8 +257,7 @@ def get_pending_approvals(db: Session, user_id: int) -> list[PendingApprovalItem
         )
 
     # Most recently submitted first; items with no timestamp (the
-    # owner-approval stage, which has no separate "submitted" audit entry
-    # of its own) sort last.
+    # owner-approval stage, which doesn't surface one here) sort last.
     items.sort(
         key=lambda item: item.submitted_at.timestamp() if item.submitted_at else float("-inf"),
         reverse=True,

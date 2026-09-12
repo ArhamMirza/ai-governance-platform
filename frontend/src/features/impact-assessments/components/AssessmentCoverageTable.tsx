@@ -1,21 +1,11 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 
-import { ApiError } from "../../../shared/api/httpClient";
+import { readError } from "../../../shared/api/readError";
 import { useAISystemInventoryRows } from "../../ai-system-inventory/hooks";
 import { useCreateRiskAssessment, useRiskAssessments } from "../../risk-assessments/hooks";
 import { useAllImpactAssessments, useCreateImpactAssessmentForAISystem } from "../hooks";
 import type { ImpactAssessment } from "../types";
-
-function readError(err: unknown, fallback: string): string {
-  if (!(err instanceof ApiError)) return fallback;
-  try {
-    const parsed = JSON.parse(err.message) as { detail?: string };
-    return parsed.detail ?? err.message;
-  } catch {
-    return err.message || fallback;
-  }
-}
 
 function impactStatusCell(assessment: ImpactAssessment | undefined) {
   if (!assessment) return <span className="impact-review-chip">Not started</span>;

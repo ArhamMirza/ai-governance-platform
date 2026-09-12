@@ -1,6 +1,6 @@
 import { useState } from "react";
 
-import { ApiError } from "../../../shared/api/httpClient";
+import { readError } from "../../../shared/api/readError";
 import { useCurrentUser } from "../../auth/hooks";
 import { useUpdateUser, useUsers } from "../hooks";
 
@@ -9,16 +9,6 @@ const ROLE_LABELS: Record<string, string> = {
   contributor: "Contributor",
   viewer: "Viewer",
 };
-
-function readError(err: unknown, fallback: string): string {
-  if (!(err instanceof ApiError)) return fallback;
-  try {
-    const parsed = JSON.parse(err.message) as { detail?: string };
-    return parsed.detail ?? err.message;
-  } catch {
-    return err.message || fallback;
-  }
-}
 
 export function UsersList() {
   const { data: users, isLoading, isError } = useUsers();

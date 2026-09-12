@@ -139,6 +139,27 @@ def test_update_role_can_reparent(db_session: Session) -> None:
     assert updated.parent_role_id == data_owner_id
 
 
+def test_caigo_cannot_be_renamed(db_session: Session) -> None:
+    caigo_id = get_role_id(db_session, "Chief AI Governance Officer")
+
+    with pytest.raises(ValidationError):
+        governance_role_service.update_role(
+            db_session, caigo_id, "Head of AI Governance", None, None, False, None, False,
+            actor_id=None,
+        )
+
+
+def test_a_non_caigo_role_can_still_be_renamed(db_session: Session) -> None:
+    risk_owner_id = get_role_id(db_session, "Risk Owner")
+
+    updated = governance_role_service.update_role(
+        db_session, risk_owner_id, "Risk Custodian", None, None, False, None, False,
+        actor_id=None,
+    )
+
+    assert updated.name == "Risk Custodian"
+
+
 def test_a_role_cannot_report_to_itself(db_session: Session) -> None:
     risk_owner_id = get_role_id(db_session, "Risk Owner")
 

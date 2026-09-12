@@ -116,3 +116,38 @@ describe("GovernanceRoleCard CAIGO backup approver", () => {
     expect(screen.queryByText("Backup approver")).not.toBeInTheDocument();
   });
 });
+
+describe("GovernanceRoleCard responsibilities textarea", () => {
+  it("picks up a remote edit to responsibilities instead of showing stale text", () => {
+    mockHooks();
+    const riskOwner: GovernanceRole = {
+      id: 2,
+      name: "Risk Owner",
+      responsibilities: "Original text.",
+      max_holders: null,
+      parent_role_id: null,
+      holders: [],
+      created_at: "2026-01-01T00:00:00Z",
+      updated_at: "2026-01-01T00:00:00Z",
+    };
+
+    const { rerender } = render(
+      <GovernanceRoleCard role={riskOwner} allRoles={[riskOwner]} canManage />,
+    );
+    expect(screen.getByLabelText("Responsibilities for Risk Owner")).toHaveValue(
+      "Original text.",
+    );
+
+    rerender(
+      <GovernanceRoleCard
+        role={{ ...riskOwner, responsibilities: "Updated by someone else." }}
+        allRoles={[riskOwner]}
+        canManage
+      />,
+    );
+
+    expect(screen.getByLabelText("Responsibilities for Risk Owner")).toHaveValue(
+      "Updated by someone else.",
+    );
+  });
+});

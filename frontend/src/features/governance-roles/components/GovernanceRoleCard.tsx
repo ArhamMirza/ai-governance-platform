@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
-import { ApiError } from "../../../shared/api/httpClient";
+import { readError } from "../../../shared/api/readError";
 import { formatUserOption } from "../../users/formatUserOption";
 import { useUserDirectory, useUsers } from "../../users/hooks";
 import {
@@ -15,16 +15,6 @@ import {
 import type { GovernanceRole } from "../types";
 
 const CHIEF_AI_GOVERNANCE_OFFICER = "Chief AI Governance Officer";
-
-function readError(err: unknown, fallback: string): string {
-  if (!(err instanceof ApiError)) return fallback;
-  try {
-    const parsed = JSON.parse(err.message) as { detail?: string };
-    return parsed.detail ?? err.message;
-  } catch {
-    return err.message || fallback;
-  }
-}
 
 interface GovernanceRoleCardProps {
   role: GovernanceRole;
@@ -129,6 +119,14 @@ export function GovernanceRoleCard({ role, allRoles, canManage }: GovernanceRole
   const [responsibilities, setResponsibilities] = useState(role.responsibilities);
   const [selectedUserId, setSelectedUserId] = useState("");
   const [error, setError] = useState<string | null>(null);
+
+  // useState's initial value only applies on first mount -- without this,
+  // someone else's edit to this role (a background refetch) would never
+  // reach the textarea, leaving it showing what was here when this card
+  // first rendered.
+  useEffect(() => {
+    setResponsibilities(role.responsibilities);
+  }, [role.responsibilities]);
 
   const holderIds = new Set(role.holders.map((h) => h.id));
   const assignableUsers = (directory ?? []).filter((u) => !holderIds.has(u.id));
