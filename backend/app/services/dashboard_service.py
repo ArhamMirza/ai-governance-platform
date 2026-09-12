@@ -108,19 +108,19 @@ def _attention(
         ),
         AttentionItem(
             key="ai_systems_without_owner",
-            label="AI systems without an owner",
+            label="AI systems without an active owner",
             count=ai_systems_without_owner_count,
             severity="warning",
         ),
         AttentionItem(
             key="risk_owner_not_a_real_account",
-            label="Risk items whose owner isn't a real account",
+            label="Risk items whose owner isn't an active account",
             count=risk_owner_invalid_count,
             severity="warning",
         ),
         AttentionItem(
             key="data_owner_not_a_real_account",
-            label="Datasets whose owner isn't a real account",
+            label="Datasets whose owner isn't an active account",
             count=data_owner_invalid_count,
             severity="warning",
         ),
@@ -162,8 +162,11 @@ def _my_risk_items(
 
 
 def _invalid_owner_count(rows: list[SheetRow], column_key: str, valid_user_ids: set[int]) -> int:
-    """Counts cells that are set but don't resolve to a real user -- a typo,
-    or someone who's since left. An unset owner is a separate, much noisier
+    """Counts cells that are set but don't resolve to an *active* user -- a
+    typo, or someone who has since been deactivated. A deactivated owner is
+    worth surfacing because they can no longer sign anything off: they can't
+    log in, and nobody else is allowed to approve in their place, so the record
+    is stuck until it is reassigned. An unset owner is a separate, much noisier
     "not yet assigned" signal and is deliberately not counted here."""
     count = 0
     for row in rows:
@@ -255,8 +258,12 @@ def get_summary(db: Session, actor_id: int) -> DashboardSummary:
     )
 
     vacant_role_count = len(governance_role_service.vacant_roles(db))
-    ai_systems_without_owner_count = sum(1 for lc in lifecycles if lc.owner_id is None)
-    valid_user_ids = {u.id for u in user_repository.list_all(db)}
+    # Active only: a deactivated owner can't approve, so for accountability
+    # purposes their id is no better than a typo or a null.
+    valid_user_ids = {u.id for u in user_repository.list_all(db) if u.is_active}
+    ai_systems_without_owner_count = sum(
+        1 for lc in lifecycles if lc.owner_id not in valid_user_ids
+    )
     risk_owner_invalid_count = _invalid_owner_count(all_risk_rows, "risk_owner", valid_user_ids)
     data_inventory_rows = data_inventory_service.list_rows(db)
     data_owner_invalid_count = _invalid_owner_count(

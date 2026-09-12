@@ -15,6 +15,28 @@ class UserUpdate(BaseModel):
     is_active: bool | None = None
 
 
+class UserAccountabilities(BaseModel):
+    """What a user is on the hook for. Read before deactivating them: nobody
+    can approve in their place, so anything they own is stuck until it is
+    reassigned (see dashboard_service._invalid_owner_count)."""
+
+    governance_roles: list[str] = []
+    ai_systems_owned: list[str] = []
+    datasets_owned: list[str] = []
+    open_risk_items: int = 0
+    pending_approvals: int = 0
+
+    @property
+    def is_empty(self) -> bool:
+        return not (
+            self.governance_roles
+            or self.ai_systems_owned
+            or self.datasets_owned
+            or self.open_risk_items
+            or self.pending_approvals
+        )
+
+
 class UserDirectoryEntry(BaseModel):
     """Minimal, non-admin-gated user info -- enough to populate an owner
     picker without exposing email/role/active-status to non-admins."""

@@ -15,6 +15,16 @@ export function useUserDirectory() {
   return useQuery({ queryKey: ["users", "directory"], queryFn: usersApi.directory });
 }
 
+/** Only fetched when an id is given -- the admin is about to deactivate
+ * someone and needs to know what they hold. */
+export function useUserAccountabilities(userId: number | null) {
+  return useQuery({
+    queryKey: ["users", "accountabilities", userId],
+    queryFn: () => usersApi.accountabilities(userId as number),
+    enabled: userId !== null,
+  });
+}
+
 export function useCreateUser() {
   const queryClient = useQueryClient();
   return useMutation({

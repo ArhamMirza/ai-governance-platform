@@ -26,3 +26,13 @@ export interface DirectoryUser {
    * ...) -- see formatUserOption in this feature for how pickers show it. */
   governance_roles: string[];
 }
+
+/** What a user is personally accountable for. Read before deactivating them:
+ * nobody may approve in their place, so anything they own is stuck until it
+ * is reassigned. */
+export interface UserAccountabilities {
+  governance_roles: string[];
+  ai_systems_owned: string[];
+  datasets_owned: string[];
+  open_risk_items: number;
+}

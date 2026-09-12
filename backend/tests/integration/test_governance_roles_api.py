@@ -100,6 +100,24 @@ def test_unassigning_requires_manage_users(client: TestClient, make_user, login_
     assert response.status_code == 403
 
 
+def test_deleting_caigo_is_rejected(client: TestClient, make_user, login_as) -> None:
+    """Every approval in the app is gated on this role being findable by
+    name, so it can't be deleted any more than it can be renamed."""
+    login_as(make_user(role=UserRole.ADMIN))
+    caigo = role_id(client, "Chief AI Governance Officer")
+    # Move the seeded children off it, so the has-children guard isn't the
+    # thing doing the refusing.
+    for role in client.get("/api/v1/governance-roles").json():
+        if role["parent_role_id"] == caigo:
+            client.patch(
+                f"/api/v1/governance-roles/{role['id']}", json={"parent_role_id": None}
+            )
+
+    response = client.delete(f"/api/v1/governance-roles/{caigo}")
+
+    assert response.status_code == 409
+
+
 def test_renaming_caigo_is_rejected(client: TestClient, make_user, login_as) -> None:
     login_as(make_user(role=UserRole.ADMIN))
     caigo = role_id(client, "Chief AI Governance Officer")

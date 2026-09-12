@@ -2,7 +2,7 @@ import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import { useCurrentUser } from "../../features/auth/hooks";
-import { useUpdateUser, useUsers } from "../../features/users/hooks";
+import { useUpdateUser, useUserAccountabilities, useUsers } from "../../features/users/hooks";
 import { UsersPage } from "../UsersPage";
 
 vi.mock("../../features/auth/hooks");
@@ -32,6 +32,7 @@ describe("UsersPage", () => {
       isError: false,
     } as never);
     vi.mocked(useUpdateUser).mockReturnValue({ mutateAsync: vi.fn(), isPending: false } as never);
+    vi.mocked(useUserAccountabilities).mockReturnValue({ data: undefined } as never);
 
     render(<UsersPage />);
 

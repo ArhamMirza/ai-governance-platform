@@ -5,7 +5,12 @@ from app.core.database import get_db
 from app.dependencies import get_current_user, require_manage_users_user
 from app.models.user import User
 from app.schemas.auth import UserRead
-from app.schemas.user import UserCreate, UserDirectoryEntry, UserUpdate
+from app.schemas.user import (
+    UserAccountabilities,
+    UserCreate,
+    UserDirectoryEntry,
+    UserUpdate,
+)
 from app.services import governance_role_service, user_service
 
 router = APIRouter(prefix="/users", tags=["users"])
@@ -32,6 +37,18 @@ def list_directory(db: Session = Depends(get_db)) -> list[UserDirectoryEntry]:
         )
         for user in user_service.list_users(db)
     ]
+
+
+@router.get(
+    "/{user_id}/accountabilities",
+    response_model=UserAccountabilities,
+    dependencies=[Depends(require_manage_users_user)],
+)
+def get_accountabilities(user_id: int, db: Session = Depends(get_db)) -> UserAccountabilities:
+    """What this user is on the hook for -- read before deactivating them, so
+    an admin knows what needs reassigning rather than finding out from a
+    stuck approval later."""
+    return user_service.get_accountabilities(db, user_id)
 
 
 @router.post("", response_model=UserRead, status_code=201)

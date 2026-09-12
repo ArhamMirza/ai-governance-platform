@@ -186,3 +186,69 @@ def test_data_owner_not_a_real_account_is_surfaced(client: TestClient, test_user
     body = client.get("/api/v1/dashboard/summary").json()
 
     assert attention_item(body, "data_owner_not_a_real_account")["count"] == 1
+
+
+def test_a_deactivated_owner_is_surfaced_the_same_as_no_owner(
+    client: TestClient, make_user, login_as, test_user
+) -> None:
+    """A deactivated owner can't log in to approve and nobody may approve in
+    their place, so the record is stuck -- it has to show up somewhere."""
+    owner = make_user()
+    row = client.post(
+        "/api/v1/ai-system-inventory/rows", json={"data": {"name": "Resume Screener"}}
+    ).json()
+    client.put(
+        f"/api/v1/ai-systems/{row['id']}/lifecycle/owner", json={"owner_id": owner.id}
+    )
+    body = client.get("/api/v1/dashboard/summary").json()
+    assert attention_item(body, "ai_systems_without_owner") is None
+
+    client.patch(f"/api/v1/users/{owner.id}", json={"is_active": False})
+
+    body = client.get("/api/v1/dashboard/summary").json()
+    assert attention_item(body, "ai_systems_without_owner")["count"] == 1
+
+
+def test_a_deactivated_dataset_owner_is_surfaced(
+    client: TestClient, make_user, test_user
+) -> None:
+    owner = make_user()
+    client.post(
+        "/api/v1/data-inventory/rows",
+        json={"data": {"dataset_name": "Applicant CVs", "data_owner": str(owner.id)}},
+    )
+    body = client.get("/api/v1/dashboard/summary").json()
+    assert attention_item(body, "data_owner_not_a_real_account") is None
+
+    client.patch(f"/api/v1/users/{owner.id}", json={"is_active": False})
+
+    body = client.get("/api/v1/dashboard/summary").json()
+    assert attention_item(body, "data_owner_not_a_real_account")["count"] == 1
+
+
+def test_accountabilities_are_readable_before_deactivating(
+    client: TestClient, make_user
+) -> None:
+    owner = make_user()
+    row = client.post(
+        "/api/v1/ai-system-inventory/rows", json={"data": {"name": "Resume Screener"}}
+    ).json()
+    client.put(
+        f"/api/v1/ai-systems/{row['id']}/lifecycle/owner", json={"owner_id": owner.id}
+    )
+
+    response = client.get(f"/api/v1/users/{owner.id}/accountabilities")
+
+    assert response.status_code == 200
+    assert response.json()["ai_systems_owned"] == ["Resume Screener"]
+
+
+def test_accountabilities_require_manage_users(
+    client: TestClient, make_user, login_as
+) -> None:
+    target = make_user()
+    login_as(make_user(role=UserRole.CONTRIBUTOR))
+
+    response = client.get(f"/api/v1/users/{target.id}/accountabilities")
+
+    assert response.status_code == 403
