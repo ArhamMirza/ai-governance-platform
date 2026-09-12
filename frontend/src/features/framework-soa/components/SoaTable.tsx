@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
-import { ApiError } from "../../../shared/api/httpClient";
+import { readError } from "../../../shared/api/readError";
 import type { TaggedItem } from "../../framework-mapping/types";
 import { useFrameworkSoa, useUpdateFrameworkSoaEntry } from "../hooks";
 import type { FrameworkSoaEntry } from "../types";
@@ -23,30 +23,27 @@ function TaggedItemChips({ items }: { items: TaggedItem[] }) {
 function SoaRow({ entry }: { entry: FrameworkSoaEntry }) {
   const updateEntry = useUpdateFrameworkSoaEntry();
   const [justification, setJustification] = useState(entry.justification ?? "");
+  // Held locally so that an excluded control the server rejects for having no
+  // justification keeps showing the choice the user made -- they then write
+  // the justification and it saves in one pass, rather than their selection
+  // silently snapping back to Applicable.
+  const [applicability, setApplicability] = useState(entry.applicability);
   const [error, setError] = useState<string | null>(null);
 
-  const handleApplicabilityChange = async (applicability: string) => {
-    setError(null);
-    try {
-      await updateEntry.mutateAsync({
-        controlId: entry.id,
-        data: { applicability, justification: justification || null },
-      });
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Failed to update applicability");
-    }
-  };
+  useEffect(() => {
+    setJustification(entry.justification ?? "");
+    setApplicability(entry.applicability);
+  }, [entry.justification, entry.applicability]);
 
-  const handleJustificationBlur = async () => {
-    if (justification === (entry.justification ?? "")) return;
+  const save = async (next: FrameworkSoaEntry["applicability"], reason: string) => {
     setError(null);
     try {
       await updateEntry.mutateAsync({
         controlId: entry.id,
-        data: { applicability: entry.applicability, justification: justification || null },
+        data: { applicability: next, justification: reason || null },
       });
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Failed to update justification");
+      setError(readError(err, "Failed to update this control"));
     }
   };
 
@@ -57,8 +54,12 @@ function SoaRow({ entry }: { entry: FrameworkSoaEntry }) {
       <td data-column="applicability" data-type="text">
         <select
           aria-label={`Applicability for ${entry.code}`}
-          value={entry.applicability}
-          onChange={(e) => handleApplicabilityChange(e.target.value)}
+          value={applicability}
+          onChange={(e) => {
+            const next = e.target.value as FrameworkSoaEntry["applicability"];
+            setApplicability(next);
+            save(next, justification);
+          }}
         >
           <option value="applicable">Applicable</option>
           <option value="not_applicable">Not Applicable</option>
@@ -70,7 +71,13 @@ function SoaRow({ entry }: { entry: FrameworkSoaEntry }) {
           value={justification}
           rows={2}
           onChange={(e) => setJustification(e.target.value)}
-          onBlur={handleJustificationBlur}
+          onBlur={() => {
+            const unchanged =
+              justification === (entry.justification ?? "") &&
+              applicability === entry.applicability;
+            if (unchanged) return;
+            save(applicability, justification);
+          }}
         />
         {error && <p role="alert">{error}</p>}
       </td>

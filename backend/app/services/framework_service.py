@@ -1,11 +1,10 @@
 """Framework control reference data and entity tagging.
 
 Tags are polymorphic (entity_type + entity_id, same pattern as the audit log)
-so Policy, Procedure, RiskAssessment, and Evidence share one tagging
+so Policy, Procedure, Risk/Impact Assessment and Evidence share one tagging
 mechanism instead of each carrying their own free-text column.
 """
 
-from datetime import UTC, datetime
 
 from sqlalchemy.orm import Session
 
@@ -14,6 +13,7 @@ from app.models.evidence import Evidence
 from app.models.framework_control import FrameworkControl
 from app.models.framework_soa_entry import SoaApplicability
 from app.models.framework_tag import FrameworkTag
+from app.models.impact_assessment import ImpactAssessment
 from app.models.policy import Policy
 from app.models.procedure import Procedure
 from app.models.risk_assessment import RiskAssessment
@@ -68,38 +68,49 @@ def delete_tags(db: Session, entity_type: str, entity_id: int) -> None:
     framework_tag_repository.delete_for_entity(db, entity_type, entity_id)
 
 
-def _resolve_label(db: Session, entity_type: str, entity_id: int) -> str:
-    """Human-readable label for a tagged entity, for the mapping/SoA views."""
-    if entity_type == "Policy":
-        policy = db.get(Policy, entity_id)
-        if policy is not None:
-            return policy.title
-    elif entity_type == "Procedure":
-        procedure = db.get(Procedure, entity_id)
-        if procedure is not None:
-            return procedure.title
-    elif entity_type == "Evidence":
-        evidence = db.get(Evidence, entity_id)
-        if evidence is not None:
-            return evidence.filename
-    elif entity_type == "RiskAssessment":
-        risk_assessment = db.get(RiskAssessment, entity_id)
-        if risk_assessment is not None:
-            return f"Risk Assessment #{risk_assessment.id}"
-    return f"{entity_type} #{entity_id}"
+_LABELLED_ENTITY_TYPES = {
+    "Policy": (Policy, lambda record: record.title),
+    "Procedure": (Procedure, lambda record: record.title),
+    "Evidence": (Evidence, lambda record: record.filename),
+    "ImpactAssessment": (
+        ImpactAssessment,
+        lambda record: f"Impact Assessment #{record.id}",
+    ),
+    "RiskAssessment": (
+        RiskAssessment,
+        lambda record: f"Risk Assessment #{record.id}",
+    ),
+}
+
+
+def _resolve_label(db: Session, entity_type: str, entity_id: int) -> str | None:
+    """Human-readable label for a tagged entity, for the mapping/SoA views.
+
+    None means the tag points at something that no longer exists, and the
+    caller drops it: these views are read as evidence that a control is
+    covered, so a tag whose subject is gone must not be rendered as though it
+    were still there. An entity type with no label rule falls back to a
+    generic label rather than vanishing -- unknown is not the same as gone."""
+    known = _LABELLED_ENTITY_TYPES.get(entity_type)
+    if known is None:
+        return f"{entity_type} #{entity_id}"
+    model, label_of = known
+    record = db.get(model, entity_id)
+    return label_of(record) if record is not None else None
 
 
 def _tagged_items_for_control(
     db: Session, control_id: int, tags_by_control: dict[int, list[FrameworkTag]]
 ) -> list[TaggedItem]:
-    return [
-        TaggedItem(
-            entity_type=tag.entity_type,
-            entity_id=tag.entity_id,
-            label=_resolve_label(db, tag.entity_type, tag.entity_id),
+    items = []
+    for tag in tags_by_control.get(control_id, []):
+        label = _resolve_label(db, tag.entity_type, tag.entity_id)
+        if label is None:
+            continue
+        items.append(
+            TaggedItem(entity_type=tag.entity_type, entity_id=tag.entity_id, label=label)
         )
-        for tag in tags_by_control.get(control_id, [])
-    ]
+    return items
 
 
 def get_mapping(db: Session, framework: str | None = None) -> list[FrameworkMappingEntry]:
@@ -140,7 +151,13 @@ def get_soa(db: Session) -> list[FrameworkSoaEntryRead]:
                 description=control.description,
                 applicability=entry.applicability if entry else SoaApplicability.APPLICABLE,
                 justification=entry.justification if entry else None,
-                updated_at=entry.updated_at if entry else datetime.now(UTC),
+                # A row exists for every Annex A control from the migration
+                # onwards, so its updated_at is seed time until someone
+                # actually decides something -- reporting that would make
+                # every untouched control look freshly reviewed. updated_by is
+                # the honest marker: only upsert sets it, and the only caller
+                # is the router, which always passes a real actor.
+                updated_at=entry.updated_at if entry and entry.updated_by is not None else None,
                 tagged_items=_tagged_items_for_control(db, control.id, tags_by_control),
             )
         )
@@ -156,6 +173,13 @@ def update_soa_entry(
 ) -> FrameworkSoaEntryRead:
     if applicability not in _VALID_APPLICABILITY:
         raise ValidationError(f"Invalid applicability: {applicability}")
+    # ISO 42001 expects the Statement of Applicability to say *why* a control
+    # is excluded -- an unexplained exclusion is the one thing an auditor is
+    # certain to ask about.
+    if applicability == SoaApplicability.NOT_APPLICABLE and not (justification or "").strip():
+        raise ValidationError(
+            "Excluding a control needs a justification -- record why it doesn't apply."
+        )
 
     control = framework_control_repository.get_by_id(db, control_id)
     if control is None or control.category != "annex_a_control":

@@ -8,7 +8,8 @@ export interface FrameworkSoaEntry {
   description: string | null;
   applicability: "applicable" | "not_applicable";
   justification: string | null;
-  updated_at: string;
+  /** Null until a decision is actually recorded for this control. */
+  updated_at: string | null;
   tagged_items: TaggedItem[];
 }
 
