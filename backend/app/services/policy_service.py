@@ -1,5 +1,8 @@
+from datetime import UTC, datetime
+
 from sqlalchemy.orm import Session
 
+from app.core import review_cadence
 from app.core.exceptions import InvalidStatusTransitionError, NotFoundError
 from app.models.audit_log import AuditLogEntry
 from app.models.policy import Policy, PolicyStatus
@@ -81,8 +84,28 @@ def approve_policy(db: Session, policy_id: int, actor_id: int | None) -> Policy:
     governance_role_service.require_caigo(db, actor_id)
     audit_service.require_different_approver(db, "Policy", policy_id, actor_id)
     policy.status = PolicyStatus.APPROVED
+    # Approval schedules the next review rather than being the end of it --
+    # same cadence the assessments use.
+    policy.next_review_date = review_cadence.next_review_date(datetime.now(UTC).date())
     policy = policy_repository.save(db, policy)
     audit_service.log(db, "Policy", policy.id, "approved", actor_id)
+    return policy
+
+
+def retire_policy(db: Session, policy_id: int, actor_id: int | None) -> Policy:
+    """Stands an approved policy down once it has been superseded. Kept rather
+    than deleted so the record of what governed the organization, and when,
+    stays intact -- the same reasoning behind archiving a retired AI system."""
+    policy = _get_or_raise(db, policy_id)
+    if policy.status != PolicyStatus.APPROVED:
+        raise InvalidStatusTransitionError(
+            f"Policy {policy_id} must be in 'approved' status to retire, "
+            f"currently '{policy.status}'"
+        )
+    governance_role_service.require_caigo(db, actor_id)
+    policy.status = PolicyStatus.RETIRED
+    policy = policy_repository.save(db, policy)
+    audit_service.log(db, "Policy", policy.id, "retired", actor_id)
     return policy
 
 

@@ -29,6 +29,7 @@ class PolicyRead(BaseModel):
     version: int
     owner_id: int | None
     effective_date: date | None
+    next_review_date: date | None
     created_at: datetime
     updated_at: datetime
 

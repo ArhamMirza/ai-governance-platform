@@ -92,8 +92,24 @@ def test_a_new_system_starts_at_inception(client: TestClient) -> None:
 def test_inception_gate_lists_what_is_missing(client: TestClient) -> None:
     body = lifecycle(client, make_system(client))
 
+    assert requirement(body, "ai_system_owner")["satisfied"] is False
     assert requirement(body, "impact_assessment_completed")["satisfied"] is False
     assert requirement(body, "risk_assessment_performed")["satisfied"] is False
+
+
+def test_the_inception_gate_asks_for_an_owner_up_front(
+    client: TestClient, make_user
+) -> None:
+    """Submitting an assessment already requires an owner, so the gate says so
+    rather than leaving people to discover it from an error."""
+    row_id = make_system(client)
+    owner = make_user()
+
+    client.put(
+        f"/api/v1/ai-systems/{row_id}/lifecycle/owner", json={"owner_id": owner.id}
+    )
+
+    assert requirement(lifecycle(client, row_id), "ai_system_owner")["satisfied"] is True
 
 
 def test_cannot_advance_while_the_gate_is_unmet(client: TestClient) -> None:

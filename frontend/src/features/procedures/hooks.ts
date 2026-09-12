@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import type { QueryClient } from "@tanstack/react-query";
 
 import { proceduresApi } from "./api";
 import type { ProcedureCreateInput, ProcedureUpdateInput } from "./types";
@@ -61,13 +62,26 @@ export function useSubmitForReview(id: number) {
   });
 }
 
+/** Approving or retiring a procedure moves the dashboard's coverage ratio and
+ * its overdue-review count as well as the procedure itself. */
+function invalidateProcedure(queryClient: QueryClient, id: number) {
+  queryClient.invalidateQueries({ queryKey: proceduresKey });
+  queryClient.invalidateQueries({ queryKey: procedureKey(id) });
+  queryClient.invalidateQueries({ queryKey: ["dashboard-summary"] });
+}
+
 export function useApproveProcedure(id: number) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: () => proceduresApi.approve(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: proceduresKey });
-      queryClient.invalidateQueries({ queryKey: procedureKey(id) });
-    },
+    onSuccess: () => invalidateProcedure(queryClient, id),
+  });
+}
+
+export function useRetireProcedure(id: number) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => proceduresApi.retire(id),
+    onSuccess: () => invalidateProcedure(queryClient, id),
   });
 }

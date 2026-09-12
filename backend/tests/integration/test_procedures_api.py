@@ -2,7 +2,7 @@ from collections.abc import Callable
 
 from fastapi.testclient import TestClient
 
-from app.models.user import User
+from app.models.user import User, UserRole
 
 
 def create_procedure(client: TestClient, **overrides) -> dict:
@@ -192,3 +192,104 @@ def test_cannot_delete_approved_procedure(
     response = client.delete(f"/api/v1/procedures/{procedure_id}")
 
     assert response.status_code == 409
+
+
+def approved_procedure(
+    client: TestClient,
+    second_user: User,
+    login_as: Callable[[User], None],
+    make_caigo: Callable[[User], None],
+) -> int:
+    procedure_id = create_procedure(client)["id"]
+    client.post(f"/api/v1/procedures/{procedure_id}/submit-for-review")
+    make_caigo(second_user)
+    login_as(second_user)
+    assert client.post(f"/api/v1/procedures/{procedure_id}/approve").status_code == 200
+    return procedure_id
+
+
+def test_approval_schedules_the_next_review(
+    client: TestClient,
+    second_user: User,
+    login_as: Callable[[User], None],
+    make_caigo: Callable[[User], None],
+) -> None:
+    procedure_id = approved_procedure(client, second_user, login_as, make_caigo)
+
+    body = client.get(f"/api/v1/procedures/{procedure_id}").json()
+
+    assert body["next_review_date"] is not None
+
+
+def test_retiring_requires_an_approved_procedure(
+    client: TestClient,
+    second_user: User,
+    login_as: Callable[[User], None],
+    make_caigo: Callable[[User], None],
+) -> None:
+    procedure_id = create_procedure(client)["id"]
+    make_caigo(second_user)
+    login_as(second_user)
+
+    response = client.post(f"/api/v1/procedures/{procedure_id}/retire")
+
+    assert response.status_code == 409
+
+
+def test_a_non_caigo_admin_cannot_retire(
+    client: TestClient,
+    second_user: User,
+    login_as: Callable[[User], None],
+    make_caigo: Callable[[User], None],
+    make_user,
+) -> None:
+    procedure_id = approved_procedure(client, second_user, login_as, make_caigo)
+    login_as(make_user(role=UserRole.ADMIN))
+
+    response = client.post(f"/api/v1/procedures/{procedure_id}/retire")
+
+    assert response.status_code == 403
+
+
+def test_retiring_requires_the_approve_permission(
+    client: TestClient,
+    second_user: User,
+    login_as: Callable[[User], None],
+    make_caigo: Callable[[User], None],
+    make_user,
+) -> None:
+    procedure_id = approved_procedure(client, second_user, login_as, make_caigo)
+    login_as(make_user(role=UserRole.CONTRIBUTOR))
+
+    response = client.post(f"/api/v1/procedures/{procedure_id}/retire")
+
+    assert response.status_code == 403
+
+
+def test_caigo_can_retire_a_superseded_procedure(
+    client: TestClient,
+    second_user: User,
+    login_as: Callable[[User], None],
+    make_caigo: Callable[[User], None],
+) -> None:
+    procedure_id = approved_procedure(client, second_user, login_as, make_caigo)
+
+    response = client.post(f"/api/v1/procedures/{procedure_id}/retire")
+
+    assert response.status_code == 200
+    assert response.json()["status"] == "retired"
+
+
+def test_a_retired_procedure_leaves_the_coverage_ratio(
+    client: TestClient,
+    second_user: User,
+    login_as: Callable[[User], None],
+    make_caigo: Callable[[User], None],
+) -> None:
+    procedure_id = approved_procedure(client, second_user, login_as, make_caigo)
+    assert client.get("/api/v1/dashboard/summary").json()["coverage"]["procedures_total"] == 1
+
+    client.post(f"/api/v1/procedures/{procedure_id}/retire")
+
+    coverage = client.get("/api/v1/dashboard/summary").json()["coverage"]
+    assert coverage["procedures_total"] == 0

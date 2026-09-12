@@ -27,6 +27,9 @@ class Procedure(Base):
         ForeignKey("policies.id"), nullable=True, index=True
     )
     effective_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    # Set on approval, same yearly cadence as a policy's -- see
+    # app.core.review_cadence and Policy.next_review_date.
+    next_review_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(UTC)
     )

@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import type { QueryClient } from "@tanstack/react-query";
 
 import { policiesApi } from "./api";
 import type { PolicyCreateInput, PolicyUpdateInput } from "./types";
@@ -64,14 +65,27 @@ export function useSubmitForReview(id: number) {
   });
 }
 
+/** Approving or retiring a policy moves the dashboard's coverage ratio and
+ * its overdue-review count as well as the policy itself. */
+function invalidatePolicy(queryClient: QueryClient, id: number) {
+  queryClient.invalidateQueries({ queryKey: policiesKey });
+  queryClient.invalidateQueries({ queryKey: policyKey(id) });
+  queryClient.invalidateQueries({ queryKey: policyAuditLogKey(id) });
+  queryClient.invalidateQueries({ queryKey: ["dashboard-summary"] });
+}
+
 export function useApprovePolicy(id: number) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: () => policiesApi.approve(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: policiesKey });
-      queryClient.invalidateQueries({ queryKey: policyKey(id) });
-      queryClient.invalidateQueries({ queryKey: policyAuditLogKey(id) });
-    },
+    onSuccess: () => invalidatePolicy(queryClient, id),
+  });
+}
+
+export function useRetirePolicy(id: number) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => policiesApi.retire(id),
+    onSuccess: () => invalidatePolicy(queryClient, id),
   });
 }

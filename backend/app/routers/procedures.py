@@ -70,6 +70,15 @@ def approve_procedure(
     return procedure_service.approve_procedure(db, procedure_id, actor_id)
 
 
+@router.post("/{procedure_id}/retire", response_model=ProcedureRead)
+def retire_procedure(
+    procedure_id: int,
+    db: Session = Depends(get_db),
+    actor_id: int = Depends(get_current_approver_id),
+) -> ProcedureRead:
+    return procedure_service.retire_procedure(db, procedure_id, actor_id)
+
+
 @router.get("/{procedure_id}/versions", response_model=list[ProcedureHistoryEntry])
 def list_document_history(
     procedure_id: int, db: Session = Depends(get_db)

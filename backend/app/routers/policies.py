@@ -65,6 +65,15 @@ def approve_policy(
     return policy_service.approve_policy(db, policy_id, actor_id)
 
 
+@router.post("/{policy_id}/retire", response_model=PolicyRead)
+def retire_policy(
+    policy_id: int,
+    db: Session = Depends(get_db),
+    actor_id: int = Depends(get_current_approver_id),
+) -> PolicyRead:
+    return policy_service.retire_policy(db, policy_id, actor_id)
+
+
 @router.get("/{policy_id}/versions", response_model=list[PolicyHistoryEntry])
 def list_document_history(
     policy_id: int, db: Session = Depends(get_db)

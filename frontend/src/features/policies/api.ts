@@ -10,5 +10,6 @@ export const policiesApi = {
   remove: (id: number) => httpClient.delete<void>(`/policies/${id}`),
   submitForReview: (id: number) => httpClient.post<Policy>(`/policies/${id}/submit-for-review`),
   approve: (id: number) => httpClient.post<Policy>(`/policies/${id}/approve`),
+  retire: (id: number) => httpClient.post<Policy>(`/policies/${id}/retire`),
   listVersions: (id: number) => httpClient.get<PolicyHistoryEntry[]>(`/policies/${id}/versions`),
 };
