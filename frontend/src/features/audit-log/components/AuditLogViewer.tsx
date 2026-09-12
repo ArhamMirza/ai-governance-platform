@@ -2,7 +2,8 @@ import { useAuditLog } from "../hooks";
 
 interface AuditLogViewerProps {
   entityType: string;
-  entityId: number;
+  /** Omit for the whole trail of this entity type -- see auditLogApi.list. */
+  entityId?: number;
 }
 
 function formatDiff(diff: Record<string, unknown> | null): string {
