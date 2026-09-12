@@ -134,12 +134,32 @@ def update(
             "owner and CAIGO approval -- status can't be set directly once it's "
             "in the approval pipeline."
         )
+    assessed_fields_changed = any(
+        field != "status" and getattr(impact_assessment, field) != value
+        for field, value in changes.items()
+    )
     for field, value in changes.items():
         setattr(impact_assessment, field, value)
+    if assessed_fields_changed:
+        _withdraw_approval(db, impact_assessment, actor_id)
 
     impact_assessment = impact_assessment_repository.save(db, impact_assessment)
     audit_service.log(db, ENTITY_TYPE, impact_assessment_id, "updated", actor_id, changes)
     return impact_assessment
+
+
+def _withdraw_approval(
+    db: Session, impact_assessment: ImpactAssessment, actor_id: int | None
+) -> None:
+    """Changing what was assessed sends the assessment back to draft -- see
+    approval_chain_service.revert_to_draft."""
+    approval_chain_service.revert_to_draft(
+        db,
+        impact_assessment,
+        actor_id,
+        draft_status=ImpactAssessmentStatus.DRAFT,
+        caigo_approval_entity_type=CAIGO_APPROVAL_ENTITY_TYPE,
+    )
 
 
 def submit_for_owner_approval(
@@ -227,6 +247,12 @@ def update_factor(
     if factor_assessment is None:
         raise NotFoundError("ImpactFactorAssessment", impact_assessment_id)
 
+    changed = (
+        factor_assessment.benefits != benefits
+        or factor_assessment.harms != harms
+        or factor_assessment.criteria != criteria
+        or factor_assessment.score != score
+    )
     factor_assessment.benefits = benefits
     factor_assessment.harms = harms
     factor_assessment.criteria = criteria
@@ -236,11 +262,30 @@ def update_factor(
         db, ENTITY_TYPE, impact_assessment_id, "factor_updated", actor_id,
         {"factor": factor, "score": score},
     )
+    # The scorecard is the assessment -- an approval of it can't outlive a
+    # change to a factor's score or write-up.
+    if changed:
+        impact_assessment = _get_or_raise(db, impact_assessment_id)
+        _withdraw_approval(db, impact_assessment, actor_id)
+        impact_assessment_repository.save(db, impact_assessment)
     return factor_assessment
 
 
 def delete(db: Session, impact_assessment_id: int, actor_id: int | None) -> None:
     impact_assessment = _get_or_raise(db, impact_assessment_id)
+    # ISO 42001 8.4 sequencing is enforced when a risk assessment is created
+    # (create_risk_assessment), so it has to be maintained here too -- deleting
+    # this would otherwise leave the risk assessment standing on an impact
+    # assessment that no longer exists. ai_system_inventory_service.delete_row
+    # deletes the risk assessment first, so the cascade still gets through.
+    if risk_assessment_repository.get_for_ai_system(
+        db, impact_assessment.ai_system_row_id
+    ) is not None:
+        raise ConflictError(
+            "The risk assessment for this AI system was built on this impact "
+            "assessment; delete that first."
+        )
+
     impact_factor_assessment_repository.delete_for_assessment(db, impact_assessment_id)
     evidence_service.delete_all_for_entity(db, ENTITY_TYPE, impact_assessment_id)
     framework_service.delete_tags(db, ENTITY_TYPE, impact_assessment_id)

@@ -40,6 +40,7 @@ def test_create_risk_assessment_validates_ai_system_row(
     mock_sheet_repo.get_row.return_value = SheetRow(id=10, sheet_id=99, row_index=1, data={})
     mock_sheet_service.create_sheet.return_value = MagicMock(id=5)
     mock_repo.create.side_effect = lambda _db, ra: ra
+    mock_repo.get_for_ai_system.return_value = None
     mock_impact.has_completed_for_ai_system.return_value = True
 
     result = risk_assessment_service.create_risk_assessment(

@@ -12,6 +12,13 @@ def list_all(db: Session) -> list[RiskAssessment]:
     return list(db.scalars(select(RiskAssessment).order_by(RiskAssessment.id)))
 
 
+def get_for_ai_system(db: Session, ai_system_row_id: int) -> RiskAssessment | None:
+    """An AI system has at most one risk assessment."""
+    return db.scalar(
+        select(RiskAssessment).where(RiskAssessment.ai_system_row_id == ai_system_row_id)
+    )
+
+
 def create(db: Session, risk_assessment: RiskAssessment) -> RiskAssessment:
     db.add(risk_assessment)
     db.commit()

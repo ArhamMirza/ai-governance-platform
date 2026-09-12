@@ -9,8 +9,10 @@ function useInvalidateReview() {
   const queryClient = useQueryClient();
   return () => {
     queryClient.invalidateQueries({ queryKey: ["data-inventory"] });
-    queryClient.invalidateQueries({ queryKey: ["dashboard"] });
-    queryClient.invalidateQueries({ queryKey: ["lifecycle"] });
+    queryClient.invalidateQueries({ queryKey: ["dashboard-summary"] });
+    // A dataset approval satisfies (or un-satisfies) an AI system's
+    // development-stage gate, so every system's lifecycle is stale.
+    queryClient.invalidateQueries({ queryKey: ["ai-systems"] });
     queryClient.invalidateQueries({ queryKey: ["audit-log"] });
   };
 }

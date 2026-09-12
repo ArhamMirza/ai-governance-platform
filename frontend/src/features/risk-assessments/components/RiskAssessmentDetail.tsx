@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 
 import { ApiError } from "../../../shared/api/httpClient";
 import { ConfirmDialog } from "../../../shared/components/ConfirmDialog";
+import { ApprovalWithdrawalNotice } from "../../audit-log/ApprovalWithdrawalNotice";
 import { AuditLogViewer } from "../../audit-log/components/AuditLogViewer";
 import { ImpactAssessmentList } from "../../impact-assessments/components/ImpactAssessmentList";
 import { useRiskCriteria } from "../../risk-criteria/hooks";
@@ -13,6 +14,7 @@ import { formatUserOption } from "../../users/formatUserOption";
 import { useUserDirectory } from "../../users/hooks";
 import { makeRiskAssessmentSheetAdapter } from "../api";
 import {
+  riskAssessmentKey,
   riskAssessmentSheetKey,
   useAISystemInventoryRows,
   useDeleteRiskAssessment,
@@ -79,9 +81,17 @@ export function RiskAssessmentDetail({ riskAssessmentId }: RiskAssessmentDetailP
       <RiskAssessmentHeader riskAssessment={riskAssessment} aiSystemName={aiSystemName} />
 
       <h3>Risk Items</h3>
+      <ApprovalWithdrawalNotice status={riskAssessment.status} />
       <DataGrid
         queryKey={[...queryKey]}
         adapter={adapter}
+        // Editing an item can withdraw the assessment's approval server-side,
+        // so the header and the dashboard have to be refetched with the sheet.
+        alsoInvalidate={[
+          [...riskAssessmentKey(riskAssessmentId)],
+          ["dashboard-summary"],
+          ["risk-portfolio-summary"],
+        ]}
         readOnlyColumnKeys={COMPUTED_COLUMNS}
         longTextColumnKeys={LONG_TEXT_COLUMNS}
         isRowFlagged={isRiskItemOverdue}
