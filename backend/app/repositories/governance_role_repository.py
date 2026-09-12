@@ -1,8 +1,11 @@
+from datetime import datetime
+
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.models.governance_role import GovernanceRole
 from app.models.governance_role_assignment import GovernanceRoleAssignment
+from app.models.governance_role_delegation import GovernanceRoleDelegation
 
 
 def list_all(db: Session) -> list[GovernanceRole]:
@@ -93,3 +96,33 @@ def create_assignment(
 def delete_assignment(db: Session, assignment: GovernanceRoleAssignment) -> None:
     db.delete(assignment)
     db.commit()
+
+
+def get_active_delegation(
+    db: Session, role_id: int, now: datetime
+) -> GovernanceRoleDelegation | None:
+    return db.scalar(
+        select(GovernanceRoleDelegation).where(
+            GovernanceRoleDelegation.governance_role_id == role_id,
+            GovernanceRoleDelegation.revoked_at.is_(None),
+            GovernanceRoleDelegation.starts_at <= now,
+            GovernanceRoleDelegation.ends_at > now,
+        )
+    )
+
+
+def create_delegation(
+    db: Session, delegation: GovernanceRoleDelegation
+) -> GovernanceRoleDelegation:
+    db.add(delegation)
+    db.commit()
+    db.refresh(delegation)
+    return delegation
+
+
+def save_delegation(
+    db: Session, delegation: GovernanceRoleDelegation
+) -> GovernanceRoleDelegation:
+    db.commit()
+    db.refresh(delegation)
+    return delegation

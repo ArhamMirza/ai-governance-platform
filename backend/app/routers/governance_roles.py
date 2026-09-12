@@ -7,6 +7,8 @@ from app.models.governance_role import GovernanceRole
 from app.models.user import User
 from app.schemas.governance_role import (
     AssignmentInput,
+    CaigoDelegationCreate,
+    CaigoDelegationRead,
     GovernanceRoleCreate,
     GovernanceRoleRead,
     GovernanceRoleUpdate,
@@ -53,6 +55,44 @@ def get_org_chart(db: Session = Depends(get_db)) -> list[OrgChartNode]:
             )
         )
     return nodes
+
+
+def _to_delegation_read(db: Session, delegation) -> CaigoDelegationRead:
+    delegate = db.get(User, delegation.delegate_user_id)
+    return CaigoDelegationRead(
+        id=delegation.id,
+        delegate_user_id=delegation.delegate_user_id,
+        delegate_name=delegate.name if delegate else "Unknown",
+        starts_at=delegation.starts_at,
+        ends_at=delegation.ends_at,
+    )
+
+
+# Declared before /{role_id} so the path param doesn't swallow this route.
+@router.get("/caigo-delegation", response_model=CaigoDelegationRead | None)
+def get_caigo_delegation(db: Session = Depends(get_db)) -> CaigoDelegationRead | None:
+    delegation = governance_role_service.get_caigo_delegation(db)
+    return _to_delegation_read(db, delegation) if delegation is not None else None
+
+
+@router.post("/caigo-delegation", response_model=CaigoDelegationRead, status_code=201)
+def set_caigo_delegation(
+    data: CaigoDelegationCreate,
+    db: Session = Depends(get_db),
+    actor: User = Depends(require_manage_users_user),
+) -> CaigoDelegationRead:
+    delegation = governance_role_service.delegate_caigo(
+        db, data.delegate_user_id, data.ends_at, actor.id
+    )
+    return _to_delegation_read(db, delegation)
+
+
+@router.delete("/caigo-delegation", status_code=204)
+def delete_caigo_delegation(
+    db: Session = Depends(get_db),
+    actor: User = Depends(require_manage_users_user),
+) -> None:
+    governance_role_service.revoke_caigo_delegation(db, actor.id)
 
 
 @router.post("", response_model=GovernanceRoleRead, status_code=201)

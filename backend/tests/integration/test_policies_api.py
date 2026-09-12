@@ -1,8 +1,11 @@
 from collections.abc import Callable
+from datetime import UTC, datetime, timedelta
 
 from fastapi.testclient import TestClient
+from sqlalchemy.orm import Session
 
 from app.models.user import User
+from app.services import governance_role_service
 
 
 def create_policy(client: TestClient, **overrides) -> dict:
@@ -176,6 +179,25 @@ def test_non_caigo_admin_cannot_approve(
     response = client.post(f"/api/v1/policies/{policy_id}/approve")
 
     assert response.status_code == 403
+
+
+def test_an_active_caigo_delegate_can_approve(
+    client: TestClient, db_session: Session, second_user: User, login_as: Callable[[User], None]
+) -> None:
+    """require_caigo (which every CAIGO-gated approval calls) goes through
+    is_caigo, the same choke point a time-boxed delegate is recognized at --
+    so a delegate with no real holder assignment can still approve here."""
+    policy_id = create_policy(client)["id"]
+    client.post(f"/api/v1/policies/{policy_id}/submit-for-review")
+    governance_role_service.delegate_caigo(
+        db_session, second_user.id, datetime.now(UTC) + timedelta(days=1), actor_id=None
+    )
+    login_as(second_user)
+
+    response = client.post(f"/api/v1/policies/{policy_id}/approve")
+
+    assert response.status_code == 200
+    assert response.json()["status"] == "approved"
 
 
 def test_cannot_edit_after_submitted_for_review(client: TestClient) -> None:

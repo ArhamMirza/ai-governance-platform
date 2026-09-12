@@ -3,11 +3,14 @@ technical admin/contributor/viewer permission a user holds -- see
 CHIEF_AI_GOVERNANCE_OFFICER's admin-only rule below for where they connect.
 """
 
+from datetime import UTC, datetime
+
 from sqlalchemy.orm import Session
 
 from app.core.exceptions import AuthorizationError, ConflictError, NotFoundError, ValidationError
 from app.models.governance_role import GovernanceRole
 from app.models.governance_role_assignment import GovernanceRoleAssignment
+from app.models.governance_role_delegation import GovernanceRoleDelegation
 from app.models.user import User, UserRole
 from app.repositories import governance_role_repository
 from app.services import audit_service
@@ -204,6 +207,15 @@ def role_names_by_user(db: Session) -> dict[int, list[str]]:
         name = roles_by_id.get(assignment.governance_role_id)
         if name:
             result.setdefault(assignment.user_id, []).append(name)
+
+    # An active delegate stands in for CAIGO -- badge them the same as a
+    # real holder so useCanApprove (which reads this badge list, not a live
+    # is_caigo call) shows the Approve button for them too.
+    delegate = active_caigo_delegate(db)
+    if delegate is not None:
+        badges = result.setdefault(delegate.id, [])
+        if CHIEF_AI_GOVERNANCE_OFFICER not in badges:
+            badges.append(CHIEF_AI_GOVERNANCE_OFFICER)
     return result
 
 
@@ -230,7 +242,10 @@ def is_caigo(db: Session, user_id: int) -> bool:
     role = governance_role_repository.get_by_name(db, CHIEF_AI_GOVERNANCE_OFFICER)
     if role is None:
         return False
-    return any(user.id == user_id for user in holders_for_role(db, role.id))
+    if any(user.id == user_id for user in holders_for_role(db, role.id)):
+        return True
+    delegate = active_caigo_delegate(db)
+    return delegate is not None and delegate.id == user_id
 
 
 def require_caigo(db: Session, user_id: int | None) -> None:
@@ -243,3 +258,66 @@ def require_caigo(db: Session, user_id: int | None) -> None:
         raise AuthorizationError(
             "Only the Chief AI Governance Officer can approve this."
         )
+
+
+def get_caigo_delegation(db: Session) -> GovernanceRoleDelegation | None:
+    role = governance_role_repository.get_by_name(db, CHIEF_AI_GOVERNANCE_OFFICER)
+    if role is None:
+        return None
+    return governance_role_repository.get_active_delegation(db, role.id, datetime.now(UTC))
+
+
+def active_caigo_delegate(db: Session) -> User | None:
+    delegation = get_caigo_delegation(db)
+    if delegation is None:
+        return None
+    return db.get(User, delegation.delegate_user_id)
+
+
+def delegate_caigo(
+    db: Session, delegate_user_id: int, ends_at: datetime, actor_id: int | None
+) -> GovernanceRoleDelegation:
+    role = governance_role_repository.get_by_name(db, CHIEF_AI_GOVERNANCE_OFFICER)
+    if role is None:
+        raise NotFoundError("GovernanceRole", 0)
+    delegate = _get_user_or_raise(db, delegate_user_id)
+    # Same rule assign_user already enforces for CAIGO itself -- a backup
+    # approver for this seat must be an admin account too.
+    if delegate.role != UserRole.ADMIN:
+        raise ValidationError("The backup approver must be an admin account.")
+
+    now = datetime.now(UTC)
+    if ends_at <= now:
+        raise ValidationError("The delegation's end time must be in the future.")
+
+    existing = governance_role_repository.get_active_delegation(db, role.id, now)
+    if existing is not None:
+        existing.revoked_at = now
+        governance_role_repository.save_delegation(db, existing)
+
+    delegation = GovernanceRoleDelegation(
+        governance_role_id=role.id,
+        delegate_user_id=delegate_user_id,
+        starts_at=now,
+        ends_at=ends_at,
+        created_by=actor_id,
+    )
+    delegation = governance_role_repository.create_delegation(db, delegation)
+    audit_service.log(
+        db, ENTITY_TYPE, role.id, "caigo_delegated", actor_id,
+        {"delegate_user_id": delegate_user_id, "ends_at": ends_at.isoformat()},
+    )
+    return delegation
+
+
+def revoke_caigo_delegation(db: Session, actor_id: int | None) -> None:
+    role = governance_role_repository.get_by_name(db, CHIEF_AI_GOVERNANCE_OFFICER)
+    if role is None:
+        raise NotFoundError("GovernanceRole", 0)
+    active = governance_role_repository.get_active_delegation(db, role.id, datetime.now(UTC))
+    if active is None:
+        raise ValidationError("There is no active CAIGO delegation to revoke.")
+
+    active.revoked_at = datetime.now(UTC)
+    governance_role_repository.save_delegation(db, active)
+    audit_service.log(db, ENTITY_TYPE, role.id, "caigo_delegation_revoked", actor_id, {})

@@ -1,3 +1,5 @@
+from datetime import UTC, datetime, timedelta
+
 from fastapi.testclient import TestClient
 
 from app.models.user import UserRole
@@ -128,3 +130,108 @@ def test_user_with_no_governance_role_has_an_empty_badge_list(
 
     entry = next(u for u in directory if u["id"] == other.id)
     assert entry["governance_roles"] == []
+
+
+def test_get_caigo_delegation_is_null_with_no_active_delegation(client: TestClient) -> None:
+    response = client.get("/api/v1/governance-roles/caigo-delegation")
+
+    assert response.status_code == 200
+    assert response.json() is None
+
+
+def test_setting_a_caigo_delegation_requires_manage_users(
+    client: TestClient, make_user, login_as
+) -> None:
+    login_as(make_user(role=UserRole.CONTRIBUTOR))
+    delegate = make_user(role=UserRole.ADMIN)
+
+    response = client.post(
+        "/api/v1/governance-roles/caigo-delegation",
+        json={
+            "delegate_user_id": delegate.id,
+            "ends_at": (datetime.now(UTC) + timedelta(days=1)).isoformat(),
+        },
+    )
+
+    assert response.status_code == 403
+
+
+def test_admin_can_set_and_read_back_a_caigo_delegation(
+    client: TestClient, make_user, login_as
+) -> None:
+    login_as(make_user(role=UserRole.ADMIN))
+    delegate = make_user(role=UserRole.ADMIN, name="Backup Approver")
+    ends_at = datetime.now(UTC) + timedelta(days=3)
+
+    created = client.post(
+        "/api/v1/governance-roles/caigo-delegation",
+        json={"delegate_user_id": delegate.id, "ends_at": ends_at.isoformat()},
+    )
+    assert created.status_code == 201
+    assert created.json()["delegate_user_id"] == delegate.id
+    assert created.json()["delegate_name"] == "Backup Approver"
+
+    fetched = client.get("/api/v1/governance-roles/caigo-delegation")
+    assert fetched.status_code == 200
+    assert fetched.json()["delegate_user_id"] == delegate.id
+
+
+def test_delegating_to_a_non_admin_is_rejected(client: TestClient, make_user, login_as) -> None:
+    login_as(make_user(role=UserRole.ADMIN))
+    contributor = make_user(role=UserRole.CONTRIBUTOR)
+
+    response = client.post(
+        "/api/v1/governance-roles/caigo-delegation",
+        json={
+            "delegate_user_id": contributor.id,
+            "ends_at": (datetime.now(UTC) + timedelta(days=1)).isoformat(),
+        },
+    )
+
+    assert response.status_code == 400
+
+
+def test_revoking_a_caigo_delegation_requires_manage_users(
+    client: TestClient, make_user, login_as
+) -> None:
+    login_as(make_user(role=UserRole.ADMIN))
+    delegate = make_user(role=UserRole.ADMIN)
+    client.post(
+        "/api/v1/governance-roles/caigo-delegation",
+        json={
+            "delegate_user_id": delegate.id,
+            "ends_at": (datetime.now(UTC) + timedelta(days=1)).isoformat(),
+        },
+    )
+
+    login_as(make_user(role=UserRole.CONTRIBUTOR))
+    response = client.delete("/api/v1/governance-roles/caigo-delegation")
+
+    assert response.status_code == 403
+
+
+def test_admin_can_revoke_a_caigo_delegation(client: TestClient, make_user, login_as) -> None:
+    login_as(make_user(role=UserRole.ADMIN))
+    delegate = make_user(role=UserRole.ADMIN)
+    client.post(
+        "/api/v1/governance-roles/caigo-delegation",
+        json={
+            "delegate_user_id": delegate.id,
+            "ends_at": (datetime.now(UTC) + timedelta(days=1)).isoformat(),
+        },
+    )
+
+    response = client.delete("/api/v1/governance-roles/caigo-delegation")
+
+    assert response.status_code == 204
+    assert client.get("/api/v1/governance-roles/caigo-delegation").json() is None
+
+
+def test_revoking_with_no_active_delegation_is_rejected(
+    client: TestClient, make_user, login_as
+) -> None:
+    login_as(make_user(role=UserRole.ADMIN))
+
+    response = client.delete("/api/v1/governance-roles/caigo-delegation")
+
+    assert response.status_code == 400

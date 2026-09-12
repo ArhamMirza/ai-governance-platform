@@ -5,8 +5,8 @@ import type { CreateUserInput, UpdateUserInput } from "./types";
 
 const usersKey = ["users"] as const;
 
-export function useUsers() {
-  return useQuery({ queryKey: usersKey, queryFn: usersApi.list });
+export function useUsers(options?: { enabled?: boolean }) {
+  return useQuery({ queryKey: usersKey, queryFn: usersApi.list, enabled: options?.enabled });
 }
 
 /** Any logged-in user (not just admins) can call this -- used to populate
