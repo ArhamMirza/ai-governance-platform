@@ -11,6 +11,7 @@ benefits/harms/criteria text instead)."""
 
 from sqlalchemy.orm import Session
 
+from app.core.concurrency import conflict_on_duplicate
 from app.core.exceptions import ConflictError, NotFoundError, ValidationError
 from app.core.impact_factors import IMPACT_FACTORS
 from app.models.impact_assessment import ImpactAssessment, ImpactAssessmentStatus
@@ -34,6 +35,11 @@ ENTITY_TYPE = "ImpactAssessment"
 
 OWNER_APPROVAL_ENTITY_TYPE = "ImpactAssessmentOwnerApproval"
 CAIGO_APPROVAL_ENTITY_TYPE = "ImpactAssessmentCaigoApproval"
+
+ONE_PER_AI_SYSTEM_MESSAGE = (
+    "This AI system already has an impact assessment. Update it instead of "
+    "creating another."
+)
 
 _PRE_APPROVAL_STATUSES = {ImpactAssessmentStatus.DRAFT}
 _GATED_STATUSES = {
@@ -101,17 +107,17 @@ def create_for_ai_system(
     # One per AI system: re-assessing means revisiting this record and
     # re-completing it, which re-stamps the yearly review date.
     if get_for_ai_system(db, ai_system_row_id) is not None:
-        raise ConflictError(
-            "This AI system already has an impact assessment. Update it instead of "
-            "creating another."
-        )
+        raise ConflictError(ONE_PER_AI_SYSTEM_MESSAGE)
 
     impact_assessment = ImpactAssessment(
         ai_system_row_id=ai_system_row_id,
         assessor_id=data.assessor_id,
         assessment_date=data.assessment_date,
     )
-    impact_assessment = impact_assessment_repository.create(db, impact_assessment)
+    # The check above runs in a transaction of its own, so a simultaneous
+    # request can pass it too; the unique constraint decides which one lands.
+    with conflict_on_duplicate(db, ONE_PER_AI_SYSTEM_MESSAGE):
+        impact_assessment = impact_assessment_repository.create(db, impact_assessment)
     impact_factor_assessment_repository.create_all_factors(db, impact_assessment.id)
     audit_service.log(
         db, ENTITY_TYPE, impact_assessment.id, "created", actor_id,

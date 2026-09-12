@@ -19,7 +19,12 @@ class RiskAssessment(Base):
     __tablename__ = "risk_assessments"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    ai_system_row_id: Mapped[int] = mapped_column(ForeignKey("sheet_rows.id"), index=True)
+    # Unique: one risk assessment per AI system. create_risk_assessment says
+    # so too, but its check and its insert are separate transactions, so the
+    # constraint is what actually holds under two simultaneous requests.
+    ai_system_row_id: Mapped[int] = mapped_column(
+        ForeignKey("sheet_rows.id"), unique=True, index=True
+    )
     sheet_id: Mapped[int] = mapped_column(ForeignKey("sheets.id"), index=True)
     status: Mapped[str] = mapped_column(String(20), default=RiskAssessmentStatus.DRAFT)
     assessor_id: Mapped[int | None] = mapped_column(Integer, nullable=True)

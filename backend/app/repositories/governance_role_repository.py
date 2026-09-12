@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.models.governance_role import GovernanceRole
@@ -84,13 +84,36 @@ def count_holders(db: Session, role_id: int) -> int:
     return len(list_assignments_for_role(db, role_id))
 
 
-def create_assignment(
-    db: Session, assignment: GovernanceRoleAssignment
-) -> GovernanceRoleAssignment:
+def create_assignment_within_cap(
+    db: Session, assignment: GovernanceRoleAssignment, max_holders: int | None
+) -> bool:
+    """Insert, count, and commit as one transaction; report whether the row
+    survived. False means the role was already full, and nothing was written.
+
+    "At most N holders" is not something a unique constraint can express, so
+    the only way to be sure is to count with the row already in place. That
+    has to happen before the commit, not after: a simultaneous assignment
+    that counts after committing can run its count before the other insert
+    lands, and then both callers see room. Counting inside the transaction
+    leaves no such gap -- the insert holds the write lock, so the other
+    request is either already visible or still waiting for it."""
     db.add(assignment)
+    db.flush()
+    if max_holders is not None:
+        held = db.scalar(
+            select(func.count())
+            .select_from(GovernanceRoleAssignment)
+            .where(
+                GovernanceRoleAssignment.governance_role_id
+                == assignment.governance_role_id
+            )
+        )
+        if held > max_holders:
+            db.rollback()
+            return False
     db.commit()
     db.refresh(assignment)
-    return assignment
+    return True
 
 
 def delete_assignment(db: Session, assignment: GovernanceRoleAssignment) -> None:
@@ -107,6 +130,24 @@ def get_active_delegation(
             GovernanceRoleDelegation.revoked_at.is_(None),
             GovernanceRoleDelegation.starts_at <= now,
             GovernanceRoleDelegation.ends_at > now,
+        )
+    )
+
+
+def list_unrevoked_delegations(
+    db: Session, role_id: int
+) -> list[GovernanceRoleDelegation]:
+    """Every delegation for the role that hasn't been revoked -- including
+    ones whose window has already closed, which get_active_delegation
+    excludes. delegate_caigo revokes all of them before creating the next,
+    so "unrevoked" means exactly one standing delegation (see the unique
+    index on GovernanceRoleDelegation)."""
+    return list(
+        db.scalars(
+            select(GovernanceRoleDelegation).where(
+                GovernanceRoleDelegation.governance_role_id == role_id,
+                GovernanceRoleDelegation.revoked_at.is_(None),
+            )
         )
     )
 

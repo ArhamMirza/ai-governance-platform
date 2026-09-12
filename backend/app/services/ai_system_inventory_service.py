@@ -4,7 +4,6 @@ from sqlalchemy.orm import Session
 from app.core.exceptions import ConflictError
 from app.core.lifecycle_stages import LifecycleStage
 from app.models.sheet import Sheet, SheetRow
-from app.repositories import sheet_repository
 from app.schemas.sheet import ColumnDef
 from app.services import audit_service, sheet_service
 
@@ -44,10 +43,9 @@ RESOURCE_COLUMN_KEYS = [c.key for c in DEFAULT_COLUMNS if c.key not in {
 
 
 def get_or_create_sheet(db: Session) -> Sheet:
-    sheet = sheet_repository.get_by_entity_type(db, ENTITY_TYPE)
-    if sheet is not None:
-        return sheet
-    return sheet_service.create_sheet(db, ENTITY_TYPE, "AI System Inventory", DEFAULT_COLUMNS)
+    return sheet_service.get_or_create_singleton_sheet(
+        db, ENTITY_TYPE, "AI System Inventory", DEFAULT_COLUMNS
+    )
 
 
 def _archived_row_ids(db: Session) -> set[int]:

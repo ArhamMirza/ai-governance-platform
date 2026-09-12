@@ -29,6 +29,38 @@ def evidence_storage_dir(tmp_path, monkeypatch):
     return tmp_path
 
 
+def seed_reference_data(session: Session) -> None:
+    """Mirrors the alembic migrations' data seed -- create_all only builds the
+    schema, so reference data has to be inserted separately. Shared with the
+    concurrency suite, which builds its own engine (see
+    tests/concurrency/conftest.py) but needs the same starting point."""
+    session.bulk_insert_mappings(FrameworkControl, as_rows())
+    session.commit()
+
+    annex_a_ids = session.scalars(
+        select(FrameworkControl.id).where(FrameworkControl.category == "annex_a_control")
+    ).all()
+    session.bulk_insert_mappings(
+        FrameworkSoaEntry,
+        [{"framework_control_id": control_id} for control_id in annex_a_ids],
+    )
+    session.commit()
+
+    caigo = GovernanceRole(
+        name=DEFAULT_ROLES[0][0],
+        responsibilities=DEFAULT_ROLES[0][1],
+        max_holders=DEFAULT_ROLES[0][2],
+    )
+    session.add(caigo)
+    session.commit()
+    session.add_all(
+        GovernanceRole(name=name, responsibilities=responsibilities, max_holders=max_holders,
+                       parent_role_id=caigo.id)
+        for name, responsibilities, max_holders in DEFAULT_ROLES[1:]
+    )
+    session.commit()
+
+
 @pytest.fixture()
 def db_session() -> Generator[Session, None, None]:
     engine = create_engine(
@@ -41,34 +73,7 @@ def db_session() -> Generator[Session, None, None]:
 
     session = TestingSessionLocal()
     try:
-        # Mirrors the alembic migration's data seed -- create_all only builds
-        # the schema, so reference data has to be inserted separately here.
-        session.bulk_insert_mappings(FrameworkControl, as_rows())
-        session.commit()
-
-        annex_a_ids = session.scalars(
-            select(FrameworkControl.id).where(FrameworkControl.category == "annex_a_control")
-        ).all()
-        session.bulk_insert_mappings(
-            FrameworkSoaEntry,
-            [{"framework_control_id": control_id} for control_id in annex_a_ids],
-        )
-        session.commit()
-
-        caigo = GovernanceRole(
-            name=DEFAULT_ROLES[0][0],
-            responsibilities=DEFAULT_ROLES[0][1],
-            max_holders=DEFAULT_ROLES[0][2],
-        )
-        session.add(caigo)
-        session.commit()
-        session.add_all(
-            GovernanceRole(name=name, responsibilities=responsibilities, max_holders=max_holders,
-                           parent_role_id=caigo.id)
-            for name, responsibilities, max_holders in DEFAULT_ROLES[1:]
-        )
-        session.commit()
-
+        seed_reference_data(session)
         yield session
     finally:
         session.close()

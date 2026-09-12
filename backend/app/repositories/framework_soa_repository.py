@@ -3,6 +3,7 @@ from datetime import UTC, datetime
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.core.concurrency import create_or_get
 from app.models.framework_soa_entry import FrameworkSoaEntry
 
 
@@ -25,8 +26,13 @@ def upsert(
 ) -> FrameworkSoaEntry:
     entry = get_by_control_id(db, control_id)
     if entry is None:
-        entry = FrameworkSoaEntry(framework_control_id=control_id)
-        db.add(entry)
+        # A control's entry is seeded by migration, so this only runs for one
+        # added since -- where two simultaneous decisions would each insert.
+        entry = create_or_get(
+            db,
+            lambda: FrameworkSoaEntry(framework_control_id=control_id),
+            lambda: get_by_control_id(db, control_id),
+        )
     entry.applicability = applicability
     entry.justification = justification
     entry.updated_by = actor_id
