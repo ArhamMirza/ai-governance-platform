@@ -24,6 +24,7 @@ from app.schemas.procedure import ProcedureCreate
 from app.schemas.risk_assessment import RiskAssessmentCreate
 from app.services import (
     ai_system_inventory_service,
+    ai_system_lifecycle_service,
     evidence_service,
     framework_service,
     impact_assessment_service,
@@ -57,6 +58,12 @@ def _seed_impact_assessment(
 ) -> None:
     """Creates a completed impact assessment, scoring the named factors and
     leaving the rest blank -- a realistic part-way-through scorecard."""
+    # submit_for_owner_approval requires a real owner on the AI system, or
+    # the owner stage could never be approved -- this demo data doesn't
+    # model a real accountable owner, so it stands in a placeholder id
+    # (owner_id isn't a real FK, matching data_owner/risk_owner elsewhere).
+    ai_system_lifecycle_service.set_owner(db, ai_system_row_id, owner_id=1, actor_id=None)
+
     assessment = impact_assessment_service.create_for_ai_system(
         db,
         ai_system_row_id,
