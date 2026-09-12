@@ -17,6 +17,10 @@ _DOCUMENT_VERSION_BUMP_HOOKS = {
     "Procedure": procedure_service.bump_version_if_draft,
 }
 
+# Risk items are the one entity whose evidence is load-bearing: a closed
+# item is reopened if its last proof is deleted (see delete_evidence).
+RISK_ITEM_ENTITY_TYPE = "RiskItem"
+
 ALLOWED_EXTENSIONS = {
     ".pdf",
     ".doc",
@@ -147,3 +151,10 @@ def delete_evidence(db: Session, evidence_id: int, actor_id: int | None) -> None
     )
     if bump_hook := _DOCUMENT_VERSION_BUMP_HOOKS.get(entity_type):
         bump_hook(db, entity_id)
+    if entity_type == RISK_ITEM_ENTITY_TYPE:
+        # A risk item can't be closed without proof, so it mustn't stay closed
+        # without one either. Imported here rather than at module scope:
+        # risk_assessment_service imports this module.
+        from app.services import risk_assessment_service
+
+        risk_assessment_service.reopen_if_evidence_gone(db, entity_id, actor_id)

@@ -33,10 +33,11 @@ APPROVAL_ENTITY_TYPE = "DataInventoryApproval"
 STATUS_COLUMN_KEY = "approval_status"
 OWNER_COLUMN_KEY = "data_owner"
 NAME_COLUMN_KEY = "dataset_name"
+AI_SYSTEM_COLUMN_KEY = "ai_system_row_id"
 
 DEFAULT_COLUMNS = [
     ColumnDef(key="dataset_name", label="Dataset Name"),
-    ColumnDef(key="ai_system_row_id", label="AI System"),
+    ColumnDef(key=AI_SYSTEM_COLUMN_KEY, label="AI System"),
     ColumnDef(key="data_type", label="Data Type"),
     ColumnDef(key="data_source", label="Data Source"),
     ColumnDef(key="personal_data_involved", label="Personal Data Involved"),
@@ -113,6 +114,31 @@ def _write_status_to_row(db: Session, row_id: int, status: str) -> None:
         return
     row.data = {**row.data, STATUS_COLUMN_KEY: status}
     sheet_repository.save_row(db, row)
+
+
+def unlink_ai_system(db: Session, ai_system_row_id: int, actor_id: int | None) -> list[SheetRow]:
+    """Clears the AI System cell on every dataset pointing at a system that is
+    being deleted, so the link doesn't dangle at a row that no longer exists.
+
+    The dataset itself survives: it is an organizational data asset with its
+    own Data Owner and review, and unlike an assessment it doesn't describe
+    the system -- it just happened to be used by it.
+
+    The approval is deliberately left standing. What the Data Owner signed off
+    (what this data is, who owns it, how it was acquired and prepared) hasn't
+    changed; a pointer to a deleted row is broken bookkeeping either way, and
+    clearing it isn't the owner revising their dataset."""
+    unlinked = []
+    for row in list_rows(db):
+        if str(row.data.get(AI_SYSTEM_COLUMN_KEY) or "").strip() != str(ai_system_row_id):
+            continue
+        row.data = {k: v for k, v in row.data.items() if k != AI_SYSTEM_COLUMN_KEY}
+        unlinked.append(sheet_repository.save_row(db, row))
+        audit_service.log(
+            db, ENTITY_TYPE, get_or_create_sheet(db).id, "ai_system_unlinked", actor_id,
+            {"row_id": row.id, "ai_system_row_id": ai_system_row_id},
+        )
+    return unlinked
 
 
 # ---------- ownership ----------

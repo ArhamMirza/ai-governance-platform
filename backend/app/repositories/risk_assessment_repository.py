@@ -19,6 +19,11 @@ def get_for_ai_system(db: Session, ai_system_row_id: int) -> RiskAssessment | No
     )
 
 
+def get_by_sheet_id(db: Session, sheet_id: int) -> RiskAssessment | None:
+    """The assessment a risk-item row belongs to, found from the row's sheet."""
+    return db.scalar(select(RiskAssessment).where(RiskAssessment.sheet_id == sheet_id))
+
+
 def create(db: Session, risk_assessment: RiskAssessment) -> RiskAssessment:
     db.add(risk_assessment)
     db.commit()

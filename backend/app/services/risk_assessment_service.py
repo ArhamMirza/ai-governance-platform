@@ -399,6 +399,41 @@ def close_risk_item(
     return row
 
 
+def reopen_if_evidence_gone(db: Session, row_id: int, actor_id: int | None) -> SheetRow | None:
+    """Reopens a closed risk item whose last piece of evidence has just been
+    deleted. close_risk_item won't close one without proof, so a closure must
+    not outlive it either -- the same rule the stage gates follow by
+    recomputing, and that an edit follows by withdrawing an approval.
+
+    Reopening only touches the treatment-progress keys, so the parent
+    assessment's own sign-off is untouched (see TREATMENT_PROGRESS_KEYS).
+    Returns the reopened row, or None when there was nothing to reopen."""
+    row = sheet_repository.get_row(db, row_id)
+    if row is None or not risk_scoring.is_treated(row.data.get("status")):
+        return None
+    if evidence_repository.list_at_level(db, RISK_ITEM_ENTITY_TYPE, row_id, None):
+        return None
+
+    risk_assessment = risk_assessment_repository.get_by_sheet_id(db, row.sheet_id)
+    if risk_assessment is None:
+        return None
+
+    row.data = {
+        **{k: v for k, v in row.data.items() if k not in ("closed_at", "closed_by")},
+        "status": "open",
+    }
+    row = sheet_repository.save_row(db, row)
+    audit_service.log(
+        db,
+        ENTITY_TYPE,
+        risk_assessment.id,
+        "risk_item_reopened",
+        actor_id,
+        {"row_id": row_id, "reason": "its last supporting evidence was deleted"},
+    )
+    return row
+
+
 def export_xlsx(db: Session, risk_assessment_id: int) -> bytes:
     risk_assessment = _get_or_raise(db, risk_assessment_id)
     return sheet_service.export_xlsx(db, risk_assessment.sheet_id)
