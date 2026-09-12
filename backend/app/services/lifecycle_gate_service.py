@@ -122,6 +122,12 @@ def _development_requirements(db: Session, ai_system_row_id: int) -> list[GateRe
         for dataset in data_inventory_service.list_rows(db)
         if str(dataset.data.get("ai_system_row_id") or "") == str(ai_system_row_id)
     ]
+    # An unreviewed draft shouldn't carry a stage gate: the dataset entry has
+    # to have been through its Data Owner and CAIGO review to count here.
+    approved_ids = data_inventory_service.approved_row_ids(db)
+    approved_datasets = [
+        dataset for dataset in linked_datasets if dataset.id in approved_ids
+    ]
 
     return [
         GateRequirement(
@@ -136,10 +142,11 @@ def _development_requirements(db: Session, ai_system_row_id: int) -> list[GateRe
         ),
         GateRequirement(
             key="data_inventory_entry",
-            label="Datasets recorded in the Data Inventory",
-            satisfied=bool(linked_datasets),
+            label="Approved datasets recorded in the Data Inventory",
+            satisfied=bool(approved_datasets),
             detail=(
-                f"{len(linked_datasets)} dataset(s) linked."
+                f"{len(approved_datasets)} of {len(linked_datasets)} linked "
+                "dataset(s) approved."
                 if linked_datasets
                 else "Add at least one Data Inventory entry linked to this AI system."
             ),

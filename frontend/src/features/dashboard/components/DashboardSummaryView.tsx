@@ -20,6 +20,8 @@ const PENDING_APPROVAL_LINKS: Record<PendingApprovalEntityType, (id: number) => 
   AISystemRetirement: (id) => `/ai-systems/${id}`,
   RiskAssessment: (id) => `/risk-assessments/${id}`,
   ImpactAssessment: (id) => `/impact-assessments/${id}`,
+  // The data inventory is one grid rather than a page per dataset.
+  DataInventory: () => "/data-inventory",
 };
 
 const ATTENTION_LINKS: Record<string, string> = {

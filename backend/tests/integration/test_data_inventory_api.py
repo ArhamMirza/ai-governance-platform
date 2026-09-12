@@ -28,6 +28,7 @@ def test_get_creates_singleton_with_default_columns(client: TestClient) -> None:
         "data_quality_measures",
         "data_provenance",
         "data_preparation",
+        "approval_status",
     ]
     assert body["rows"] == []
 

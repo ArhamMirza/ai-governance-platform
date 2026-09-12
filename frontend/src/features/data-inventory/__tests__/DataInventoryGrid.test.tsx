@@ -18,13 +18,18 @@ const dataInventorySheet: SheetWithRows = {
   columns: [
     { key: "dataset_name", label: "Dataset Name", data_type: "text" },
     { key: "ai_system_row_id", label: "AI System", data_type: "text" },
+    { key: "approval_status", label: "Approval Status", data_type: "text" },
   ],
   rows: [
     {
       id: 5,
       sheet_id: 1,
       row_index: 1,
-      data: { dataset_name: "Resume corpus", ai_system_row_id: "7" },
+      data: {
+        dataset_name: "Resume corpus",
+        ai_system_row_id: "7",
+        approval_status: "draft",
+      },
       created_at: "2026-01-01T00:00:00Z",
       updated_at: "2026-01-01T00:00:00Z",
     },
@@ -73,5 +78,17 @@ describe("DataInventoryGrid", () => {
     const select = await screen.findByLabelText("AI System for row 5");
     await waitFor(() => expect(select).toHaveValue("7"));
     expect(screen.getByText("Resume Screener")).toBeInTheDocument();
+  });
+
+  it("shows the review status without letting it be edited in the grid", async () => {
+    vi.mocked(dataInventoryAdapter.get).mockResolvedValue(dataInventorySheet);
+    vi.mocked(useAISystemInventoryRows).mockReturnValue({
+      data: aiSystemInventory,
+    } as never);
+
+    renderGrid();
+
+    expect(await screen.findByText("draft")).toBeInTheDocument();
+    expect(screen.queryByLabelText("Approval Status for row 5")).not.toBeInTheDocument();
   });
 });
