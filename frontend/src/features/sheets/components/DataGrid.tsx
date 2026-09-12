@@ -35,6 +35,11 @@ interface DataGridProps {
   /** Return the confirmation text for deleting a row, to require an explicit
    * confirm first. Omit to delete immediately. */
   confirmDelete?: (row: SheetRow) => string;
+  /** Query keys to refresh alongside the sheet after any write, for state the
+   * owning feature renders that a row edit can change server-side -- editing a
+   * risk item can withdraw its assessment's approval, so the assessment has to
+   * be refetched or the page keeps showing a stale "Completed". */
+  alsoInvalidate?: unknown[][];
 }
 
 function cellText(value: unknown): string {
@@ -81,14 +86,15 @@ export function DataGrid({
   longTextColumnKeys = [],
   columnGroups,
   confirmDelete,
+  alsoInvalidate = [],
 }: DataGridProps) {
   const [pendingDelete, setPendingDelete] = useState<SheetRow | null>(null);
   const { data: sheet, isLoading, isError } = useSheet(queryKey, adapter);
-  const setColumns = useSetColumns(queryKey, adapter);
-  const addRow = useAddRow(queryKey, adapter);
-  const updateRow = useUpdateRow(queryKey, adapter);
-  const deleteRow = useDeleteRow(queryKey, adapter);
-  const uploadSheet = useUploadSheet(queryKey, adapter);
+  const setColumns = useSetColumns(queryKey, adapter, alsoInvalidate);
+  const addRow = useAddRow(queryKey, adapter, alsoInvalidate);
+  const updateRow = useUpdateRow(queryKey, adapter, alsoInvalidate);
+  const deleteRow = useDeleteRow(queryKey, adapter, alsoInvalidate);
+  const uploadSheet = useUploadSheet(queryKey, adapter, alsoInvalidate);
 
   const [error, setError] = useState<string | null>(null);
   const [newColumnKey, setNewColumnKey] = useState("");

@@ -33,6 +33,10 @@ function useInvalidateImpactAssessments(
     if (impactAssessmentId !== undefined) {
       queryClient.invalidateQueries({ queryKey: impactAssessmentKey(impactAssessmentId) });
     }
+    // Editing an assessment can withdraw its approval, which moves the
+    // dashboard's impact-assessed coverage and its AI system's stage gate.
+    queryClient.invalidateQueries({ queryKey: ["dashboard-summary"] });
+    queryClient.invalidateQueries({ queryKey: ["ai-systems"] });
   };
 }
 

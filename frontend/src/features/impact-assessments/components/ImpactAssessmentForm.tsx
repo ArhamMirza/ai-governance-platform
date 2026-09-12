@@ -2,6 +2,7 @@ import { useState } from "react";
 
 import { readError } from "../../../shared/api/readError";
 import { StatusBadge } from "../../../shared/components/StatusBadge";
+import { ApprovalWithdrawalNotice } from "../../audit-log/ApprovalWithdrawalNotice";
 import { useCanApprove } from "../../audit-log/useCanApprove";
 import { useCanApproveAsOwner } from "../../audit-log/useCanApproveAsOwner";
 import { DocumentBrowser } from "../../evidence/components/DocumentBrowser";
@@ -149,6 +150,7 @@ export function ImpactAssessmentForm({
   return (
     <div className="impact-assessment-form">
       {error && <p role="alert">{error}</p>}
+      <ApprovalWithdrawalNotice status={assessment.status} />
 
       <div className="impact-assessment-field">
         <span>Status</span>

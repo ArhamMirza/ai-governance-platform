@@ -561,6 +561,27 @@ td button {
   color: var(--neutral-text);
 }
 
+/* Editing an approved assessment withdraws the sign-off (see
+   approval_chain_service.revert_to_draft) -- said before someone edits,
+   not after. */
+.approval-withdrawal-notice {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  margin: 0 0 12px;
+  padding: 10px 14px;
+  border: 1px solid oklch(87% 0.07 70);
+  border-radius: var(--radius-md);
+  background: var(--warning-subtle);
+  color: var(--warning-text);
+  font-size: 13.5px;
+}
+
+.approval-withdrawal-notice strong {
+  font-weight: 700;
+  color: var(--warning-text);
+}
+
 /* ---------- Severity tones ---------- */
 
 [data-tone="high"],

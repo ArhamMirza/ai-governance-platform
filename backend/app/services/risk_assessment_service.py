@@ -35,6 +35,12 @@ ENTITY_TYPE = "RiskAssessment"
 OWNER_APPROVAL_ENTITY_TYPE = "RiskAssessmentOwnerApproval"
 CAIGO_APPROVAL_ENTITY_TYPE = "RiskAssessmentCaigoApproval"
 
+# Treating a risk is progress against an approved assessment, not a change to
+# what was approved -- these keys are what close_risk_item writes, and editing
+# only them leaves the CAIGO sign-off standing. Everything else about a risk
+# item (its scores, mitigation, owner, deadline) is what was assessed.
+TREATMENT_PROGRESS_KEYS = {"status", "closed_at", "closed_by"}
+
 _PRE_APPROVAL_STATUSES = {RiskAssessmentStatus.DRAFT, RiskAssessmentStatus.IN_PROGRESS}
 _GATED_STATUSES = {
     RiskAssessmentStatus.PENDING_OWNER_APPROVAL,
@@ -131,14 +137,7 @@ def list_risk_assessments(db: Session) -> list[RiskAssessment]:
 def get_for_ai_system(db: Session, ai_system_row_id: int) -> RiskAssessment | None:
     """An AI system has at most one risk assessment; its risk items live as
     rows on that assessment's sheet."""
-    return next(
-        (
-            risk_assessment
-            for risk_assessment in risk_assessment_repository.list_all(db)
-            if risk_assessment.ai_system_row_id == ai_system_row_id
-        ),
-        None,
-    )
+    return risk_assessment_repository.get_for_ai_system(db, ai_system_row_id)
 
 
 def get_risk_assessment(db: Session, risk_assessment_id: int) -> RiskAssessment:
@@ -199,8 +198,14 @@ def update_risk_assessment(
             "owner and CAIGO approval -- status can't be set directly once it's "
             "in the approval pipeline."
         )
+    assessed_fields_changed = any(
+        field != "status" and getattr(risk_assessment, field) != value
+        for field, value in changes.items()
+    )
     for field, value in changes.items():
         setattr(risk_assessment, field, value)
+    if assessed_fields_changed:
+        _withdraw_approval(db, risk_assessment, actor_id)
 
     risk_assessment = risk_assessment_repository.save(db, risk_assessment)
     audit_service.log(db, "RiskAssessment", risk_assessment.id, "updated", actor_id, changes)
@@ -291,7 +296,29 @@ def set_columns(
     risk_assessment = _get_or_raise(db, risk_assessment_id)
     result = sheet_service.set_columns(db, risk_assessment.sheet_id, columns)
     audit_service.log(db, ENTITY_TYPE, risk_assessment_id, "columns_updated", actor_id)
+    _withdraw_approval_and_save(db, risk_assessment, actor_id)
     return result
+
+
+def _withdraw_approval(
+    db: Session, risk_assessment: RiskAssessment, actor_id: int | None
+) -> None:
+    """Changing what was assessed sends the assessment back to draft -- see
+    approval_chain_service.revert_to_draft."""
+    approval_chain_service.revert_to_draft(
+        db,
+        risk_assessment,
+        actor_id,
+        draft_status=RiskAssessmentStatus.DRAFT,
+        caigo_approval_entity_type=CAIGO_APPROVAL_ENTITY_TYPE,
+    )
+
+
+def _withdraw_approval_and_save(
+    db: Session, risk_assessment: RiskAssessment, actor_id: int | None
+) -> None:
+    _withdraw_approval(db, risk_assessment, actor_id)
+    risk_assessment_repository.save(db, risk_assessment)
 
 
 def add_row(db: Session, risk_assessment_id: int, data: dict, actor_id: int | None) -> SheetRow:
@@ -300,6 +327,7 @@ def add_row(db: Session, risk_assessment_id: int, data: dict, actor_id: int | No
     audit_service.log(
         db, ENTITY_TYPE, risk_assessment_id, "row_added", actor_id, {"row_id": row.id}
     )
+    _withdraw_approval_and_save(db, risk_assessment, actor_id)
     return row
 
 
@@ -307,11 +335,24 @@ def update_row(
     db: Session, risk_assessment_id: int, row_id: int, data: dict, actor_id: int | None
 ) -> SheetRow:
     risk_assessment = _get_or_raise(db, risk_assessment_id)
+    before = dict(sheet_repository.get_row(db, row_id).data) if data else {}
     row = sheet_service.update_row(db, risk_assessment.sheet_id, row_id, data)
     audit_service.log(
         db, ENTITY_TYPE, risk_assessment_id, "row_updated", actor_id, {"row_id": row_id}
     )
+    if _assessed_content_changed(before, row.data):
+        _withdraw_approval_and_save(db, risk_assessment, actor_id)
     return row
+
+
+def _assessed_content_changed(before: dict, after: dict) -> bool:
+    """Whether anything outside the treatment-progress keys actually moved.
+    Compared after sheet_service has applied its computed risk scores, which
+    are deterministic, so a status-only edit recomputes to the same values."""
+    def assessed(data: dict) -> dict:
+        return {k: v for k, v in data.items() if k not in TREATMENT_PROGRESS_KEYS}
+
+    return assessed(before) != assessed(after)
 
 
 def delete_row(
@@ -323,6 +364,7 @@ def delete_row(
     audit_service.log(
         db, ENTITY_TYPE, risk_assessment_id, "row_deleted", actor_id, {"row_id": row_id}
     )
+    _withdraw_approval_and_save(db, risk_assessment, actor_id)
 
 
 def close_risk_item(
@@ -368,4 +410,5 @@ def import_upload(
     risk_assessment = _get_or_raise(db, risk_assessment_id)
     result = sheet_service.import_upload(db, risk_assessment.sheet_id, file)
     audit_service.log(db, ENTITY_TYPE, risk_assessment_id, "sheet_uploaded", actor_id)
+    _withdraw_approval_and_save(db, risk_assessment, actor_id)
     return result

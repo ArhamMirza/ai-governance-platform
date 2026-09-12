@@ -43,6 +43,38 @@ def stamp_completed(assessment: ApprovableAssessment) -> None:
     assessment.next_review_date = review_cadence.next_review_date(assessment.assessment_date)
 
 
+def revert_to_draft(
+    db: Session,
+    assessment: ApprovableAssessment,
+    actor_id: int | None,
+    *,
+    draft_status: Any,
+    caigo_approval_entity_type: str,
+) -> bool:
+    """An approval describes the assessment as it stood when it was signed
+    off, so changing what was assessed withdraws it: the record goes back to
+    draft and has to be re-submitted. Progress *against* an assessment --
+    treating and closing risk items -- is not a change to it, and the callers
+    decide which is which.
+
+    Returns whether anything was withdrawn. Mirrors
+    data_inventory_service._revert_review, which applies the same rule to a
+    dataset entry; the two are separate only because a DataInventoryRecord has
+    no owner-approval stage to clear."""
+    if assessment.status == draft_status:
+        return False
+
+    assessment.status = draft_status
+    assessment.owner_approved_by = None
+    assessment.owner_approved_at = None
+    assessment.caigo_approved_by = None
+    assessment.caigo_approved_at = None
+    audit_service.log(
+        db, caigo_approval_entity_type, assessment.id, "review_reset_by_edit", actor_id
+    )
+    return True
+
+
 def submit_for_owner_approval(
     db: Session,
     assessment: ApprovableAssessment,
