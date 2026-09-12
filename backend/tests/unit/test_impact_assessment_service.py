@@ -8,6 +8,7 @@ from app.schemas.impact_assessment import ImpactAssessmentCreate, ImpactAssessme
 from app.schemas.risk_assessment import RiskAssessmentCreate
 from app.services import (
     ai_system_inventory_service,
+    ai_system_lifecycle_service,
     impact_assessment_service,
     risk_assessment_service,
 )
@@ -27,6 +28,10 @@ def make_impact_assessment(db: Session, ai_system_row_id: int | None = None):
 
 
 def complete(db: Session, impact_assessment_id: int):
+    assessment = impact_assessment_service.get(db, impact_assessment_id)
+    ai_system_lifecycle_service.set_owner(
+        db, assessment.ai_system_row_id, owner_id=1, actor_id=None
+    )
     impact_assessment_service.submit_for_owner_approval(db, impact_assessment_id, actor_id=None)
     impact_assessment_service.approve_owner_stage(db, impact_assessment_id, actor_id=None)
     return impact_assessment_service.approve_caigo_stage(

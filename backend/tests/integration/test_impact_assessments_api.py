@@ -1,7 +1,7 @@
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
-from app.services import impact_assessment_service
+from app.services import ai_system_lifecycle_service, impact_assessment_service
 from tests.helpers import complete_impact_assessment
 
 
@@ -9,7 +9,13 @@ def approve_impact_assessment(db_session: Session, impact_assessment_id: int) ->
     """Walks an assessment through owner and CAIGO approval with no real
     actor, same no-op-on-None behavior audit_service.require_different_approver
     already has -- for tests that only care about what completing does, not
-    who is allowed to do it."""
+    who is allowed to do it. submit_for_owner_approval requires a real owner
+    on the AI system (otherwise the owner stage could never be approved), so
+    this stands one up first."""
+    assessment = impact_assessment_service.get(db_session, impact_assessment_id)
+    ai_system_lifecycle_service.set_owner(
+        db_session, assessment.ai_system_row_id, owner_id=1, actor_id=None
+    )
     impact_assessment_service.submit_for_owner_approval(
         db_session, impact_assessment_id, actor_id=None
     )

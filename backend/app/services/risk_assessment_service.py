@@ -196,10 +196,14 @@ def update_risk_assessment(
 ) -> RiskAssessment:
     risk_assessment = _get_or_raise(db, risk_assessment_id)
     changes = data.model_dump(exclude_unset=True)
-    if changes.get("status") in _GATED_STATUSES:
+    if "status" in changes and (
+        changes["status"] in _GATED_STATUSES
+        or risk_assessment.status not in _PRE_APPROVAL_STATUSES
+    ):
         raise ValidationError(
             "Use the submit/approve endpoints to move a risk assessment through "
-            "owner and CAIGO approval -- it can't be set directly."
+            "owner and CAIGO approval -- status can't be set directly once it's "
+            "in the approval pipeline."
         )
     for field, value in changes.items():
         setattr(risk_assessment, field, value)
@@ -236,6 +240,12 @@ def submit_for_owner_approval(
         db, risk_assessment.ai_system_row_id
     )
     owner_id = lifecycle.owner_id
+    if owner_id is None:
+        raise ValidationError(
+            "This AI system has no owner assigned yet -- assign an AI System "
+            "Owner before submitting for approval, or the owner stage can "
+            "never be approved."
+        )
 
     audit_service.log(
         db, OWNER_APPROVAL_ENTITY_TYPE, risk_assessment_id, "submitted_for_review", actor_id

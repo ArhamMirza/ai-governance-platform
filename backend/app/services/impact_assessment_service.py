@@ -44,6 +44,7 @@ ENTITY_TYPE = "ImpactAssessment"
 OWNER_APPROVAL_ENTITY_TYPE = "ImpactAssessmentOwnerApproval"
 CAIGO_APPROVAL_ENTITY_TYPE = "ImpactAssessmentCaigoApproval"
 
+_PRE_APPROVAL_STATUSES = {ImpactAssessmentStatus.DRAFT}
 _GATED_STATUSES = {
     ImpactAssessmentStatus.PENDING_OWNER_APPROVAL,
     ImpactAssessmentStatus.PENDING_CAIGO_APPROVAL,
@@ -137,10 +138,14 @@ def update(
 ) -> ImpactAssessment:
     impact_assessment = _get_or_raise(db, impact_assessment_id)
     changes = data.model_dump(exclude_unset=True)
-    if changes.get("status") in _GATED_STATUSES:
+    if "status" in changes and (
+        changes["status"] in _GATED_STATUSES
+        or impact_assessment.status not in _PRE_APPROVAL_STATUSES
+    ):
         raise ValidationError(
             "Use the submit/approve endpoints to move an impact assessment through "
-            "owner and CAIGO approval -- it can't be set directly."
+            "owner and CAIGO approval -- status can't be set directly once it's "
+            "in the approval pipeline."
         )
     for field, value in changes.items():
         setattr(impact_assessment, field, value)
@@ -177,6 +182,12 @@ def submit_for_owner_approval(
         db, impact_assessment.ai_system_row_id
     )
     owner_id = lifecycle.owner_id
+    if owner_id is None:
+        raise ValidationError(
+            "This AI system has no owner assigned yet -- assign an AI System "
+            "Owner before submitting for approval, or the owner stage can "
+            "never be approved."
+        )
 
     audit_service.log(
         db, OWNER_APPROVAL_ENTITY_TYPE, impact_assessment_id, "submitted_for_review", actor_id

@@ -128,3 +128,46 @@ def test_update_still_rejects_setting_completed_directly(client: TestClient) -> 
     )
 
     assert response.status_code == 400
+
+
+def test_cannot_revert_a_completed_assessment_via_plain_update(
+    client: TestClient, make_user, login_as, caigo_admin
+) -> None:
+    """A plain PUT must not be able to undo a CAIGO-signed-off approval by
+    moving status back to draft -- only draft may be set directly, and only
+    while the record isn't already in the pipeline."""
+    created = create_impact_assessment(client)
+    owner = make_user()
+    set_owner(client, created["ai_system_row_id"], owner.id)
+    client.post(f"/api/v1/impact-assessments/{created['id']}/submit-for-owner-approval")
+    login_as(owner)
+    client.post(f"/api/v1/impact-assessments/{created['id']}/approve-owner-stage")
+    login_as(caigo_admin)
+    client.post(f"/api/v1/impact-assessments/{created['id']}/approve-caigo-stage")
+
+    response = client.put(
+        f"/api/v1/impact-assessments/{created['id']}", json={"status": "draft"}
+    )
+
+    assert response.status_code == 400
+    assert (
+        client.get(f"/api/v1/impact-assessments/{created['id']}").json()["status"]
+        == "completed"
+    )
+
+
+def test_submitting_without_an_ai_system_owner_is_rejected(client: TestClient) -> None:
+    """Submitting when nobody is set as the AI system's owner would otherwise
+    put the assessment in pending_owner_approval with no one able to ever
+    approve it -- reject the submission itself instead."""
+    created = create_impact_assessment(client)
+
+    response = client.post(
+        f"/api/v1/impact-assessments/{created['id']}/submit-for-owner-approval"
+    )
+
+    assert response.status_code == 400
+    assert (
+        client.get(f"/api/v1/impact-assessments/{created['id']}").json()["status"]
+        == "draft"
+    )
