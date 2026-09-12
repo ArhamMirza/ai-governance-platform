@@ -1,6 +1,6 @@
 import { useState } from "react";
 
-import { ApiError } from "../../../shared/api/httpClient";
+import { readError } from "../../../shared/api/readError";
 import { useUpdateImpactFactor } from "../hooks";
 import type { ImpactFactorAssessment } from "../types";
 
@@ -11,16 +11,6 @@ interface ImpactFactorCardProps {
 }
 
 const SCORES = [1, 2, 3, 4, 5];
-
-function readError(err: unknown, fallback: string): string {
-  if (!(err instanceof ApiError)) return fallback;
-  try {
-    const parsed = JSON.parse(err.message) as { detail?: string };
-    return parsed.detail ?? err.message;
-  } catch {
-    return err.message || fallback;
-  }
-}
 
 /** 1 is the mildest impact, 5 the most severe -- shading the chosen score
  * makes a filled-in scorecard scannable without reading every cell. */

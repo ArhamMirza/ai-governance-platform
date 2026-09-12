@@ -2,7 +2,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 
-import { ApiError } from "../../../shared/api/httpClient";
+import { readError } from "../../../shared/api/readError";
 import { useRegister } from "../hooks";
 
 const registerFormSchema = z.object({
@@ -12,16 +12,6 @@ const registerFormSchema = z.object({
 });
 
 type RegisterFormValues = z.infer<typeof registerFormSchema>;
-
-function readError(err: unknown, fallback: string): string {
-  if (!(err instanceof ApiError)) return fallback;
-  try {
-    const parsed = JSON.parse(err.message) as { detail?: string };
-    return parsed.detail ?? err.message;
-  } catch {
-    return err.message || fallback;
-  }
-}
 
 export function RegisterForm() {
   const register = useRegister();

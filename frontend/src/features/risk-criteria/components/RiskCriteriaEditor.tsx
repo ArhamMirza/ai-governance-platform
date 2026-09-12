@@ -1,19 +1,9 @@
 import { useState } from "react";
 
-import { ApiError } from "../../../shared/api/httpClient";
+import { readError } from "../../../shared/api/readError";
 import { useResetRiskCriteria, useRiskCriteria, useUpdateRiskCriteria } from "../hooks";
 
 /** The API returns FastAPI's {"detail": "..."} envelope as raw text. */
-function readError(err: unknown, fallback: string): string {
-  if (!(err instanceof ApiError)) return fallback;
-  try {
-    const parsed = JSON.parse(err.message) as { detail?: string };
-    return parsed.detail ?? err.message;
-  } catch {
-    return err.message || fallback;
-  }
-}
-
 export function RiskCriteriaEditor() {
   const { data: criteria, isLoading, isError } = useRiskCriteria();
   const updateCriteria = useUpdateRiskCriteria();

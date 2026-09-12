@@ -1,21 +1,11 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 
-import { ApiError } from "../../../shared/api/httpClient";
+import { readError } from "../../../shared/api/readError";
 import { ConfirmDialog } from "../../../shared/components/ConfirmDialog";
 import { useDeleteInventoryRow } from "../../ai-system-inventory/hooks";
 import { useArchivedSystems } from "../hooks";
 import type { ArchivedAISystem } from "../types";
-
-function readError(err: unknown, fallback: string): string {
-  if (!(err instanceof ApiError)) return fallback;
-  try {
-    const parsed = JSON.parse(err.message) as { detail?: string };
-    return parsed.detail ?? err.message;
-  } catch {
-    return err.message || fallback;
-  }
-}
 
 export function ArchiveTable() {
   const { data: archived, isLoading, isError } = useArchivedSystems();

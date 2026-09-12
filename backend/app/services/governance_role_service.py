@@ -103,6 +103,18 @@ def update_role(
     role = _get_role_or_raise(db, role_id)
 
     if name is not None and name.strip() != role.name:
+        # CAIGO is looked up by this exact name throughout the app --
+        # is_caigo, require_caigo, delegate_caigo, and the frontend's
+        # useCanApprove all key off the literal "Chief AI Governance
+        # Officer" string rather than this role's id. Renaming it would
+        # silently break every one of those lookups (no one could approve
+        # anything CAIGO-gated, delegation would look up a role that no
+        # longer matches), so the name itself is not editable.
+        if role.name == CHIEF_AI_GOVERNANCE_OFFICER:
+            raise ValidationError(
+                "Chief AI Governance Officer can't be renamed -- too much of the "
+                "approval system identifies this role by that exact name."
+            )
         if governance_role_repository.get_by_name(db, name.strip()) is not None:
             raise ConflictError(f"A role named '{name}' already exists.")
         role.name = name.strip()

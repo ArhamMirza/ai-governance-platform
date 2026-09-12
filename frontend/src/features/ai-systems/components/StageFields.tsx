@@ -1,6 +1,6 @@
 import { useState } from "react";
 
-import { ApiError } from "../../../shared/api/httpClient";
+import { readError } from "../../../shared/api/readError";
 import { useCanApprove } from "../../audit-log/useCanApprove";
 import { formatUserOption } from "../../users/formatUserOption";
 import { useUserDirectory } from "../../users/hooks";
@@ -15,16 +15,6 @@ import {
   useSetRetirement,
 } from "../hooks";
 import type { AISystemLifecycle } from "../types";
-
-function readError(err: unknown, fallback: string): string {
-  if (!(err instanceof ApiError)) return fallback;
-  try {
-    const parsed = JSON.parse(err.message) as { detail?: string };
-    return parsed.detail ?? err.message;
-  } catch {
-    return err.message || fallback;
-  }
-}
 
 interface StageFieldsProps {
   rowId: number;

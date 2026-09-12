@@ -1,6 +1,6 @@
 import { useState } from "react";
 
-import { ApiError } from "../../../shared/api/httpClient";
+import { readError } from "../../../shared/api/readError";
 import {
   useAdvanceStage,
   useArchiveSystem,
@@ -17,16 +17,6 @@ const DOCUMENT_REQUIREMENTS: Record<string, string> = {
   monitoring_plan: "monitoring plan",
   retirement_signoff: "retirement sign-off",
 };
-
-function readError(err: unknown, fallback: string): string {
-  if (!(err instanceof ApiError)) return fallback;
-  try {
-    const parsed = JSON.parse(err.message) as { detail?: string };
-    return parsed.detail ?? err.message;
-  } catch {
-    return err.message || fallback;
-  }
-}
 
 function DocumentUpload({ rowId, documentType }: { rowId: number; documentType: string }) {
   const upload = useUploadStageDocument(rowId);

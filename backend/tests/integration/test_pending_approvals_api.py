@@ -103,6 +103,31 @@ def test_ai_system_owner_sees_risk_assessment_pending_their_approval(
     assert items[0]["stage_label"] == "Awaiting your approval as this AI system's owner"
 
 
+def test_owner_does_not_see_a_risk_assessment_they_submitted_themselves(
+    client: TestClient, test_user, make_user, login_as
+) -> None:
+    """approve_owner_stage rejects the owner if they were also the one who
+    submitted it (audit_service.require_different_approver) -- this can
+    happen if the owner changes after submission to someone who happens to
+    be the original submitter. The pending list must not show it then,
+    since the user would be rejected for trying to approve it."""
+    created = create_risk_assessment(client)
+    other_owner = make_user()
+    client.put(
+        f"/api/v1/ai-systems/{created['ai_system_row_id']}/lifecycle/owner",
+        json={"owner_id": other_owner.id},
+    )
+    client.post(f"/api/v1/risk-assessments/{created['id']}/submit-for-owner-approval")
+
+    # The owner changes to the original submitter (test_user) after submission.
+    client.put(
+        f"/api/v1/ai-systems/{created['ai_system_row_id']}/lifecycle/owner",
+        json={"owner_id": test_user.id},
+    )
+
+    assert pending(client) == []
+
+
 def test_caigo_sees_risk_assessment_pending_final_approval(
     client: TestClient, make_user, login_as, caigo_admin
 ) -> None:

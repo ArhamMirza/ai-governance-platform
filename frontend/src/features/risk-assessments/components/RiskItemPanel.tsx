@@ -1,4 +1,4 @@
-import { ApiError } from "../../../shared/api/httpClient";
+import { readError } from "../../../shared/api/readError";
 import { useEvidenceList } from "../../evidence/hooks";
 import { DocumentBrowser } from "../../evidence/components/DocumentBrowser";
 import { useCloseRiskItem } from "../hooks";
@@ -10,16 +10,6 @@ interface RiskItemPanelProps {
   riskAssessmentId: number;
   row: SheetRow;
   onClose: () => void;
-}
-
-function readError(err: unknown, fallback: string): string {
-  if (!(err instanceof ApiError)) return fallback;
-  try {
-    const parsed = JSON.parse(err.message) as { detail?: string };
-    return parsed.detail ?? err.message;
-  } catch {
-    return err.message || fallback;
-  }
 }
 
 export function RiskItemPanel({ riskAssessmentId, row, onClose }: RiskItemPanelProps) {
