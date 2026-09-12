@@ -8,7 +8,7 @@ from app.core.config import get_settings
 from app.core.exceptions import NotFoundError, ValidationError
 from app.models.evidence import Evidence
 from app.repositories import evidence_repository, folder_repository
-from app.services import audit_service, policy_service, procedure_service
+from app.services import audit_service, framework_service, policy_service, procedure_service
 
 # Entity types whose "version" is a document-set change counter rather than a
 # content diff (see DESIGN.md 4.2).
@@ -122,6 +122,9 @@ def delete_all_for_entity(db: Session, entity_type: str, entity_id: int) -> None
     that store evidence flat (folder_id always None), like RiskItem."""
     for evidence in evidence_repository.list_at_level(db, entity_type, entity_id, None):
         Path(evidence.storage_path).unlink(missing_ok=True)
+        # These documents can be tagged to framework controls too -- see
+        # delete_evidence for why the tags can't outlive the file.
+        framework_service.delete_tags(db, "Evidence", evidence.id)
         evidence_repository.delete(db, evidence)
 
 
@@ -129,6 +132,10 @@ def delete_evidence(db: Session, evidence_id: int, actor_id: int | None) -> None
     evidence = _get_or_raise(db, evidence_id)
     entity_type, entity_id, filename = evidence.entity_type, evidence.entity_id, evidence.filename
     Path(evidence.storage_path).unlink(missing_ok=True)
+    # A document can be tagged to framework controls, and the Statement of
+    # Applicability reads those tags as evidence that a control is covered.
+    # Leaving them behind would keep a deleted document counting as coverage.
+    framework_service.delete_tags(db, "Evidence", evidence_id)
     evidence_repository.delete(db, evidence)
     audit_service.log(
         db,

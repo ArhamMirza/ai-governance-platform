@@ -42,7 +42,8 @@ class FrameworkSoaEntryRead(BaseModel):
     description: str | None
     applicability: str
     justification: str | None
-    updated_at: datetime
+    # None until a decision is actually recorded for this control.
+    updated_at: datetime | None
     tagged_items: list[TaggedItem]
 
 

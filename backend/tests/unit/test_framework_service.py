@@ -187,15 +187,28 @@ def test_get_mapping_lists_tagged_policy_by_title(db_session: Session) -> None:
     assert entry.tagged_items[0].label == "Data Retention Policy"
 
 
-def test_get_mapping_falls_back_to_a_generic_label_for_unknown_entities(
+def test_get_mapping_falls_back_to_a_generic_label_for_an_unknown_entity_type(
     db_session: Session,
 ) -> None:
+    """A type with no label rule still shows -- not knowing how to name
+    something isn't a reason to hide real coverage."""
+    control_id = clause_control_id(db_session)
+    framework_service.set_tags(db_session, "SomeFutureThing", 7, [control_id], actor_id=None)
+
+    entries = framework_service.get_mapping(db_session)
+    entry = next(e for e in entries if e.id == control_id)
+    assert entry.tagged_items[0].label == "SomeFutureThing #7"
+
+
+def test_get_mapping_drops_a_tag_whose_record_is_gone(db_session: Session) -> None:
+    """These views are read as evidence that a control is covered, so a tag
+    pointing at something deleted must not render as though it were real."""
     control_id = clause_control_id(db_session)
     framework_service.set_tags(db_session, "RiskAssessment", 999, [control_id], actor_id=None)
 
     entries = framework_service.get_mapping(db_session)
     entry = next(e for e in entries if e.id == control_id)
-    assert entry.tagged_items[0].label == "RiskAssessment #999"
+    assert entry.tagged_items == []
 
 
 def test_get_soa_lists_only_annex_a_controls_defaulting_to_applicable(
