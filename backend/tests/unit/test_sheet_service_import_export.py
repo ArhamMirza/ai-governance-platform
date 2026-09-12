@@ -96,6 +96,91 @@ def test_import_deduplicates_repeated_headers(db_session: Session) -> None:
     assert [c["key"] for c in updated.columns] == ["note", "note_1"]
 
 
+def test_import_keeps_a_server_owned_column_the_file_omits(db_session: Session) -> None:
+    """An uploaded file has no reason to carry lifecycle_stage, but the stage
+    itself still exists -- dropping the column would leave it with nowhere to
+    show and let a re-upload quietly undo the reserved-column guard."""
+    sheet = sheet_service.create_sheet(
+        db_session,
+        "AISystemInventory",
+        "AI Systems",
+        [ColumnDef(key="name", label="Name"), ColumnDef(key="lifecycle_stage", label="Stage")],
+    )
+    upload = make_upload_file("systems.csv", b"Name\nResume Screener\n")
+
+    updated = sheet_service.import_upload(db_session, sheet.id, upload)
+
+    assert [c["key"] for c in updated.columns] == ["name", "lifecycle_stage"]
+    # The label the app gave it survives too, rather than being regenerated.
+    assert updated.columns[1]["label"] == "Stage"
+
+
+def test_import_keeps_the_data_inventory_review_column(db_session: Session) -> None:
+    sheet = sheet_service.create_sheet(
+        db_session,
+        "DataInventory",
+        "Data Inventory",
+        [
+            ColumnDef(key="dataset_name", label="Dataset Name"),
+            ColumnDef(key="approval_status", label="Approval Status"),
+        ],
+    )
+    upload = make_upload_file("datasets.csv", b"Dataset Name\nApplicant CVs\n")
+
+    updated = sheet_service.import_upload(db_session, sheet.id, upload)
+
+    assert "approval_status" in {c["key"] for c in updated.columns}
+
+
+def test_import_does_not_duplicate_a_server_owned_column_the_file_includes(
+    db_session: Session,
+) -> None:
+    sheet = sheet_service.create_sheet(
+        db_session,
+        "AISystemInventory",
+        "AI Systems",
+        [ColumnDef(key="lifecycle_stage", label="Stage")],
+    )
+    upload = make_upload_file("systems.csv", b"Name,Lifecycle Stage\nResume Screener,design\n")
+
+    updated = sheet_service.import_upload(db_session, sheet.id, upload)
+
+    assert [c["key"] for c in updated.columns] == ["name", "lifecycle_stage"]
+
+
+def test_import_does_not_invent_reserved_columns_the_sheet_never_had(
+    db_session: Session,
+) -> None:
+    """Only a reserved column the sheet actually carries is preserved -- a risk
+    sheet with no scoring columns doesn't grow them on import."""
+    sheet = sheet_service.create_sheet(
+        db_session, "RiskAssessment", "Risk Items", [ColumnDef(key="old", label="Old")]
+    )
+    upload = make_upload_file("risks.csv", b"Category\nBias\n")
+
+    updated = sheet_service.import_upload(db_session, sheet.id, upload)
+
+    assert [c["key"] for c in updated.columns] == ["category"]
+
+
+def test_import_keeps_the_risk_scoring_columns(db_session: Session) -> None:
+    sheet = sheet_service.create_sheet(
+        db_session,
+        "RiskAssessment",
+        "Risk Items",
+        [
+            ColumnDef(key="category", label="Category"),
+            ColumnDef(key="likelihood", label="Likelihood"),
+            ColumnDef(key="impact", label="Impact"),
+        ],
+    )
+    upload = make_upload_file("risks.csv", b"Category\nBias\n")
+
+    updated = sheet_service.import_upload(db_session, sheet.id, upload)
+
+    assert [c["key"] for c in updated.columns] == ["category", "likelihood", "impact"]
+
+
 def test_export_xlsx_round_trips_rows(db_session: Session) -> None:
     sheet = sheet_service.create_sheet(
         db_session,

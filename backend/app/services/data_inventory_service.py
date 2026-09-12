@@ -286,17 +286,8 @@ def import_upload(db: Session, file: UploadFile, actor_id: int | None) -> Sheet:
     """An import replaces every row, so the records pointing at the old ones
     are dropped and the imported rows start their review from draft."""
     sheet = get_or_create_sheet(db)
+    # sheet_service keeps the server-owned status column across the import.
     result = sheet_service.import_upload(db, sheet.id, file)
-
-    # import_upload takes the column list straight from the file, so unlike
-    # set_columns it doesn't honour the reserved-column guard -- put the
-    # server-owned status column back if the uploaded file had no such column.
-    if STATUS_COLUMN_KEY not in {column["key"] for column in result.columns}:
-        result.columns = [
-            *result.columns,
-            ColumnDef(key=STATUS_COLUMN_KEY, label="Approval Status").model_dump(),
-        ]
-        result = sheet_repository.save(db, result)
 
     rows = sheet_service.list_rows(db, sheet.id)
     data_inventory_record_repository.delete_orphaned(db, {row.id for row in rows})

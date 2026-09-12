@@ -131,7 +131,9 @@ def test_upload_replaces_columns_and_rows(client: TestClient) -> None:
 
     assert response.status_code == 200
     body = response.json()
-    assert [c["key"] for c in body["columns"]] == ["name", "risk_tier"]
+    # lifecycle_stage is server-owned, so it survives an upload that doesn't
+    # mention it -- the stage behind it still exists either way.
+    assert [c["key"] for c in body["columns"]] == ["name", "risk_tier", "lifecycle_stage"]
     assert body["rows"][0]["data"] == {"name": "Resume Screener", "risk_tier": "high"}
 
 
