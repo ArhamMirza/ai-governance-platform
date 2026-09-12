@@ -161,3 +161,37 @@ def test_caigo_does_not_see_a_dataset_they_submitted_themselves(
     client.post(f"{ROWS}/{row_id}/submit-for-approval")
 
     assert [i for i in pending(client) if i["entity_type"] == "DataInventory"] == []
+
+
+def test_the_review_trail_is_readable_across_every_dataset(
+    client: TestClient, test_user, login_as, caigo_admin
+) -> None:
+    """A dataset's review is logged against its row id, so the sheet has no
+    single id to look it up by -- the audit log has to be listable by entity
+    type alone or the trail is recorded and unviewable."""
+    row_id = create_dataset(client, owner_id=test_user.id)
+    client.post(f"{ROWS}/{row_id}/submit-for-approval")
+    login_as(caigo_admin)
+    client.post(f"{ROWS}/{row_id}/approve")
+
+    response = client.get("/api/v1/audit-log", params={"entity_type": "DataInventoryApproval"})
+
+    assert response.status_code == 200
+    actions = [entry["action"] for entry in response.json()]
+    assert actions == ["submitted_for_review", "approved"]
+
+
+def test_listing_by_entity_type_and_id_still_narrows_to_one_record(
+    client: TestClient, test_user, login_as, caigo_admin
+) -> None:
+    first = create_dataset(client, owner_id=test_user.id, dataset_name="First")
+    second = create_dataset(client, owner_id=test_user.id, dataset_name="Second")
+    client.post(f"{ROWS}/{first}/submit-for-approval")
+    client.post(f"{ROWS}/{second}/submit-for-approval")
+
+    response = client.get(
+        "/api/v1/audit-log",
+        params={"entity_type": "DataInventoryApproval", "entity_id": first},
+    )
+
+    assert [entry["entity_id"] for entry in response.json()] == [first]

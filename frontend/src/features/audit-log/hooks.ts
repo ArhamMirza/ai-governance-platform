@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 
 import { auditLogApi } from "./api";
 
-export function useAuditLog(entityType: string, entityId: number) {
+export function useAuditLog(entityType: string, entityId?: number) {
   return useQuery({
     queryKey: ["audit-log", entityType, entityId],
     queryFn: () => auditLogApi.list(entityType, entityId),

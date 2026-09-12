@@ -24,6 +24,9 @@ vi.mock("../../framework-tags/components/FrameworkTagPicker", () => ({
 vi.mock("../../evidence/components/DocumentBrowser", () => ({
   DocumentBrowser: () => <div>Documents</div>,
 }));
+vi.mock("../../audit-log/components/AuditLogViewer", () => ({
+  AuditLogViewer: () => <div>Audit log</div>,
+}));
 vi.mock("./ImpactFactorCard", () => ({
   ImpactFactorCard: () => <div>Factor</div>,
 }));

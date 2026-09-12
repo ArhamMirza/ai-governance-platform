@@ -15,6 +15,19 @@ def list_for_entity(
     return list(db.scalars(query.order_by(AuditLogEntry.timestamp)))
 
 
+def list_for_entity_type(db: Session, entity_type: str) -> list[AuditLogEntry]:
+    """Every entry for an entity type, across ids. For trails recorded
+    per-item under one type -- a dataset's review is logged against its row
+    id, so a single sheet has no one id to look them up by."""
+    return list(
+        db.scalars(
+            select(AuditLogEntry)
+            .where(AuditLogEntry.entity_type == entity_type)
+            .order_by(AuditLogEntry.timestamp)
+        )
+    )
+
+
 def latest_entry_by_entity(
     db: Session, entity_type: str, entity_ids: list[int], actions: list[str]
 ) -> dict[int, AuditLogEntry]:

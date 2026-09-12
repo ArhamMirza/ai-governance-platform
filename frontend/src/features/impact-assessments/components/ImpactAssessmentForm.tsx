@@ -3,6 +3,7 @@ import { useState } from "react";
 import { readError } from "../../../shared/api/readError";
 import { StatusBadge } from "../../../shared/components/StatusBadge";
 import { ApprovalWithdrawalNotice } from "../../audit-log/ApprovalWithdrawalNotice";
+import { AuditLogViewer } from "../../audit-log/components/AuditLogViewer";
 import { useCanApprove } from "../../audit-log/useCanApprove";
 import { useCanApproveAsOwner } from "../../audit-log/useCanApproveAsOwner";
 import { DocumentBrowser } from "../../evidence/components/DocumentBrowser";
@@ -212,6 +213,9 @@ export function ImpactAssessmentForm({
 
       <h4>Evidence</h4>
       <DocumentBrowser entityType={ENTITY_TYPE} entityId={assessment.id} />
+
+      <h4>Audit Log</h4>
+      <AuditLogViewer entityType={ENTITY_TYPE} entityId={assessment.id} />
 
       {allowDelete && (
         <button onClick={handleDelete} disabled={deleteAssessment.isPending}>
