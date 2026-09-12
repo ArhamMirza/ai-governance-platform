@@ -112,12 +112,17 @@ def update_row(db: Session, row_id: int, data: dict, actor_id: int | None) -> Sh
 def delete_row(db: Session, row_id: int, actor_id: int | None) -> None:
     """Removing an AI system also removes the assessments performed on it --
     they describe a system that no longer exists, and their sheets, evidence
-    and framework tags would otherwise be orphaned."""
+    and framework tags would otherwise be orphaned.
+
+    Datasets are unlinked rather than deleted: a Data Inventory entry is an
+    organizational data asset with its own owner and review, so it outlives
+    any one system that used it (see data_inventory_service.unlink_ai_system)."""
     # Imported here rather than at module scope: both assessment services
     # import this one (to validate the AI system row), so a top-level import
     # would be circular.
     from app.services import (
         ai_system_lifecycle_service,
+        data_inventory_service,
         impact_assessment_service,
         risk_assessment_service,
     )
@@ -141,6 +146,7 @@ def delete_row(db: Session, row_id: int, actor_id: int | None) -> None:
     if impact_assessment is not None:
         impact_assessment_service.delete(db, impact_assessment.id, actor_id)
 
+    data_inventory_service.unlink_ai_system(db, row_id, actor_id)
     ai_system_lifecycle_service.delete_for_ai_system(db, row_id)
 
     sheet = get_or_create_sheet(db)
