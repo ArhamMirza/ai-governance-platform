@@ -29,6 +29,19 @@ DATA_INVENTORY_ENTITY_TYPE = "DataInventory"
 # review record, so it can't be dropped from the data inventory sheet.
 RESERVED_DATA_INVENTORY_COLUMNS = {"approval_status"}
 
+# entity type -> (what to call these columns in an error, the reserved keys).
+# set_columns refuses to drop them and import_upload puts them back, so a
+# server-owned column can't be lost by editing or re-uploading the sheet.
+RESERVED_COLUMNS = {
+    RISK_ASSESSMENT_ENTITY_TYPE: ("risk-scoring", RESERVED_RISK_INPUT_COLUMNS),
+    AI_SYSTEM_INVENTORY_ENTITY_TYPE: ("life cycle", RESERVED_AI_SYSTEM_COLUMNS),
+    DATA_INVENTORY_ENTITY_TYPE: ("review", RESERVED_DATA_INVENTORY_COLUMNS),
+}
+
+
+def _reserved_keys(entity_type: str) -> set[str]:
+    return RESERVED_COLUMNS.get(entity_type, ("", set()))[1]
+
 # score_key -> (likelihood_key, impact_key). Computed and overwritten on every
 # add_row/update_row for a RiskAssessment sheet -- never taken from caller input.
 SCORE_COLUMN_PAIRS = {
@@ -106,27 +119,13 @@ def set_columns(db: Session, sheet_id: int, columns: list[ColumnDef]) -> Sheet:
     new_keys = set(keys)
     dropped_keys = _column_keys(sheet) - new_keys
 
-    if sheet.entity_type == RISK_ASSESSMENT_ENTITY_TYPE:
-        dropped_reserved = dropped_keys & RESERVED_RISK_INPUT_COLUMNS
-        if dropped_reserved:
-            raise ValidationError(
-                "Cannot remove reserved risk-scoring column(s): "
-                f"{', '.join(sorted(dropped_reserved))}"
-            )
-    if sheet.entity_type == AI_SYSTEM_INVENTORY_ENTITY_TYPE:
-        dropped_reserved = dropped_keys & RESERVED_AI_SYSTEM_COLUMNS
-        if dropped_reserved:
-            raise ValidationError(
-                "Cannot remove reserved life cycle column(s): "
-                f"{', '.join(sorted(dropped_reserved))}"
-            )
-    if sheet.entity_type == DATA_INVENTORY_ENTITY_TYPE:
-        dropped_reserved = dropped_keys & RESERVED_DATA_INVENTORY_COLUMNS
-        if dropped_reserved:
-            raise ValidationError(
-                "Cannot remove reserved review column(s): "
-                f"{', '.join(sorted(dropped_reserved))}"
-            )
+    description, reserved = RESERVED_COLUMNS.get(sheet.entity_type, ("", set()))
+    dropped_reserved = dropped_keys & reserved
+    if dropped_reserved:
+        raise ValidationError(
+            f"Cannot remove reserved {description} column(s): "
+            f"{', '.join(sorted(dropped_reserved))}"
+        )
     if dropped_keys:
         for row in sheet_repository.list_rows(db, sheet_id):
             if dropped_keys & row.data.keys():
@@ -237,10 +236,23 @@ def import_upload(db: Session, sheet_id: int, file: UploadFile) -> Sheet:
         seen[base_key] = count + 1
         keys.append(base_key if count == 0 else f"{base_key}_{count}")
 
-    sheet.columns = [
+    columns = [
         ColumnDef(key=key, label=header).model_dump()
         for key, header in zip(keys, headers, strict=True)
     ]
+    # The column list comes from the file, so a file that doesn't happen to
+    # carry a server-owned column would otherwise drop it -- and the state
+    # behind it (a life cycle stage, a dataset's review) would still exist
+    # with nowhere to show. Those columns are kept regardless of the upload.
+    imported_keys = {column["key"] for column in columns}
+    reserved = _reserved_keys(sheet.entity_type)
+    columns += [
+        column
+        for column in sheet.columns
+        if column["key"] in reserved and column["key"] not in imported_keys
+    ]
+
+    sheet.columns = columns
     sheet_repository.save(db, sheet)
 
     sheet_repository.delete_all_rows(db, sheet_id)
