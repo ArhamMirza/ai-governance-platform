@@ -7,7 +7,7 @@ requirement rather than the whole chain.
 from fastapi.testclient import TestClient
 
 from app.models.user import UserRole
-from tests.helpers import complete_impact_assessment
+from tests.helpers import add_approved_dataset, complete_impact_assessment
 
 LIFECYCLE = "/api/v1/ai-systems/{row_id}/lifecycle"
 
@@ -170,10 +170,14 @@ def test_development_gate_requires_a_linked_dataset(client: TestClient) -> None:
     assert requirement(body, "inventory_complete")["satisfied"] is True
     assert requirement(body, "data_inventory_entry")["satisfied"] is False
 
+    # An unreviewed dataset doesn't satisfy the gate on its own.
     client.post(
         "/api/v1/data-inventory/rows",
         json={"data": {"dataset_name": "CVs", "ai_system_row_id": str(row_id)}},
     )
+    assert requirement(lifecycle(client, row_id), "data_inventory_entry")["satisfied"] is False
+
+    add_approved_dataset(client, row_id, dataset_name="Approved CVs")
 
     assert advance(client, row_id).json()["current_stage"] == "verification_and_validation"
 
@@ -186,10 +190,7 @@ def reach_validation(client: TestClient, row_id: int) -> int:
     advance(client, row_id)
     upload(client, row_id, "design_document")
     advance(client, row_id)
-    client.post(
-        "/api/v1/data-inventory/rows",
-        json={"data": {"dataset_name": "CVs", "ai_system_row_id": str(row_id)}},
-    )
+    add_approved_dataset(client, row_id)
     advance(client, row_id)
     return risk_assessment_id
 

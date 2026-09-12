@@ -244,8 +244,9 @@ def get_summary(db: Session, actor_id: int) -> DashboardSummary:
     ai_systems_without_owner_count = sum(1 for lc in lifecycles if lc.owner_id is None)
     valid_user_ids = {u.id for u in user_repository.list_all(db)}
     risk_owner_invalid_count = _invalid_owner_count(all_risk_rows, "risk_owner", valid_user_ids)
+    data_inventory_rows = data_inventory_service.list_rows(db)
     data_owner_invalid_count = _invalid_owner_count(
-        data_inventory_service.list_rows(db), "data_owner", valid_user_ids
+        data_inventory_rows, "data_owner", valid_user_ids
     )
 
     return DashboardSummary(
@@ -299,5 +300,7 @@ def get_summary(db: Session, actor_id: int) -> DashboardSummary:
             ai_system_rows=ai_system_rows,
             risk_assessments=risk_assessments,
             impact_assessments=impact_assessments,
+            data_inventory_rows=data_inventory_rows,
+            data_inventory_records=data_inventory_service.list_records(db),
         ),
     )

@@ -23,6 +23,12 @@ AI_SYSTEM_INVENTORY_ENTITY_TYPE = "AISystemInventory"
 # so it can't be dropped from the inventory sheet either.
 RESERVED_AI_SYSTEM_COLUMNS = {"lifecycle_stage"}
 
+DATA_INVENTORY_ENTITY_TYPE = "DataInventory"
+
+# approval_status is owned by data_inventory_service and mirrors each dataset's
+# review record, so it can't be dropped from the data inventory sheet.
+RESERVED_DATA_INVENTORY_COLUMNS = {"approval_status"}
+
 # score_key -> (likelihood_key, impact_key). Computed and overwritten on every
 # add_row/update_row for a RiskAssessment sheet -- never taken from caller input.
 SCORE_COLUMN_PAIRS = {
@@ -112,6 +118,13 @@ def set_columns(db: Session, sheet_id: int, columns: list[ColumnDef]) -> Sheet:
         if dropped_reserved:
             raise ValidationError(
                 "Cannot remove reserved life cycle column(s): "
+                f"{', '.join(sorted(dropped_reserved))}"
+            )
+    if sheet.entity_type == DATA_INVENTORY_ENTITY_TYPE:
+        dropped_reserved = dropped_keys & RESERVED_DATA_INVENTORY_COLUMNS
+        if dropped_reserved:
+            raise ValidationError(
+                "Cannot remove reserved review column(s): "
                 f"{', '.join(sorted(dropped_reserved))}"
             )
     if dropped_keys:

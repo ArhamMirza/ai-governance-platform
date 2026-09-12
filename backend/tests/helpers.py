@@ -13,7 +13,11 @@ from app.core.database import get_db
 from app.main import app
 from app.models.user import User
 from app.schemas.impact_assessment import ImpactAssessmentCreate
-from app.services import ai_system_lifecycle_service, impact_assessment_service
+from app.services import (
+    ai_system_lifecycle_service,
+    data_inventory_service,
+    impact_assessment_service,
+)
 
 
 def _db_for(client: TestClient) -> Session:
@@ -36,6 +40,32 @@ def _ensure_owner(db: Session, ai_system_row_id: int) -> None:
         ai_system_lifecycle_service.set_owner(
             db, ai_system_row_id, owner_id=first_user_id, actor_id=None
         )
+
+
+def add_approved_dataset(
+    client: TestClient, ai_system_row_id: int, dataset_name: str = "CVs"
+) -> int:
+    """A Data Inventory entry that has been through its review -- what the AI
+    system's development-stage gate now requires. Walks the review at the
+    service layer with actor_id=None for the same reason
+    complete_impact_assessment does: this helper has only one client to act
+    as, and None is the established "no real actor, nothing to enforce" case
+    for the Data Owner and CAIGO checks."""
+    db = _db_for(client)
+    row = data_inventory_service.add_row(
+        db,
+        {"dataset_name": dataset_name, "ai_system_row_id": str(ai_system_row_id)},
+        actor_id=None,
+    )
+    # submit_for_approval insists on a real Data Owner, so nobody can submit a
+    # dataset that has no one accountable for it.
+    first_user_id = db.query(User).order_by(User.id).first().id
+    data_inventory_service.update_row(
+        db, row.id, {"data_owner": str(first_user_id)}, actor_id=None
+    )
+    data_inventory_service.submit_for_approval(db, row.id, actor_id=None)
+    data_inventory_service.approve(db, row.id, actor_id=None)
+    return row.id
 
 
 def complete_impact_assessment(client: TestClient, ai_system_row_id: int) -> dict:

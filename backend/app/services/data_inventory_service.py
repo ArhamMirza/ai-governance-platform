@@ -1,12 +1,38 @@
+"""The Data Inventory sheet, and the review each dataset entry goes through.
+
+Datasets are recorded as sheet rows (like the AI system inventory), but their
+review state lives in a typed DataInventoryRecord sidecar table so it is
+server-owned and can't be edited away in the grid -- the same split
+AISystemLifecycle uses for an AI system's stage.
+
+The workflow is two-stage: the Data Owner named on the row fills it in and
+submits it, then the Chief AI Governance Officer approves it. Only that
+assigned owner (or an admin) may edit the row, and any edit sends an
+already-reviewed entry back to draft so an approval always describes the data
+as it currently stands.
+"""
+
+from datetime import UTC, datetime
+
 from fastapi import UploadFile
 from sqlalchemy.orm import Session
 
+from app.core.exceptions import AuthorizationError, ConflictError, NotFoundError, ValidationError
+from app.models.data_inventory_record import DataInventoryRecord, DataInventoryStatus
 from app.models.sheet import Sheet, SheetRow
-from app.repositories import sheet_repository
+from app.models.user import User, UserRole
+from app.repositories import data_inventory_record_repository, sheet_repository
 from app.schemas.sheet import ColumnDef
-from app.services import audit_service, sheet_service
+from app.services import audit_service, governance_role_service, sheet_service
 
 ENTITY_TYPE = "DataInventory"
+# A distinct entity type for the sign-off, so the segregation-of-duties lookup
+# never sees an ordinary row edit -- same split as AISystemDeploymentApproval.
+APPROVAL_ENTITY_TYPE = "DataInventoryApproval"
+
+STATUS_COLUMN_KEY = "approval_status"
+OWNER_COLUMN_KEY = "data_owner"
+NAME_COLUMN_KEY = "dataset_name"
 
 DEFAULT_COLUMNS = [
     ColumnDef(key="dataset_name", label="Dataset Name"),
@@ -22,6 +48,7 @@ DEFAULT_COLUMNS = [
     ColumnDef(key="data_quality_measures", label="Data Quality Measures (A.7.4)"),
     ColumnDef(key="data_provenance", label="Data Provenance (A.7.5)"),
     ColumnDef(key="data_preparation", label="Data Preparation (A.7.6)"),
+    ColumnDef(key=STATUS_COLUMN_KEY, label="Approval Status"),
 ]
 
 
@@ -37,6 +64,95 @@ def list_rows(db: Session) -> list[SheetRow]:
     return sheet_service.list_rows(db, sheet.id)
 
 
+def _get_row_or_raise(db: Session, row_id: int) -> SheetRow:
+    sheet = get_or_create_sheet(db)
+    row = sheet_repository.get_row(db, row_id)
+    if row is None or row.sheet_id != sheet.id:
+        raise NotFoundError("SheetRow", row_id)
+    return row
+
+
+# ---------- review state ----------
+
+
+def get_or_create_record(db: Session, row_id: int) -> DataInventoryRecord:
+    """Every dataset entry has a review record; one is created at draft on
+    first request. Lazy rather than eager so rows that predate this feature --
+    and rows recreated by an xlsx import -- are covered too."""
+    _get_row_or_raise(db, row_id)
+    existing = data_inventory_record_repository.get_for_row(db, row_id)
+    if existing is not None:
+        return existing
+    record = DataInventoryRecord(
+        data_inventory_row_id=row_id, status=DataInventoryStatus.DRAFT
+    )
+    record = data_inventory_record_repository.create(db, record)
+    _write_status_to_row(db, row_id, record.status)
+    return record
+
+
+def list_records(db: Session) -> list[DataInventoryRecord]:
+    return data_inventory_record_repository.list_all(db)
+
+
+def approved_row_ids(db: Session) -> set[int]:
+    """Rows whose dataset entry has been approved -- what the AI system's
+    development-stage gate checks."""
+    return {
+        record.data_inventory_row_id
+        for record in data_inventory_record_repository.list_all(db)
+        if record.status == DataInventoryStatus.APPROVED
+    }
+
+
+def _write_status_to_row(db: Session, row_id: int, status: str) -> None:
+    """Mirror the review status into the sheet cell so the grid and the xlsx
+    export stay truthful. The cell is server-owned -- see update_row."""
+    row = sheet_repository.get_row(db, row_id)
+    if row is None:
+        return
+    row.data = {**row.data, STATUS_COLUMN_KEY: status}
+    sheet_repository.save_row(db, row)
+
+
+# ---------- ownership ----------
+
+
+def _owner_id(row: SheetRow) -> int | None:
+    """The user id in the row's Data Owner cell, or None when it is unset or
+    doesn't resolve to one -- parsed the same way dashboard_service counts
+    owners that aren't real accounts."""
+    raw = row.data.get(OWNER_COLUMN_KEY)
+    if raw is None or not str(raw).strip():
+        return None
+    try:
+        return int(raw)
+    except (TypeError, ValueError):
+        return None
+
+
+def _require_data_owner(db: Session, row: SheetRow, actor_id: int | None) -> None:
+    """Only the Data Owner named on a dataset may change it. No real actor
+    (seed script / internal call) means nothing to enforce, mirroring
+    governance_role_service.require_caigo; and a row nobody owns yet stays
+    open to any editor, or there would be no way to fill one in and assign it.
+    Admins are never locked out of their own inventory."""
+    if actor_id is None:
+        return
+    owner_id = _owner_id(row)
+    if owner_id is None or owner_id == actor_id:
+        return
+    actor = db.get(User, actor_id)
+    if actor is not None and actor.role == UserRole.ADMIN:
+        return
+    raise AuthorizationError(
+        "Only this dataset's Data Owner can change it."
+    )
+
+
+# ---------- rows ----------
+
+
 def set_columns(db: Session, columns: list[ColumnDef], actor_id: int | None) -> Sheet:
     sheet = get_or_create_sheet(db)
     result = sheet_service.set_columns(db, sheet.id, columns)
@@ -46,22 +162,119 @@ def set_columns(db: Session, columns: list[ColumnDef], actor_id: int | None) -> 
 
 def add_row(db: Session, data: dict, actor_id: int | None) -> SheetRow:
     sheet = get_or_create_sheet(db)
-    row = sheet_service.add_row(db, sheet.id, data)
+    row = sheet_service.add_row(
+        db, sheet.id, {k: v for k, v in data.items() if k != STATUS_COLUMN_KEY}
+    )
+    get_or_create_record(db, row.id)
     audit_service.log(db, ENTITY_TYPE, sheet.id, "row_added", actor_id, {"row_id": row.id})
-    return row
+    return sheet_repository.get_row(db, row.id) or row
 
 
 def update_row(db: Session, row_id: int, data: dict, actor_id: int | None) -> SheetRow:
     sheet = get_or_create_sheet(db)
-    row = sheet_service.update_row(db, sheet.id, row_id, data)
+    existing = _get_row_or_raise(db, row_id)
+    _require_data_owner(db, existing, actor_id)
+
+    # The status cell is server-owned -- editing it in the grid would sidestep
+    # the review entirely, so a supplied value is ignored rather than rejected.
+    changes = {k: v for k, v in data.items() if k != STATUS_COLUMN_KEY}
+    changed = {**existing.data, **changes} != existing.data
+
+    row = sheet_service.update_row(db, sheet.id, row_id, changes)
     audit_service.log(db, ENTITY_TYPE, sheet.id, "row_updated", actor_id, {"row_id": row_id})
-    return row
+    if changed:
+        _revert_review(db, row_id, actor_id)
+    return sheet_repository.get_row(db, row_id) or row
+
+
+def _revert_review(db: Session, row_id: int, actor_id: int | None) -> None:
+    """An edit invalidates whatever review the entry was in: an approval would
+    otherwise describe data that has since changed, and a pending submission
+    would put something different in front of the approver than what was
+    submitted. Either way it goes back to draft and has to be re-submitted."""
+    record = get_or_create_record(db, row_id)
+    if record.status == DataInventoryStatus.DRAFT:
+        return
+    record.status = DataInventoryStatus.DRAFT
+    record.submitted_by = None
+    record.submitted_at = None
+    record.approved_by = None
+    record.approved_at = None
+    data_inventory_record_repository.save(db, record)
+    _write_status_to_row(db, row_id, record.status)
+    audit_service.log(db, APPROVAL_ENTITY_TYPE, row_id, "review_reset_by_edit", actor_id)
 
 
 def delete_row(db: Session, row_id: int, actor_id: int | None) -> None:
     sheet = get_or_create_sheet(db)
+    row = _get_row_or_raise(db, row_id)
+    _require_data_owner(db, row, actor_id)
+
+    data_inventory_record_repository.delete_for_row(db, row_id)
     sheet_service.delete_row(db, sheet.id, row_id)
     audit_service.log(db, ENTITY_TYPE, sheet.id, "row_deleted", actor_id, {"row_id": row_id})
+
+
+# ---------- review workflow ----------
+
+
+def submit_for_approval(db: Session, row_id: int, actor_id: int | None) -> DataInventoryRecord:
+    """The Data Owner puts their dataset entry forward for CAIGO sign-off."""
+    row = _get_row_or_raise(db, row_id)
+    record = get_or_create_record(db, row_id)
+    if record.status != DataInventoryStatus.DRAFT:
+        raise ConflictError(
+            f"Dataset {row_id} must be draft to submit for approval, "
+            f"currently '{record.status}'"
+        )
+    if _owner_id(row) is None:
+        raise ValidationError(
+            "This dataset has no Data Owner assigned yet -- assign one before "
+            "submitting it for approval, so there is someone accountable for it."
+        )
+    if not str(row.data.get(NAME_COLUMN_KEY) or "").strip():
+        raise ValidationError("Give the dataset a name before submitting it for approval.")
+    _require_data_owner(db, row, actor_id)
+
+    record.status = DataInventoryStatus.PENDING_APPROVAL
+    record.submitted_by = actor_id
+    record.submitted_at = datetime.now(UTC)
+    record = data_inventory_record_repository.save(db, record)
+    _write_status_to_row(db, row_id, record.status)
+    audit_service.log(db, APPROVAL_ENTITY_TYPE, row_id, "submitted_for_review", actor_id)
+    return record
+
+
+def approve(db: Session, row_id: int, actor_id: int | None) -> DataInventoryRecord:
+    """CAIGO sign-off, by someone other than whoever submitted it."""
+    _get_row_or_raise(db, row_id)
+    record = get_or_create_record(db, row_id)
+    if record.status != DataInventoryStatus.PENDING_APPROVAL:
+        raise ConflictError(
+            f"Dataset {row_id} must be pending approval to approve, "
+            f"currently '{record.status}'"
+        )
+
+    governance_role_service.require_caigo(db, actor_id)
+    try:
+        audit_service.require_different_approver(db, APPROVAL_ENTITY_TYPE, row_id, actor_id)
+    except ConflictError as exc:
+        # The shared helper names the internal entity type, which means nothing
+        # to whoever is looking at the data inventory grid.
+        raise ConflictError(
+            "You submitted this dataset, so someone else has to approve it."
+        ) from exc
+
+    record.status = DataInventoryStatus.APPROVED
+    record.approved_by = actor_id
+    record.approved_at = datetime.now(UTC)
+    record = data_inventory_record_repository.save(db, record)
+    _write_status_to_row(db, row_id, record.status)
+    audit_service.log(db, APPROVAL_ENTITY_TYPE, row_id, "approved", actor_id)
+    return record
+
+
+# ---------- import / export ----------
 
 
 def export_xlsx(db: Session) -> bytes:
@@ -70,7 +283,25 @@ def export_xlsx(db: Session) -> bytes:
 
 
 def import_upload(db: Session, file: UploadFile, actor_id: int | None) -> Sheet:
+    """An import replaces every row, so the records pointing at the old ones
+    are dropped and the imported rows start their review from draft."""
     sheet = get_or_create_sheet(db)
     result = sheet_service.import_upload(db, sheet.id, file)
+
+    # import_upload takes the column list straight from the file, so unlike
+    # set_columns it doesn't honour the reserved-column guard -- put the
+    # server-owned status column back if the uploaded file had no such column.
+    if STATUS_COLUMN_KEY not in {column["key"] for column in result.columns}:
+        result.columns = [
+            *result.columns,
+            ColumnDef(key=STATUS_COLUMN_KEY, label="Approval Status").model_dump(),
+        ]
+        result = sheet_repository.save(db, result)
+
+    rows = sheet_service.list_rows(db, sheet.id)
+    data_inventory_record_repository.delete_orphaned(db, {row.id for row in rows})
+    for row in rows:
+        get_or_create_record(db, row.id)
+
     audit_service.log(db, ENTITY_TYPE, sheet.id, "sheet_uploaded", actor_id)
     return result

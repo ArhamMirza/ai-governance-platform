@@ -60,7 +60,8 @@ export type PendingApprovalEntityType =
   | "AISystemDeployment"
   | "AISystemRetirement"
   | "RiskAssessment"
-  | "ImpactAssessment";
+  | "ImpactAssessment"
+  | "DataInventory";
 
 export interface PendingApprovalItem {
   entity_type: PendingApprovalEntityType;

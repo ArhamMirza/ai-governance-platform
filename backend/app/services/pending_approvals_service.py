@@ -20,6 +20,7 @@ from sqlalchemy.orm import Session
 
 from app.core.lifecycle_stages import LifecycleStage
 from app.models.ai_system_lifecycle import AISystemLifecycle
+from app.models.data_inventory_record import DataInventoryRecord, DataInventoryStatus
 from app.models.impact_assessment import ImpactAssessment, ImpactAssessmentStatus
 from app.models.policy import Policy, PolicyStatus
 from app.models.procedure import Procedure, ProcedureStatus
@@ -127,6 +128,8 @@ def get_pending_approvals(
     ai_system_rows: list[SheetRow],
     risk_assessments: list[RiskAssessment],
     impact_assessments: list[ImpactAssessment],
+    data_inventory_rows: list[SheetRow],
+    data_inventory_records: list[DataInventoryRecord],
 ) -> list[PendingApprovalItem]:
     items: list[PendingApprovalItem] = []
     is_caigo = governance_role_service.is_caigo(db, user_id)
@@ -253,6 +256,27 @@ def get_pending_approvals(
             {
                 ia.id: _ai_system_name(ai_system_rows_by_id, ia.ai_system_row_id)
                 for ia in caigo_pending_ias
+            },
+        )
+
+    if is_caigo:
+        pending_dataset_ids = [
+            record.data_inventory_row_id
+            for record in data_inventory_records
+            if record.status == DataInventoryStatus.PENDING_APPROVAL
+        ]
+        dataset_rows_by_id = {row.id: row for row in data_inventory_rows}
+        items += _caigo_stage_items(
+            db,
+            user_id,
+            "DataInventory",
+            "DataInventoryApproval",
+            [row_id for row_id in pending_dataset_ids if row_id in dataset_rows_by_id],
+            {
+                row_id: str(dataset_rows_by_id[row_id].data.get("dataset_name") or "")
+                or f"Dataset #{row_id}"
+                for row_id in pending_dataset_ids
+                if row_id in dataset_rows_by_id
             },
         )
 
