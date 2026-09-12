@@ -143,6 +143,16 @@ def update_role(
 
 def delete_role(db: Session, role_id: int, actor_id: int | None) -> None:
     role = _get_role_or_raise(db, role_id)
+    # Same reasoning as the rename guard in update_role: is_caigo, require_caigo
+    # and delegate_caigo all find this role by its exact name. Deleting it makes
+    # every one of those lookups fail, so nothing CAIGO-gated could be approved
+    # anywhere in the app -- recoverable only by recreating a role with exactly
+    # this name, which is not something anyone should have to guess.
+    if role.name == CHIEF_AI_GOVERNANCE_OFFICER:
+        raise ConflictError(
+            "Chief AI Governance Officer can't be deleted -- every approval in "
+            "the app is gated on this role. Reassign the holder instead."
+        )
     if governance_role_repository.has_children(db, role_id):
         raise ConflictError(
             f"'{role.name}' still has roles reporting to it; reassign those first."

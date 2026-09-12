@@ -8,6 +8,17 @@ def get(db: Session, procedure_id: int) -> Procedure | None:
     return db.get(Procedure, procedure_id)
 
 
+def list_for_policy(db: Session, policy_id: int) -> list[Procedure]:
+    """The procedures that implement one policy."""
+    return list(
+        db.scalars(
+            select(Procedure)
+            .where(Procedure.policy_id == policy_id)
+            .order_by(Procedure.id)
+        )
+    )
+
+
 def list_all(db: Session) -> list[Procedure]:
     return list(db.scalars(select(Procedure).order_by(Procedure.id)))
 

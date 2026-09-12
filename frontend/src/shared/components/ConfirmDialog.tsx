@@ -3,6 +3,8 @@ interface ConfirmDialogProps {
   /** What will happen, including anything that gets deleted alongside it. */
   message: string;
   confirmLabel?: string;
+  /** Shown while the action is in flight. */
+  pendingLabel?: string;
   isPending?: boolean;
   error?: string | null;
   onConfirm: () => void;
@@ -15,6 +17,7 @@ export function ConfirmDialog({
   title,
   message,
   confirmLabel = "Delete",
+  pendingLabel = "Deleting...",
   isPending = false,
   error = null,
   onConfirm,
@@ -46,7 +49,7 @@ export function ConfirmDialog({
             Cancel
           </button>
           <button className="danger" onClick={onConfirm} disabled={isPending}>
-            {isPending ? "Deleting..." : confirmLabel}
+            {isPending ? pendingLabel : confirmLabel}
           </button>
         </div>
       </div>

@@ -3,10 +3,11 @@ from datetime import UTC, datetime
 from sqlalchemy.orm import Session
 
 from app.core import review_cadence
-from app.core.exceptions import InvalidStatusTransitionError, NotFoundError
+from app.core.exceptions import ConflictError, InvalidStatusTransitionError, NotFoundError
 from app.models.audit_log import AuditLogEntry
 from app.models.policy import Policy, PolicyStatus
-from app.repositories import audit_log_repository, policy_repository
+from app.models.procedure import ProcedureStatus
+from app.repositories import audit_log_repository, policy_repository, procedure_repository
 from app.schemas.policy import PolicyCreate, PolicyUpdate
 from app.services import audit_service, framework_service, governance_role_service
 
@@ -103,6 +104,23 @@ def retire_policy(db: Session, policy_id: int, actor_id: int | None) -> Policy:
             f"currently '{policy.status}'"
         )
     governance_role_service.require_caigo(db, actor_id)
+    # A procedure implements its policy, so standing the policy down while
+    # live procedures still point at it would leave them governed by something
+    # that has been withdrawn. Refused rather than cascaded, so retiring an
+    # approved procedure stays a deliberate act -- the same way delete_role
+    # refuses a role that still has roles reporting to it.
+    live_procedures = [
+        procedure
+        for procedure in procedure_repository.list_for_policy(db, policy_id)
+        if procedure.status != ProcedureStatus.RETIRED
+    ]
+    if live_procedures:
+        titles = ", ".join(procedure.title for procedure in live_procedures)
+        raise ConflictError(
+            f"'{policy.title}' still has procedures implementing it ({titles}); "
+            "retire those first."
+        )
+
     policy.status = PolicyStatus.RETIRED
     policy = policy_repository.save(db, policy)
     audit_service.log(db, "Policy", policy.id, "retired", actor_id)
