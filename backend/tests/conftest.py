@@ -7,6 +7,7 @@ from sqlalchemy import create_engine, select
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
 
+from app.core import embeddings, ocr, vector_store
 from app.core.database import Base, get_db
 from app.core.framework_reference_data import as_rows
 from app.core.governance_role_seed_data import DEFAULT_ROLES
@@ -20,6 +21,78 @@ from app.models.user import User, UserRole
 from app.services import evidence_service, governance_role_service
 
 TEST_DATABASE_URL = "sqlite:///:memory:"
+
+# Text an OCR stub should "read" out of a fake image, so a test can write a
+# picture of a document without shipping a picture of a document.
+OCR_MARKER = b"OCR:"
+
+
+def fake_image(text: str) -> bytes:
+    """Bytes that the stubbed OCR reads back as ``text``."""
+    return OCR_MARKER + text.encode()
+
+
+def _hashing_vector(text: str) -> list[float]:
+    """A deterministic stand-in for a real embedding.
+
+    Words are hashed into dimensions and the result normalised, so texts that
+    share vocabulary land near each other. That is enough to exercise every
+    line of the retrieval path; it is not a claim about semantics, and no
+    test here asserts one.
+    """
+    import math
+    import re
+    import zlib
+
+    vector = [0.0] * embeddings.DIMENSIONS
+    for word in re.findall(r"[a-z0-9]+", text.lower()):
+        # crc32, not hash(): Python randomises string hashing per process, so
+        # hash() would move words between dimensions on every run and make
+        # which words happen to collide -- and therefore the tests that turn
+        # on it -- differ run to run.
+        vector[zlib.crc32(word.encode()) % embeddings.DIMENSIONS] += 1.0
+    length = math.sqrt(sum(v * v for v in vector)) or 1.0
+    return [v / length for v in vector]
+
+
+@pytest.fixture(autouse=True)
+def local_models_are_stubbed(monkeypatch):
+    """No test downloads or runs a real model.
+
+    The embedder and the OCR engine both fetch weights on first use. Left
+    real, the suite would pull hundreds of megabytes on a cold CI runner and
+    fail whenever the network did -- so both are replaced with deterministic
+    stubs, and the real ones are exercised by hand.
+    """
+    monkeypatch.setattr(
+        embeddings, "embed_passages", lambda texts: [_hashing_vector(t) for t in texts]
+    )
+    monkeypatch.setattr(embeddings, "embed_query", lambda text: _hashing_vector(text))
+    monkeypatch.setattr(ocr, "available", lambda: True)
+    monkeypatch.setattr(
+        ocr,
+        "read_image",
+        lambda data: data[len(OCR_MARKER) :].decode() if data.startswith(OCR_MARKER) else "",
+    )
+
+
+def create_search_tables(engine) -> None:
+    """The FTS5 and sqlite-vec tables, which create_all cannot make.
+
+    They are virtual tables built by raw DDL in the migration, so a schema
+    built from the models alone is missing exactly the two tables document
+    search reads from.
+    """
+    with engine.begin() as connection:
+        connection.exec_driver_sql(
+            "CREATE VIRTUAL TABLE IF NOT EXISTS document_chunks_fts USING fts5(text)"
+        )
+        if vector_store.vectors_available():
+            dimensions = vector_store.EMBEDDING_DIMENSIONS
+            connection.exec_driver_sql(
+                "CREATE VIRTUAL TABLE IF NOT EXISTS chunk_vectors USING vec0("
+                f"chunk_id INTEGER PRIMARY KEY, embedding FLOAT[{dimensions}])"
+            )
 
 
 @pytest.fixture(autouse=True)
@@ -68,8 +141,12 @@ def db_session() -> Generator[Session, None, None]:
         connect_args={"check_same_thread": False},
         poolclass=StaticPool,
     )
+    # Before anything connects: StaticPool keeps one connection for the whole
+    # fixture, so a listener added after the first connect never fires for it.
+    vector_store.register(engine)
     TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
     Base.metadata.create_all(bind=engine)
+    create_search_tables(engine)
 
     session = TestingSessionLocal()
     try:

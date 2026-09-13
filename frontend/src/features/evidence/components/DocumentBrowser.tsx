@@ -2,6 +2,7 @@ import { useRef, useState } from "react";
 
 import { ApiError } from "../../../shared/api/httpClient";
 import { FrameworkTagPicker } from "../../framework-tags/components/FrameworkTagPicker";
+import { DocumentSearchability } from "./DocumentSearchability";
 import { evidenceApi } from "../api";
 import {
   useCreateFolder,
@@ -168,6 +169,7 @@ export function DocumentBrowser({ entityType, entityId }: DocumentBrowserProps) 
                 {taggingEvidenceId === doc.id ? "Hide Tags" : "Tags"}
               </button>
               <button onClick={() => handleDeleteEvidence(doc.id)}>Delete</button>
+              <DocumentSearchability doc={doc} />
               {taggingEvidenceId === doc.id && (
                 <FrameworkTagPicker entityType="Evidence" entityId={doc.id} />
               )}

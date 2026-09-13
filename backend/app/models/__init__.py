@@ -2,6 +2,7 @@ from app.models.ai_assist import AiAssistSettings, AiUsage
 from app.models.ai_system_lifecycle import AISystemLifecycle
 from app.models.audit_log import AuditLogEntry
 from app.models.data_inventory_record import DataInventoryRecord
+from app.models.document_chunk import ChunkSource, DocumentChunk, IndexStatus
 from app.models.evidence import Evidence
 from app.models.folder import Folder
 from app.models.framework_control import FrameworkControl
@@ -25,7 +26,9 @@ __all__ = [
     "AiAssistSettings",
     "AiUsage",
     "AuditLogEntry",
+    "ChunkSource",
     "DataInventoryRecord",
+    "DocumentChunk",
     "Evidence",
     "Folder",
     "FrameworkControl",
@@ -36,6 +39,7 @@ __all__ = [
     "GovernanceRoleDelegation",
     "ImpactAssessment",
     "ImpactFactorAssessment",
+    "IndexStatus",
     "Policy",
     "Procedure",
     "RiskAssessment",

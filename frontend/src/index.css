@@ -2407,3 +2407,28 @@ h2 + .status-badge {
   border-radius: var(--radius-sm);
   padding: 6px 10px;
 }
+
+/* Whether the assistant can read a document -- shown only when the answer
+   is "no" or "with caveats", so an ordinary file adds no noise to the list. */
+.document-index-note {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin: 0.25rem 0 0 0.25rem;
+  flex-basis: 100%;
+}
+
+.document-index-warning {
+  font-size: 0.8125rem;
+  line-height: 1.4;
+  color: #92400e;
+  background: #fffbeb;
+  border-left: 3px solid #f59e0b;
+  padding: 0.3rem 0.5rem;
+  border-radius: 0 3px 3px 0;
+}
+
+.document-index-hint {
+  font-size: 0.8125rem;
+  color: #6b7280;
+}
