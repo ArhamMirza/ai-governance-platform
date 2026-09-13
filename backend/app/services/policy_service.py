@@ -3,6 +3,7 @@ from datetime import UTC, datetime
 from sqlalchemy.orm import Session
 
 from app.core import review_cadence
+from app.core.concurrency import claim_transition
 from app.core.exceptions import ConflictError, InvalidStatusTransitionError, NotFoundError
 from app.models.audit_log import AuditLogEntry
 from app.models.policy import Policy, PolicyStatus
@@ -19,6 +20,17 @@ def _get_or_raise(db: Session, policy_id: int) -> Policy:
     if policy is None:
         raise NotFoundError("Policy", policy_id)
     return policy
+
+
+def _claim(db: Session, policy: Policy, expected: str, changes: dict) -> None:
+    """Each status check above ran in a transaction of its own, so two
+    simultaneous callers can both pass it. Re-stating the expected status in
+    the write is what makes only one of them land."""
+    if not claim_transition(db, policy, expected_statuses=expected, changes=changes):
+        raise InvalidStatusTransitionError(
+            f"Policy {policy.id} is no longer '{expected}' -- someone else has "
+            f"already moved it on, and it is now '{policy.status}'."
+        )
 
 
 def list_policies(db: Session) -> list[Policy]:
@@ -69,8 +81,7 @@ def submit_for_review(db: Session, policy_id: int, actor_id: int | None) -> Poli
             f"Policy {policy_id} must be in 'draft' status to submit for review, "
             f"currently '{policy.status}'"
         )
-    policy.status = PolicyStatus.IN_REVIEW
-    policy = policy_repository.save(db, policy)
+    _claim(db, policy, PolicyStatus.DRAFT, {"status": PolicyStatus.IN_REVIEW})
     audit_service.log(db, "Policy", policy.id, "submitted_for_review", actor_id)
     return policy
 
@@ -84,11 +95,17 @@ def approve_policy(db: Session, policy_id: int, actor_id: int | None) -> Policy:
         )
     governance_role_service.require_caigo(db, actor_id)
     audit_service.require_different_approver(db, "Policy", policy_id, actor_id)
-    policy.status = PolicyStatus.APPROVED
-    # Approval schedules the next review rather than being the end of it --
-    # same cadence the assessments use.
-    policy.next_review_date = review_cadence.next_review_date(datetime.now(UTC).date())
-    policy = policy_repository.save(db, policy)
+    _claim(
+        db,
+        policy,
+        PolicyStatus.IN_REVIEW,
+        {
+            "status": PolicyStatus.APPROVED,
+            # Approval schedules the next review rather than being the end of
+            # it -- same cadence the assessments use.
+            "next_review_date": review_cadence.next_review_date(datetime.now(UTC).date()),
+        },
+    )
     audit_service.log(db, "Policy", policy.id, "approved", actor_id)
     return policy
 
@@ -121,8 +138,7 @@ def retire_policy(db: Session, policy_id: int, actor_id: int | None) -> Policy:
             "retire those first."
         )
 
-    policy.status = PolicyStatus.RETIRED
-    policy = policy_repository.save(db, policy)
+    _claim(db, policy, PolicyStatus.APPROVED, {"status": PolicyStatus.RETIRED})
     audit_service.log(db, "Policy", policy.id, "retired", actor_id)
     return policy
 

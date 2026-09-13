@@ -4,7 +4,7 @@ from datetime import UTC, date, datetime
 
 from sqlalchemy.orm import Session
 
-from app.core.concurrency import create_or_get
+from app.core.concurrency import claim_if_unset, create_or_get
 from app.core.exceptions import ConflictError, NotFoundError, ValidationError
 from app.core.lifecycle_stages import LifecycleStage, label, next_stage, previous_stage
 from app.models.ai_system_lifecycle import AISystemLifecycle
@@ -206,9 +206,22 @@ def approve_deployment(
         raise ConflictError(
             "You requested this release, so someone else has to approve it."
         ) from exc
-    lifecycle.deployment_approved_by = actor_id
-    lifecycle.deployment_approved_at = datetime.now(UTC)
-    lifecycle = ai_system_lifecycle_repository.save(db, lifecycle)
+    # Guarded on the approval still being open. There was no such check at
+    # all before: approving twice simply overwrote whoever signed off first,
+    # which two simultaneous approvers would do to each other and one
+    # repeated click would do on its own. Moving the system back a stage
+    # clears the approval, so a genuine re-release can be approved again.
+    if not claim_if_unset(
+        db,
+        lifecycle,
+        column="deployment_approved_by",
+        changes={
+            "deployment_approved_by": actor_id,
+            "deployment_approved_at": datetime.now(UTC),
+        },
+    ):
+        raise ConflictError("This release has already been approved.")
+
     audit_service.log(
         db, DEPLOYMENT_APPROVAL_ENTITY_TYPE, ai_system_row_id, "approved", actor_id
     )
@@ -256,9 +269,18 @@ def approve_retirement(
         raise ConflictError(
             "You requested this retirement, so someone else has to approve it."
         ) from exc
-    lifecycle.retirement_approved_by = actor_id
-    lifecycle.retirement_approved_at = datetime.now(UTC)
-    lifecycle = ai_system_lifecycle_repository.save(db, lifecycle)
+    # Same guard, same reason as approve_deployment.
+    if not claim_if_unset(
+        db,
+        lifecycle,
+        column="retirement_approved_by",
+        changes={
+            "retirement_approved_by": actor_id,
+            "retirement_approved_at": datetime.now(UTC),
+        },
+    ):
+        raise ConflictError("This retirement has already been approved.")
+
     audit_service.log(
         db, RETIREMENT_APPROVAL_ENTITY_TYPE, ai_system_row_id, "approved", actor_id
     )

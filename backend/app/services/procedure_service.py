@@ -3,6 +3,7 @@ from datetime import UTC, datetime
 from sqlalchemy.orm import Session
 
 from app.core import review_cadence
+from app.core.concurrency import claim_transition
 from app.core.exceptions import InvalidStatusTransitionError, NotFoundError
 from app.models.audit_log import AuditLogEntry
 from app.models.procedure import Procedure, ProcedureStatus
@@ -18,6 +19,16 @@ def _get_or_raise(db: Session, procedure_id: int) -> Procedure:
     if procedure is None:
         raise NotFoundError("Procedure", procedure_id)
     return procedure
+
+
+def _claim(db: Session, procedure: Procedure, expected: str, changes: dict) -> None:
+    """Each status check above ran in a transaction of its own, so two
+    simultaneous callers can both pass it -- see policy_service._claim."""
+    if not claim_transition(db, procedure, expected_statuses=expected, changes=changes):
+        raise InvalidStatusTransitionError(
+            f"Procedure {procedure.id} is no longer '{expected}' -- someone else "
+            f"has already moved it on, and it is now '{procedure.status}'."
+        )
 
 
 def _validate_policy_link(db: Session, policy_id: int | None) -> None:
@@ -79,8 +90,7 @@ def submit_for_review(db: Session, procedure_id: int, actor_id: int | None) -> P
             f"Procedure {procedure_id} must be in 'draft' status to submit for review, "
             f"currently '{procedure.status}'"
         )
-    procedure.status = ProcedureStatus.IN_REVIEW
-    procedure = procedure_repository.save(db, procedure)
+    _claim(db, procedure, ProcedureStatus.DRAFT, {"status": ProcedureStatus.IN_REVIEW})
     audit_service.log(db, "Procedure", procedure.id, "submitted_for_review", actor_id)
     return procedure
 
@@ -94,11 +104,17 @@ def approve_procedure(db: Session, procedure_id: int, actor_id: int | None) -> P
         )
     governance_role_service.require_caigo(db, actor_id)
     audit_service.require_different_approver(db, "Procedure", procedure_id, actor_id)
-    procedure.status = ProcedureStatus.APPROVED
-    # Approval schedules the next review rather than being the end of it --
-    # same cadence policies and the assessments use.
-    procedure.next_review_date = review_cadence.next_review_date(datetime.now(UTC).date())
-    procedure = procedure_repository.save(db, procedure)
+    _claim(
+        db,
+        procedure,
+        ProcedureStatus.IN_REVIEW,
+        {
+            "status": ProcedureStatus.APPROVED,
+            # Approval schedules the next review rather than being the end of
+            # it -- same cadence policies and the assessments use.
+            "next_review_date": review_cadence.next_review_date(datetime.now(UTC).date()),
+        },
+    )
     audit_service.log(db, "Procedure", procedure.id, "approved", actor_id)
     return procedure
 
@@ -113,8 +129,7 @@ def retire_procedure(db: Session, procedure_id: int, actor_id: int | None) -> Pr
             f"currently '{procedure.status}'"
         )
     governance_role_service.require_caigo(db, actor_id)
-    procedure.status = ProcedureStatus.RETIRED
-    procedure = procedure_repository.save(db, procedure)
+    _claim(db, procedure, ProcedureStatus.APPROVED, {"status": ProcedureStatus.RETIRED})
     audit_service.log(db, "Procedure", procedure.id, "retired", actor_id)
     return procedure
 

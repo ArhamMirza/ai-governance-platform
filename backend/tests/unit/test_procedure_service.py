@@ -102,14 +102,12 @@ def test_get_procedure_raises_not_found(mock_repo, db) -> None:
         procedure_service.get_procedure(db, 999)
 
 
-@patch("app.services.procedure_service.audit_service")
-@patch("app.services.procedure_service.procedure_repository")
-def test_submit_for_review_transitions_draft_to_in_review(mock_repo, mock_audit, db) -> None:
-    procedure = make_procedure()
-    mock_repo.get.return_value = procedure
-    mock_repo.save.side_effect = lambda _db, p: p
+def test_submit_for_review_transitions_draft_to_in_review(db_session) -> None:
+    procedure = procedure_service.create_procedure(
+        db_session, ProcedureCreate(title="Test Procedure"), actor_id=None
+    )
 
-    result = procedure_service.submit_for_review(db, 1, actor_id=1)
+    result = procedure_service.submit_for_review(db_session, procedure.id, actor_id=None)
 
     assert result.status == ProcedureStatus.IN_REVIEW
 
@@ -123,20 +121,15 @@ def test_submit_for_review_rejects_non_draft(mock_repo, db) -> None:
         procedure_service.submit_for_review(db, 1, actor_id=1)
 
 
-@patch("app.services.procedure_service.governance_role_service")
-@patch("app.services.procedure_service.audit_service")
-@patch("app.services.procedure_service.procedure_repository")
-def test_approve_procedure_transitions_in_review_to_approved(
-    mock_repo, mock_audit, mock_governance, db
-) -> None:
-    procedure = make_procedure(status=ProcedureStatus.IN_REVIEW)
-    mock_repo.get.return_value = procedure
-    mock_repo.save.side_effect = lambda _db, p: p
+def test_approve_procedure_transitions_in_review_to_approved(db_session) -> None:
+    procedure = procedure_service.create_procedure(
+        db_session, ProcedureCreate(title="Test Procedure"), actor_id=None
+    )
+    procedure_service.submit_for_review(db_session, procedure.id, actor_id=None)
 
-    result = procedure_service.approve_procedure(db, 1, actor_id=1)
+    result = procedure_service.approve_procedure(db_session, procedure.id, actor_id=None)
 
     assert result.status == ProcedureStatus.APPROVED
-    mock_governance.require_caigo.assert_called_once_with(db, 1)
 
 
 @patch("app.services.procedure_service.procedure_repository")

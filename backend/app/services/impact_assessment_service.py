@@ -146,10 +146,13 @@ def update(
     )
     for field, value in changes.items():
         setattr(impact_assessment, field, value)
+    # Saved before the withdrawal rather than after: the withdrawal is a
+    # direct UPDATE, so leaving the edit pending would let it flush over the
+    # status the withdrawal just set.
+    impact_assessment = impact_assessment_repository.save(db, impact_assessment)
     if assessed_fields_changed:
         _withdraw_approval(db, impact_assessment, actor_id)
 
-    impact_assessment = impact_assessment_repository.save(db, impact_assessment)
     audit_service.log(db, ENTITY_TYPE, impact_assessment_id, "updated", actor_id, changes)
     return impact_assessment
 
