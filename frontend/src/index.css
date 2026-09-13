@@ -2081,3 +2081,260 @@ button.danger:hover:not(:disabled) {
 h2 + .status-badge {
   margin-top: 8px;
 }
+
+/* ---------- Handbook ---------- */
+
+.handbook section {
+  margin-bottom: 44px;
+  scroll-margin-top: 16px;
+}
+
+.handbook section:last-of-type {
+  margin-bottom: 0;
+}
+
+.handbook h2 {
+  margin-top: 0;
+}
+
+.handbook-lede {
+  font-size: 15px;
+  color: var(--text);
+  max-width: 62ch;
+}
+
+.handbook-toc {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 18px 0 4px;
+}
+
+.handbook-toc a.framework-tag-chip {
+  font-weight: 600;
+}
+
+.handbook-toc a.framework-tag-chip:hover {
+  background: var(--primary);
+  color: var(--text-inverse);
+  text-decoration: none;
+}
+
+.handbook-callout {
+  display: flex;
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: var(--radius-md);
+  margin: 16px 0;
+  font-size: 13.5px;
+  border: 1px solid var(--border);
+  background: var(--bg-page);
+}
+
+.handbook-callout p {
+  font-size: 13.5px;
+  margin-bottom: 4px;
+}
+
+.handbook-callout p:last-child {
+  margin-bottom: 0;
+}
+
+.handbook-callout-icon {
+  flex-shrink: 0;
+  font-size: 16px;
+  line-height: 1.4;
+}
+
+.handbook-callout-title {
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 2px;
+}
+
+.handbook-callout.rule {
+  background: var(--primary-subtle);
+  border-color: transparent;
+}
+
+.handbook-callout.rule .handbook-callout-title {
+  color: var(--primary);
+}
+
+.handbook-callout.danger {
+  background: var(--danger-subtle);
+  border-color: transparent;
+}
+
+.handbook-callout.danger .handbook-callout-title {
+  color: var(--danger-text);
+}
+
+.handbook-workflow {
+  counter-reset: step;
+  margin: 16px 0;
+  padding: 0;
+  list-style: none;
+}
+
+.handbook-workflow > li {
+  counter-increment: step;
+  position: relative;
+  padding: 0 0 20px 34px;
+  border-left: 2px solid var(--border);
+  margin-left: 13px;
+}
+
+.handbook-workflow > li:last-child {
+  border-left-color: transparent;
+  padding-bottom: 0;
+}
+
+.handbook-workflow > li::before {
+  content: counter(step);
+  position: absolute;
+  left: -14px;
+  top: 0;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--primary);
+  color: var(--text-inverse);
+  font-weight: 700;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.handbook-workflow h4 {
+  font-size: 14px;
+  text-transform: none;
+  letter-spacing: 0;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 3px;
+}
+
+.handbook-workflow p {
+  font-size: 13.5px;
+  margin-bottom: 0;
+}
+
+.handbook-workflow .actor {
+  color: var(--primary);
+  font-weight: 700;
+}
+
+.handbook-deflist {
+  display: flex;
+  flex-direction: column;
+  margin: 16px 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  background: var(--bg-surface);
+  box-shadow: var(--shadow-sm);
+}
+
+.handbook-deflist > div {
+  display: grid;
+  grid-template-columns: minmax(150px, 220px) 1fr;
+  gap: 16px;
+  padding: 12px 18px;
+  border-bottom: 1px solid var(--border);
+}
+
+.handbook-deflist > div:last-child {
+  border-bottom: none;
+}
+
+.handbook-deflist dt {
+  font-weight: 700;
+  font-size: 13px;
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+}
+
+.handbook-deflist dd {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.handbook-attn-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.handbook-attn-dot.danger {
+  background: var(--danger);
+}
+
+.handbook-attn-dot.warning {
+  background: var(--warning);
+}
+
+.handbook-pagemap {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 10px;
+  margin: 16px 0;
+}
+
+.handbook-pagemap-item {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 11px 14px;
+  background: var(--bg-surface);
+  font-size: 12.5px;
+}
+
+.handbook-pagemap-item a {
+  display: block;
+  margin-bottom: 4px;
+}
+
+.handbook-pagemap-item span {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.handbook-matrix-legend {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin: 10px 0 4px;
+}
+
+.handbook-matrix-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12.5px;
+  color: var(--text-muted);
+}
+
+.handbook-matrix-swatch {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+
+.handbook-matrix-swatch.low { background: var(--success); }
+.handbook-matrix-swatch.med { background: var(--warning); }
+.handbook-matrix-swatch.high { background: var(--danger); }
+
+.handbook-role-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 3px;
+  flex-shrink: 0;
+  display: inline-block;
+}
