@@ -1,6 +1,13 @@
 from functools import lru_cache
 
+from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+# The value shipped in .env.example. It is public, so anything encrypted
+# under it is obfuscated rather than protected -- see the check below.
+DEFAULT_SECRET_KEY = "change-me-in-a-real-deployment"
+
+_REAL_DEPLOYMENTS = {"production", "prod", "staging", "test"}
 
 
 class Settings(BaseSettings):
@@ -8,14 +15,39 @@ class Settings(BaseSettings):
 
     database_url: str = "sqlite:///./ai_governance.db"
     evidence_storage_dir: str = "./storage/evidence"
-    secret_key: str = "change-me-in-a-real-deployment"
+    secret_key: str = DEFAULT_SECRET_KEY
     cors_origins: str = "http://localhost:5173"
     # False for local http dev; set true once served over https.
     cookie_secure: bool = False
+    # Anything other than "development" is treated as a real deployment and
+    # held to the secret_key check below.
+    environment: str = "development"
 
     @property
     def cors_origin_list(self) -> list[str]:
         return [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]
+
+    @property
+    def is_real_deployment(self) -> bool:
+        return self.environment.strip().lower() in _REAL_DEPLOYMENTS
+
+    @model_validator(mode="after")
+    def _refuse_the_example_secret(self) -> "Settings":
+        """Refuse to start a real deployment on the published secret.
+
+        secret_key signs session cookies and derives the key that encrypts
+        stored AI provider credentials. Left at the example value, both are
+        recoverable by anyone who can read this repository -- so this is an
+        error at startup rather than a line in a README nobody reads.
+        """
+        if self.is_real_deployment and self.secret_key == DEFAULT_SECRET_KEY:
+            raise ValueError(
+                "SECRET_KEY is still the example value from .env.example. It signs session "
+                "cookies and encrypts stored AI provider keys, so a real deployment needs its "
+                "own. Generate one with:\n"
+                '  python -c "import secrets; print(secrets.token_urlsafe(48))"'
+            )
+        return self
 
 
 @lru_cache

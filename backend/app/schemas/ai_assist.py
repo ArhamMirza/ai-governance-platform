@@ -10,8 +10,8 @@ class AiAssistSettingsUpdate(BaseModel):
     # Write-only. Omitted entirely = leave the stored key alone; "" = clear
     # it. That distinction matters, or re-saving the form with the key field
     # blank (which is all anyone ever sees) would wipe the credential.
-    api_key: str | None = None
-    base_url: str | None = None
+    api_key: str | None = Field(default=None, max_length=500)
+    base_url: str | None = Field(default=None, max_length=500)
     daily_token_budget: int = Field(default=200_000, ge=0)
 
 

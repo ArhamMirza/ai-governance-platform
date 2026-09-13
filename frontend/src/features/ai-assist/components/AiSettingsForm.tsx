@@ -127,6 +127,11 @@ export function AiSettingsForm() {
             placeholder="http://localhost:11434"
             onChange={(e) => setBaseUrl(e.target.value)}
           />
+          <p className="ai-settings-hint">
+            http:// is accepted for this machine or a private network. A model served from
+            anywhere else must use https://, or the record text and any key would cross the
+            network in clear text. Put credentials in the API key field, never in this URL.
+          </p>
         </div>
       ) : (
         <div>

@@ -6,6 +6,7 @@ leaves the machine.
 """
 
 import re
+import traceback
 from types import SimpleNamespace
 from unittest.mock import patch
 
@@ -13,8 +14,11 @@ import pytest
 from sqlalchemy.orm import Session
 
 from app.core import ai_prompting
+from app.core.crypto import decrypt
 from app.core.exceptions import ServiceUnavailableError, ValidationError
 from app.models.ai_assist import AiProvider, AiUsage
+from app.models.audit_log import AuditLogEntry
+from app.repositories import ai_assist_repository
 from app.schemas.ai_assist import AiAssistSettingsUpdate
 from app.schemas.impact_assessment import ImpactAssessmentCreate
 from app.services import ai_assist_service, ai_system_inventory_service, impact_assessment_service
@@ -386,3 +390,153 @@ def test_ordinary_governance_text_is_not_flagged() -> None:
     assert ai_prompting.scan_for_injection(
         "This system ranks applicants. The Data Owner reviews outputs weekly."
     ) == []
+
+
+# ---------- the credential ----------
+
+
+def test_a_key_pasted_with_stray_whitespace_is_stored_clean(db_session: Session) -> None:
+    """A key copied out of a console or an email arrives with a newline on
+    it. Stored as-is, it fails to authenticate and shows the admin nothing
+    that would explain why."""
+    configure(db_session, api_key="  sk-test-secret\n")
+
+    row = ai_assist_repository.get_settings_row(db_session)
+    assert decrypt(row.api_key_encrypted) == "sk-test-secret"
+
+
+def test_the_audit_entry_records_that_the_key_changed_but_never_the_key(
+    db_session: Session,
+) -> None:
+    configure(db_session, api_key="sk-leaky-secret")
+    # A later save with no api_key field at all -- what the form sends every
+    # time an admin edits anything else, since it can never show the key.
+    ai_assist_service.update_settings(
+        db_session,
+        AiAssistSettingsUpdate(provider=AiProvider.ANTHROPIC, model="claude-opus-5"),
+        actor_id=None,
+    )
+
+    entries = (
+        db_session.query(AuditLogEntry)
+        .filter(AuditLogEntry.entity_type == ai_assist_service.ENTITY_TYPE)
+        .order_by(AuditLogEntry.id)
+        .all()
+    )
+    assert [e.diff["api_key_changed"] for e in entries] == [True, False]
+    assert "sk-leaky-secret" not in str([e.diff for e in entries])
+
+
+def test_the_provider_exception_is_not_reachable_through_ours(db_session: Session) -> None:
+    """A chained cause is printed in full by any ordinary traceback, so
+    suppressing the message is not enough -- the provider's exception must
+    not hang off ours at all."""
+    configure(db_session, api_key="sk-leaky-secret")
+    assessment_id = make_assessment(db_session)
+
+    boom = RuntimeError("401 from https://internal.example: bad key sk-leaky-secret")
+    with patch("litellm.completion", side_effect=boom):
+        with pytest.raises(ServiceUnavailableError) as caught:
+            ai_assist_service.draft_field(
+                db_session, kind="conclusion", impact_assessment_id=assessment_id,
+                factor=None, actor_id=None,
+            )
+
+    rendered = "".join(
+        traceback.format_exception(
+            type(caught.value), caught.value, caught.value.__traceback__
+        )
+    )
+    assert "sk-leaky-secret" not in rendered
+    assert "internal.example" not in rendered
+    assert caught.value.__cause__ is None
+    # What an admin does get: enough to tell a bad key from an unreachable
+    # host, taken from our side of the boundary rather than the provider's.
+    assert "RuntimeError" in str(caught.value)
+
+
+def test_the_decrypted_key_is_dropped_from_the_frame_after_the_call(
+    db_session: Session,
+) -> None:
+    """Standard tracebacks don't print local variables, but crash reporters
+    and debuggers do. The plaintext key shouldn't still be sitting in the
+    frame for them to find."""
+    configure(db_session, api_key="sk-leaky-secret")
+    assessment_id = make_assessment(db_session)
+
+    with patch("litellm.completion", side_effect=RuntimeError("nope")):
+        with pytest.raises(ServiceUnavailableError) as caught:
+            ai_assist_service.draft_field(
+                db_session, kind="conclusion", impact_assessment_id=assessment_id,
+                factor=None, actor_id=None,
+            )
+
+    frames, tb = [], caught.value.__traceback__
+    while tb:
+        frames.append(tb.tb_frame)
+        tb = tb.tb_next
+    complete = [f for f in frames if f.f_code.co_name == "_complete"]
+    assert complete, "expected the _complete frame in the traceback"
+    assert complete[0].f_locals.get("api_key") is None
+    assert "sk-leaky-secret" not in str(complete[0].f_locals)
+
+
+def test_a_self_hosted_model_is_never_sent_a_key_from_the_environment(
+    db_session: Session, monkeypatch
+) -> None:
+    """The OpenAI-compatible client falls back to OPENAI_API_KEY when no key
+    is passed, which would hand this deployment's OpenAI credential to
+    whatever box the admin pointed at."""
+    monkeypatch.setenv("OPENAI_API_KEY", "sk-the-orgs-real-openai-key")
+    configure(
+        db_session, provider=AiProvider.LOCAL, model="llama3.3",
+        base_url="http://localhost:11434", api_key="",
+    )
+    assessment_id = make_assessment(db_session)
+
+    with patch("litellm.completion", return_value=fake_response()) as call:
+        ai_assist_service.draft_field(
+            db_session, kind="conclusion", impact_assessment_id=assessment_id,
+            factor=None, actor_id=None,
+        )
+
+    assert call.call_args.kwargs["api_key"] == ai_assist_service.NO_CREDENTIAL
+
+
+@pytest.mark.parametrize(
+    "url, why",
+    [
+        ("http://user:hunter2@vllm.example.com", "credentials in the URL are stored in clear"),
+        ("http://vllm.example.com:8000", "cleartext to a host beyond this network"),
+        ("ftp://localhost:11434", "not an http(s) endpoint"),
+        ("just-a-hostname:11434", "not a URL at all"),
+    ],
+)
+def test_a_model_url_that_would_expose_the_credential_is_refused(
+    db_session: Session, url: str, why: str
+) -> None:
+    with pytest.raises(ValidationError):
+        configure(
+            db_session, provider=AiProvider.LOCAL, model="llama3.3",
+            base_url=url, api_key="",
+        )
+
+
+@pytest.mark.parametrize(
+    "url",
+    [
+        "http://localhost:11434",
+        "http://127.0.0.1:11434",
+        "http://192.168.1.50:8000",  # private network
+        "http://10.0.0.7:8000",
+        "https://vllm.example.com",  # off-network, but encrypted
+    ],
+)
+def test_a_model_url_on_this_network_or_over_https_is_accepted(
+    db_session: Session, url: str
+) -> None:
+    configure(
+        db_session, provider=AiProvider.LOCAL, model="llama3.3", base_url=url, api_key=""
+    )
+
+    assert ai_assist_service.get_settings(db_session).base_url == url

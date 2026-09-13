@@ -11,7 +11,9 @@ where they already are: behind the permission and segregation-of-duties checks
 in the services that own those decisions.
 """
 
+import ipaddress
 from datetime import UTC, datetime
+from urllib.parse import urlparse
 
 from sqlalchemy.orm import Session
 
@@ -35,6 +37,10 @@ ENTITY_TYPE = "AiAssistSettings"
 # swallow the whole prompt budget.
 MAX_FIELD_CHARS = 4_000
 MAX_OUTPUT_TOKENS = 900
+
+# Sent to a self-hosted model that needs no credential, purely so the client
+# library does not reach into the environment for a real one.
+NO_CREDENTIAL = "no-credential-required"
 
 
 # ---------- settings ----------
@@ -61,6 +67,47 @@ def get_settings(db: Session) -> AiAssistSettingsRead:
     )
 
 
+def _host_is_on_this_network(host: str) -> bool:
+    """True for loopback and private/link-local addresses.
+
+    A hostname that isn't a literal address can't be judged without DNS, so
+    it is treated as public and held to https.
+    """
+    if host.lower() in {"localhost", "localhost.localdomain"}:
+        return True
+    try:
+        address = ipaddress.ip_address(host.strip("[]"))
+    except ValueError:
+        return False
+    return address.is_loopback or address.is_private or address.is_link_local
+
+
+def _checked_base_url(raw: str) -> str:
+    """The self-hosted model URL, refused if it would expose the credential.
+
+    Two failures matter here. A URL with credentials in it would be stored
+    verbatim -- the base_url column is plain text, unlike the encrypted key
+    field -- and a cleartext http:// endpoint off this network would put both
+    the API key and the record text on the wire for anyone in between.
+    """
+    parsed = urlparse(raw)
+    if parsed.scheme not in {"http", "https"}:
+        raise ValidationError("The model URL must start with http:// or https://")
+    if not parsed.hostname:
+        raise ValidationError("The model URL needs a host, e.g. http://localhost:11434")
+    if parsed.username or parsed.password:
+        raise ValidationError(
+            "Put the credential in the API key field, not in the model URL. The URL is "
+            "stored as written; the API key field is encrypted."
+        )
+    if parsed.scheme == "http" and not _host_is_on_this_network(parsed.hostname):
+        raise ValidationError(
+            "A model URL beyond this machine or private network must use https://, or the "
+            "API key and record text would cross the network in clear text."
+        )
+    return raw
+
+
 def update_settings(
     db: Session, data: AiAssistSettingsUpdate, actor_id: int | None
 ) -> AiAssistSettingsRead:
@@ -70,10 +117,13 @@ def update_settings(
         raise ValidationError(f"Unknown provider: {data.provider}")
     if not data.model.strip():
         raise ValidationError("Name the model to use.")
-    if data.provider == AiProvider.LOCAL and not (data.base_url or "").strip():
+    base_url = (data.base_url or "").strip()
+    if data.provider == AiProvider.LOCAL and not base_url:
         raise ValidationError(
             "A self-hosted model needs the URL it's served from, e.g. http://localhost:11434"
         )
+    if base_url:
+        _checked_base_url(base_url)
 
     row = ai_assist_repository.get_settings_row(db)
     creating = row is None
@@ -83,23 +133,29 @@ def update_settings(
     row.provider = data.provider
     row.model = data.model.strip()
     row.fast_model = (data.fast_model or "").strip() or None
-    row.base_url = (data.base_url or "").strip() or None
+    row.base_url = base_url or None
     row.daily_token_budget = data.daily_token_budget
     # Omitted means "leave the stored key alone" -- the form can't show it,
     # so a blank field on save must not be read as "delete it". An explicit
     # empty string is how you actually clear it.
-    if data.api_key is not None:
-        row.api_key_encrypted = encrypt(data.api_key) if data.api_key.strip() else None
+    key_changed = data.api_key is not None
+    if key_changed:
+        # Stripped: a key pasted with a trailing newline would otherwise be
+        # stored with it and fail to authenticate for no visible reason.
+        cleaned = (data.api_key or "").strip()
+        row.api_key_encrypted = encrypt(cleaned) if cleaned else None
 
     row = (
         ai_assist_repository.create_settings(db, row)
         if creating
         else ai_assist_repository.save_settings(db, row)
     )
-    # The key itself is never logged -- only that the configuration changed.
+    # The key itself is never logged -- only that the configuration changed,
+    # and whether the credential was among what changed, which is the part an
+    # auditor needs to see.
     audit_service.log(
         db, ENTITY_TYPE, row.id, "updated", actor_id,
-        {"provider": row.provider, "model": row.model},
+        {"provider": row.provider, "model": row.model, "api_key_changed": key_changed},
     )
     return get_settings(db)
 
@@ -184,18 +240,33 @@ def _complete(
     api_key = decrypt(row.api_key_encrypted) if row.api_key_encrypted else None
     if api_key:
         kwargs["api_key"] = api_key
+    elif row.provider == AiProvider.LOCAL:
+        # A self-hosted model usually wants no credential, but the OpenAI
+        # client falls back to OPENAI_API_KEY from the environment when none
+        # is given -- which would send this deployment's OpenAI key to
+        # somebody's Ollama box. A placeholder keeps that from happening.
+        kwargs["api_key"] = NO_CREDENTIAL
     if row.base_url:
         kwargs["api_base"] = row.base_url
 
     try:
         response = completion(**kwargs)
     except Exception as exc:  # noqa: BLE001 -- every provider raises its own
-        # The provider's own error text can carry the key or internal URLs,
-        # so it is deliberately not passed through to the caller.
+        # Neither the provider's error text nor the exception itself crosses
+        # this boundary. Both are third-party values that could carry the key
+        # or an internal URL in some future version, and a chained cause is
+        # printed in full by any ordinary traceback. Only the class name --
+        # which is ours to read and useful to an admin -- is surfaced.
         raise ServiceUnavailableError(
-            f"The {row.provider} model couldn't be reached. Check the provider "
-            "settings, or try again."
-        ) from exc
+            f"The {row.provider} model couldn't be reached ({type(exc).__name__}). "
+            "Check the provider settings, or try again."
+        ) from None
+    finally:
+        # Drop the decrypted key as soon as the call is over, so it is not
+        # left sitting in this frame for anything that raises later -- or for
+        # a debugger or crash reporter that records local variables.
+        kwargs.pop("api_key", None)
+        api_key = None
 
     usage = getattr(response, "usage", None)
     ai_assist_repository.record_usage(
