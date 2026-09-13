@@ -1,22 +1,32 @@
 """Records that point at other records must not be left pointing at nothing.
 
-Two cases: a dataset whose AI system is deleted, and a closed risk item whose
-supporting evidence is deleted.
+Three cases: a dataset whose AI system is deleted, a closed risk item whose
+supporting evidence is deleted, and a document (or folder) whose owning
+Policy, Procedure, AI system or impact assessment is deleted.
 """
 
 import io
+import os
 from types import SimpleNamespace
 
 import pytest
 from sqlalchemy.orm import Session
 
 from app.core import risk_scoring
-from app.repositories import sheet_repository
+from app.repositories import evidence_repository, folder_repository, sheet_repository
+from app.schemas.folder import FolderCreate
+from app.schemas.impact_assessment import ImpactAssessmentCreate
+from app.schemas.policy import PolicyCreate
+from app.schemas.procedure import ProcedureCreate
 from app.schemas.risk_assessment import RiskAssessmentCreate
 from app.services import (
     ai_system_inventory_service,
     data_inventory_service,
     evidence_service,
+    folder_service,
+    impact_assessment_service,
+    policy_service,
+    procedure_service,
     risk_assessment_service,
 )
 from tests.helpers import complete_impact_assessment_db
@@ -43,6 +53,26 @@ def upload(db: Session, row_id: int, filename: str = "proof.pdf"):
             filename=filename, content_type="application/pdf", file=io.BytesIO(b"x")
         ),
         "Mitigation proof",
+        actor_id=None,
+    )
+
+
+def upload_document(
+    db: Session,
+    entity_type: str,
+    entity_id: int,
+    folder_id: int | None = None,
+    filename: str = "doc.pdf",
+):
+    return evidence_service.upload_evidence(
+        db,
+        entity_type,
+        entity_id,
+        folder_id,
+        SimpleNamespace(
+            filename=filename, content_type="application/pdf", file=io.BytesIO(b"x")
+        ),
+        "A document",
         actor_id=None,
     )
 
@@ -175,3 +205,86 @@ def test_deleting_evidence_on_an_open_item_changes_nothing(db_session: Session) 
     evidence_service.delete_evidence(db_session, evidence.id, actor_id=None)
 
     assert sheet_repository.get_row(db_session, row.id).data["status"] == "open"
+
+
+# ---------- a deleted record can't leave its documents behind ----------
+
+
+def test_deleting_a_draft_policy_removes_its_documents_and_folders(
+    db_session: Session,
+) -> None:
+    policy = policy_service.create_policy(
+        db_session, PolicyCreate(title="Retention Policy"), actor_id=None
+    )
+    folder = folder_service.create_folder(
+        db_session,
+        FolderCreate(entity_type="Policy", entity_id=policy.id, name="Drafts"),
+        actor_id=None,
+    )
+    flat = upload_document(db_session, "Policy", policy.id)
+    foldered = upload_document(db_session, "Policy", policy.id, folder_id=folder.id)
+    assert os.path.exists(flat.storage_path)
+    assert os.path.exists(foldered.storage_path)
+
+    policy_service.delete_policy(db_session, policy.id, actor_id=None)
+
+    assert evidence_repository.list_for_entity(db_session, "Policy", policy.id) == []
+    assert folder_repository.get(db_session, folder.id) is None
+    assert not os.path.exists(flat.storage_path)
+    assert not os.path.exists(foldered.storage_path)
+
+
+def test_deleting_a_draft_procedure_removes_its_documents_and_folders(
+    db_session: Session,
+) -> None:
+    procedure = procedure_service.create_procedure(
+        db_session, ProcedureCreate(title="Incident Response"), actor_id=None
+    )
+    document = upload_document(db_session, "Procedure", procedure.id)
+
+    procedure_service.delete_procedure(db_session, procedure.id, actor_id=None)
+
+    assert evidence_repository.list_for_entity(db_session, "Procedure", procedure.id) == []
+    assert not os.path.exists(document.storage_path)
+
+
+def test_deleting_an_ai_system_removes_its_documents(db_session: Session) -> None:
+    """Covers the stage-gate uploads (Design Document, Validation Report, ...)
+    and anything else filed through the system's own document browser -- all
+    tagged entity_type="AISystem", not this service's own ENTITY_TYPE (which
+    names the inventory sheet, not one system)."""
+    row_id = make_ai_system(db_session)
+    document = upload_document(db_session, "AISystem", row_id)
+
+    ai_system_inventory_service.delete_row(db_session, row_id, actor_id=None)
+
+    assert evidence_repository.list_for_entity(db_session, "AISystem", row_id) == []
+    assert not os.path.exists(document.storage_path)
+
+
+def test_deleting_an_impact_assessment_removes_foldered_evidence_too(
+    db_session: Session, make_user
+) -> None:
+    """evidence_service.delete_all_for_entity used to only look at the top
+    folder level -- this is the case that was silently missed."""
+    make_user()
+    row_id = make_ai_system(db_session)
+    assessment = impact_assessment_service.create_for_ai_system(
+        db_session, row_id, ImpactAssessmentCreate(), actor_id=None
+    )
+    folder = folder_service.create_folder(
+        db_session,
+        FolderCreate(entity_type="ImpactAssessment", entity_id=assessment.id, name="Notes"),
+        actor_id=None,
+    )
+    foldered = upload_document(
+        db_session, "ImpactAssessment", assessment.id, folder_id=folder.id
+    )
+
+    impact_assessment_service.delete(db_session, assessment.id, actor_id=None)
+
+    assert evidence_repository.list_for_entity(
+        db_session, "ImpactAssessment", assessment.id
+    ) == []
+    assert folder_repository.get(db_session, folder.id) is None
+    assert not os.path.exists(foldered.storage_path)

@@ -144,6 +144,11 @@ def retire_policy(db: Session, policy_id: int, actor_id: int | None) -> Policy:
 
 
 def delete_policy(db: Session, policy_id: int, actor_id: int | None) -> None:
+    # Imported here rather than at module scope: evidence_service imports
+    # this module (to bump a draft's version when its documents change), so
+    # a top-level import back would be circular.
+    from app.services import evidence_service
+
     policy = _get_or_raise(db, policy_id)
     if policy.status != PolicyStatus.DRAFT:
         raise InvalidStatusTransitionError(
@@ -151,6 +156,7 @@ def delete_policy(db: Session, policy_id: int, actor_id: int | None) -> None:
             "only draft policies can be deleted"
         )
     policy_repository.delete(db, policy)
+    evidence_service.delete_all_for_entity(db, "Policy", policy_id)
     framework_service.delete_tags(db, "Policy", policy_id)
     audit_service.log(db, "Policy", policy_id, "deleted", actor_id)
 

@@ -5,9 +5,15 @@ from app.core.exceptions import ConflictError
 from app.core.lifecycle_stages import LifecycleStage
 from app.models.sheet import Sheet, SheetRow
 from app.schemas.sheet import ColumnDef
-from app.services import audit_service, sheet_service
+from app.services import audit_service, evidence_service, sheet_service
 
 ENTITY_TYPE = "AISystemInventory"
+
+# What the AI system's own documents (stage-gate uploads, and anything filed
+# through its document browser) are tagged with -- a different string from
+# this module's own ENTITY_TYPE above, which names the inventory *sheet*.
+# See ai_system_lifecycle_service.AI_SYSTEM_ENTITY_TYPE, the same value.
+AI_SYSTEM_DOCUMENT_ENTITY_TYPE = "AISystem"
 
 STAGE_COLUMN_KEY = "lifecycle_stage"
 
@@ -146,6 +152,7 @@ def delete_row(db: Session, row_id: int, actor_id: int | None) -> None:
 
     data_inventory_service.unlink_ai_system(db, row_id, actor_id)
     ai_system_lifecycle_service.delete_for_ai_system(db, row_id)
+    evidence_service.delete_all_for_entity(db, AI_SYSTEM_DOCUMENT_ENTITY_TYPE, row_id)
 
     sheet = get_or_create_sheet(db)
     sheet_service.delete_row(db, sheet.id, row_id)

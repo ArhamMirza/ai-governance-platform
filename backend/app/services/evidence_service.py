@@ -119,17 +119,23 @@ def upload_evidence(
 
 
 def delete_all_for_entity(db: Session, entity_type: str, entity_id: int) -> None:
-    """Cleans up every evidence file for an entity that is itself being
-    deleted (e.g. a risk item row). No per-file audit entry -- the parent
-    entity's own "deleted" log entry already covers it, matching how
-    framework tags are cleared on delete elsewhere. Only reaches entities
-    that store evidence flat (folder_id always None), like RiskItem."""
-    for evidence in evidence_repository.list_at_level(db, entity_type, entity_id, None):
+    """Cleans up every evidence file and folder for an entity that is itself
+    being deleted (e.g. a risk item row, a draft policy). No per-file audit
+    entry -- the parent entity's own "deleted" log entry already covers it,
+    matching how framework tags are cleared on delete elsewhere.
+
+    Looked up with list_for_entity, not list_at_level(..., folder_id=None):
+    every entity type this is called for is reachable through the same
+    folder-capable document browser in the UI, so evidence filed inside a
+    subfolder is exactly as real as evidence filed flat, and was previously
+    left behind by this function."""
+    for evidence in evidence_repository.list_for_entity(db, entity_type, entity_id):
         Path(evidence.storage_path).unlink(missing_ok=True)
         # These documents can be tagged to framework controls too -- see
         # delete_evidence for why the tags can't outlive the file.
         framework_service.delete_tags(db, "Evidence", evidence.id)
         evidence_repository.delete(db, evidence)
+    folder_repository.delete_all_for_entity(db, entity_type, entity_id)
 
 
 def delete_evidence(db: Session, evidence_id: int, actor_id: int | None) -> None:
