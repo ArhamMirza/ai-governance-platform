@@ -4,6 +4,7 @@ from sqlalchemy import engine_from_config, pool
 
 import app.models  # noqa: F401  (ensures all models register on Base.metadata)
 from alembic import context
+from app.core import vector_store
 from app.core.config import get_settings
 from app.core.database import Base
 
@@ -61,6 +62,9 @@ def run_migrations_online() -> None:
         prefix="sqlalchemy.",
         poolclass=pool.NullPool,
     )
+    # A migration that creates the vec0 table needs the extension loaded on
+    # its own connection, the same as the app's.
+    vector_store.register(connectable)
 
     with connectable.connect() as connection:
         context.configure(

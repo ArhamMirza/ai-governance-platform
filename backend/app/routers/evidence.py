@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, File, Form, Query, UploadFile
+from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, Query, UploadFile
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 
@@ -28,12 +28,19 @@ def upload_evidence(
     description: str | None = Form(default=None),
     document_type: str | None = Form(default=None),
     file: UploadFile = File(...),
+    background: BackgroundTasks = None,  # noqa: B008 -- FastAPI supplies this
     db: Session = Depends(get_db),
     actor_id: int | None = Depends(get_current_actor_id),
 ) -> EvidenceRead:
-    return evidence_service.upload_evidence(
+    evidence = evidence_service.upload_evidence(
         db, entity_type, entity_id, folder_id, file, description, actor_id, document_type
     )
+    # Indexing reads, OCRs and embeds the file, which takes seconds on a
+    # scanned PDF. The upload is already complete and durable by this point,
+    # so the person is not made to wait for a convenience.
+    if background is not None:
+        background.add_task(evidence_service.index_in_background, db.get_bind(), evidence.id)
+    return evidence
 
 
 @router.get("/{evidence_id}/download")

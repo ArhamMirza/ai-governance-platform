@@ -42,6 +42,9 @@ const rootDoc: Evidence = {
   content_type: "application/pdf",
   size_bytes: 100,
   description: null,
+  index_status: "indexed",
+  index_detail: "1 passage(s) indexed.",
+  injection_findings: null,
   uploaded_by: null,
   uploaded_at: "2026-01-01T00:00:00Z",
 };

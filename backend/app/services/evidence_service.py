@@ -2,12 +2,17 @@ import uuid
 from pathlib import Path
 
 from fastapi import UploadFile
+from sqlalchemy import Connection, Engine
 from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
 from app.core.exceptions import NotFoundError, ValidationError
 from app.models.evidence import Evidence
-from app.repositories import evidence_repository, folder_repository
+from app.repositories import (
+    document_index_repository,
+    evidence_repository,
+    folder_repository,
+)
 from app.services import audit_service, framework_service, policy_service, procedure_service
 
 # Entity types whose "version" is a document-set change counter rather than a
@@ -118,6 +123,29 @@ def upload_evidence(
     return evidence
 
 
+def index_in_background(bind: Engine | Connection, evidence_id: int) -> None:
+    """Make one uploaded document searchable, after the upload has returned.
+
+    Takes the bind the request was using rather than reaching for the global
+    session factory. A background task needs its own session -- the request's
+    is closed by the time this runs -- but it must be a session on the *same*
+    database. Reaching for the global factory instead meant that anything
+    which had swapped the database out from under the app, a test above all,
+    got a background task quietly reading and writing somewhere else
+    entirely.
+
+    Never raises: the document is already stored and recorded, and a search
+    gap belongs on the row, not thrown at a caller who has already left.
+    """
+    from app.services import document_index_service
+
+    db = Session(bind=bind)
+    try:
+        document_index_service.index_quietly(db, evidence_id)
+    finally:
+        db.close()
+
+
 def delete_all_for_entity(db: Session, entity_type: str, entity_id: int) -> None:
     """Cleans up every evidence file and folder for an entity that is itself
     being deleted (e.g. a risk item row, a draft policy). No per-file audit
@@ -134,6 +162,7 @@ def delete_all_for_entity(db: Session, entity_type: str, entity_id: int) -> None
         # These documents can be tagged to framework controls too -- see
         # delete_evidence for why the tags can't outlive the file.
         framework_service.delete_tags(db, "Evidence", evidence.id)
+        document_index_repository.clear_for_evidence(db, evidence.id)
         evidence_repository.delete(db, evidence)
     folder_repository.delete_all_for_entity(db, entity_type, entity_id)
 
@@ -146,6 +175,11 @@ def delete_evidence(db: Session, evidence_id: int, actor_id: int | None) -> None
     # Applicability reads those tags as evidence that a control is covered.
     # Leaving them behind would keep a deleted document counting as coverage.
     framework_service.delete_tags(db, "Evidence", evidence_id)
+    # The search index is three tables, only one of which has a foreign key
+    # to this row -- and SQLite isn't running with foreign key enforcement
+    # on anyway. Cleared explicitly, or a deleted document's text stays
+    # retrievable and the assistant quotes a file that no longer exists.
+    document_index_repository.clear_for_evidence(db, evidence_id)
     evidence_repository.delete(db, evidence)
     audit_service.log(
         db,
