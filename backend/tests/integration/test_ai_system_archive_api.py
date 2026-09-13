@@ -263,3 +263,104 @@ def test_expired_retention_is_surfaced_on_the_dashboard(
 
     expired = next(item for item in attention if item["key"] == "retention_expired")
     assert expired["count"] == 1
+
+
+# --- Once archived, the record does not move -------------------------------
+#
+# Retention only means something if the record it protects can't be quietly
+# rewritten out from under it: extending or shortening retention_until (or
+# reverting the stage, or anything else about the record) after archiving
+# would undo the one guarantee the archive is supposed to make. The UI
+# already disables these controls once a system shows is_archived -- these
+# tests are the server-side half of that, since a client can't be trusted to
+# be the only thing enforcing it.
+
+
+def test_retention_cannot_be_rewritten_once_archived(
+    client: TestClient, login_as, caigo_admin, test_user
+) -> None:
+    row_id = archive_a_system(client, login_as, caigo_admin, test_user, PAST)
+
+    response = set_retirement(
+        client, row_id, retirement_reason="Changed my mind", retention_until=FUTURE
+    )
+
+    assert response.status_code == 409
+    assert "archived" in response.text
+    body = lifecycle(client, row_id)
+    assert body["retention_until"] == PAST
+    assert body["retention_expired"] is True
+
+
+def test_an_archived_system_cannot_be_reverted_back_to_active(
+    client: TestClient, login_as, caigo_admin, test_user
+) -> None:
+    row_id = archive_a_system(client, login_as, caigo_admin, test_user, FUTURE)
+
+    response = client.post(
+        LIFECYCLE.format(row_id=row_id) + "/revert", json={"reason": "Actually still needed"}
+    )
+
+    assert response.status_code == 409
+    assert lifecycle(client, row_id)["current_stage"] == "retirement"
+
+
+def test_an_archived_systems_owner_cannot_be_changed(
+    client: TestClient, login_as, caigo_admin, test_user
+) -> None:
+    row_id = archive_a_system(client, login_as, caigo_admin, test_user, FUTURE)
+
+    response = client.put(LIFECYCLE.format(row_id=row_id) + "/owner", json={"owner_id": 1})
+
+    assert response.status_code == 409
+
+
+def test_an_archived_systems_monitoring_cannot_be_changed(
+    client: TestClient, login_as, caigo_admin, test_user
+) -> None:
+    row_id = archive_a_system(client, login_as, caigo_admin, test_user, FUTURE)
+
+    response = client.put(
+        LIFECYCLE.format(row_id=row_id) + "/monitoring",
+        json={"monitoring_owner_id": 1, "incident_escalation_path": "New path"},
+    )
+
+    assert response.status_code == 409
+
+
+def test_an_archived_systems_deployment_record_cannot_be_changed(
+    client: TestClient, login_as, caigo_admin, test_user
+) -> None:
+    row_id = archive_a_system(client, login_as, caigo_admin, test_user, FUTURE)
+
+    response = client.put(
+        LIFECYCLE.format(row_id=row_id) + "/deployment-record",
+        json={"deployment_environment": "staging", "deployment_version": "9.9",
+              "deployed_at": str(_TODAY)},
+    )
+
+    assert response.status_code == 409
+
+
+def test_an_archived_system_cannot_be_resubmitted_for_deployment_approval(
+    client: TestClient, login_as, caigo_admin, test_user
+) -> None:
+    row_id = archive_a_system(client, login_as, caigo_admin, test_user, FUTURE)
+
+    response = client.post(
+        LIFECYCLE.format(row_id=row_id) + "/request-deployment-approval"
+    )
+
+    assert response.status_code == 409
+
+
+def test_an_archived_system_cannot_be_resubmitted_for_retirement_approval(
+    client: TestClient, login_as, caigo_admin, test_user
+) -> None:
+    row_id = archive_a_system(client, login_as, caigo_admin, test_user, FUTURE)
+
+    response = client.post(
+        LIFECYCLE.format(row_id=row_id) + "/request-retirement-approval"
+    )
+
+    assert response.status_code == 409
