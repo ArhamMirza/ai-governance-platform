@@ -17,7 +17,7 @@ from datetime import UTC, datetime
 from fastapi import UploadFile
 from sqlalchemy.orm import Session
 
-from app.core.concurrency import create_or_get
+from app.core.concurrency import claim_transition, create_or_get, withdraw_transition
 from app.core.exceptions import AuthorizationError, ConflictError, NotFoundError, ValidationError
 from app.models.data_inventory_record import DataInventoryRecord, DataInventoryStatus
 from app.models.sheet import Sheet, SheetRow
@@ -218,6 +218,23 @@ def update_row(db: Session, row_id: int, data: dict, actor_id: int | None) -> Sh
     return sheet_repository.get_row(db, row_id) or row
 
 
+def _claim(
+    db: Session,
+    record: DataInventoryRecord,
+    expected: str,
+    changes: dict,
+    refusal: str,
+) -> None:
+    """The status check above ran in a transaction of its own, so a
+    simultaneous caller can pass it too -- restating the expected status in
+    the write is what makes only one of them land."""
+    if not claim_transition(db, record, expected_statuses=expected, changes=changes):
+        raise ConflictError(
+            f"{refusal} -- someone else has already moved it on, and it is now "
+            f"'{record.status}'."
+        )
+
+
 def _revert_review(db: Session, row_id: int, actor_id: int | None) -> None:
     """An edit invalidates whatever review the entry was in: an approval would
     otherwise describe data that has since changed, and a pending submission
@@ -226,12 +243,21 @@ def _revert_review(db: Session, row_id: int, actor_id: int | None) -> None:
     record = get_or_create_record(db, row_id)
     if record.status == DataInventoryStatus.DRAFT:
         return
-    record.status = DataInventoryStatus.DRAFT
-    record.submitted_by = None
-    record.submitted_at = None
-    record.approved_by = None
-    record.approved_at = None
-    data_inventory_record_repository.save(db, record)
+    # Unguarded, and writing every field rather than assigning them: an
+    # approval landing between the read above and this write still has to be
+    # taken down, because it describes data that has since changed. See
+    # concurrency.withdraw_transition.
+    withdraw_transition(
+        db,
+        record,
+        {
+            "status": DataInventoryStatus.DRAFT,
+            "submitted_by": None,
+            "submitted_at": None,
+            "approved_by": None,
+            "approved_at": None,
+        },
+    )
     _write_status_to_row(db, row_id, record.status)
     audit_service.log(db, APPROVAL_ENTITY_TYPE, row_id, "review_reset_by_edit", actor_id)
 
@@ -267,10 +293,17 @@ def submit_for_approval(db: Session, row_id: int, actor_id: int | None) -> DataI
         raise ValidationError("Give the dataset a name before submitting it for approval.")
     _require_data_owner(db, row, actor_id)
 
-    record.status = DataInventoryStatus.PENDING_APPROVAL
-    record.submitted_by = actor_id
-    record.submitted_at = datetime.now(UTC)
-    record = data_inventory_record_repository.save(db, record)
+    _claim(
+        db,
+        record,
+        DataInventoryStatus.DRAFT,
+        {
+            "status": DataInventoryStatus.PENDING_APPROVAL,
+            "submitted_by": actor_id,
+            "submitted_at": datetime.now(UTC),
+        },
+        f"Dataset {row_id} is no longer draft",
+    )
     _write_status_to_row(db, row_id, record.status)
     audit_service.log(db, APPROVAL_ENTITY_TYPE, row_id, "submitted_for_review", actor_id)
     return record
@@ -296,10 +329,17 @@ def approve(db: Session, row_id: int, actor_id: int | None) -> DataInventoryReco
             "You submitted this dataset, so someone else has to approve it."
         ) from exc
 
-    record.status = DataInventoryStatus.APPROVED
-    record.approved_by = actor_id
-    record.approved_at = datetime.now(UTC)
-    record = data_inventory_record_repository.save(db, record)
+    _claim(
+        db,
+        record,
+        DataInventoryStatus.PENDING_APPROVAL,
+        {
+            "status": DataInventoryStatus.APPROVED,
+            "approved_by": actor_id,
+            "approved_at": datetime.now(UTC),
+        },
+        f"Dataset {row_id} is no longer pending approval",
+    )
     _write_status_to_row(db, row_id, record.status)
     audit_service.log(db, APPROVAL_ENTITY_TYPE, row_id, "approved", actor_id)
     return record
