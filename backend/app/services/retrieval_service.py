@@ -60,12 +60,15 @@ class Citation:
     """One retrieved passage, and everything needed to check it."""
 
     chunk_id: int
-    evidence_id: int
-    filename: str
-    section: str | None
-    source: str
+    # What this passage is: an uploaded file, a policy, an inventory row.
+    source_type: str
+    source_id: int
+    source_title: str
+    # What it is about -- for a document, the record it was filed against.
     entity_type: str
     entity_id: int
+    section: str | None
+    source: str
     text: str
     score: float
     injection_findings: list[str] = field(default_factory=list)
@@ -75,7 +78,7 @@ class Citation:
         """How this passage is named to the model and in the UI."""
         where = f", {self.section}" if self.section else ""
         scanned = " (read by OCR)" if self.source == "ocr" else ""
-        return f"{self.filename}{where}{scanned}"
+        return f"{self.source_title}{where}{scanned}"
 
 
 @dataclass
@@ -102,7 +105,7 @@ class SearchResult:
         return {c.chunk_id for c in self.citations}
 
 
-def _scope(statement, entity_type: str | None, entity_id: int | None):  # noqa: ANN001
+def _scope_evidence(statement, entity_type: str | None, entity_id: int | None):  # noqa: ANN001
     if entity_type is not None:
         statement = statement.where(Evidence.entity_type == entity_type)
     if entity_id is not None:
@@ -110,11 +113,22 @@ def _scope(statement, entity_type: str | None, entity_id: int | None):  # noqa: 
     return statement
 
 
+def _in_scope(chunk: DocumentChunk, entity_type: str | None, entity_id: int | None) -> bool:
+    """Whether a passage belongs to what the caller asked about.
+
+    Read off the chunk itself. The model supplies a query string and never a
+    query; which records it may see is decided here, on our side.
+    """
+    if entity_type is not None and chunk.entity_type != entity_type:
+        return False
+    return not (entity_id is not None and chunk.entity_id != entity_id)
+
+
 def coverage_gaps(
     db: Session, entity_type: str | None = None, entity_id: int | None = None
 ) -> list[CoverageGap]:
     """Documents in scope that are not searchable, and why."""
-    statement = _scope(
+    statement = _scope_evidence(
         select(Evidence).where(Evidence.index_status != IndexStatus.INDEXED),
         entity_type,
         entity_id,
@@ -139,6 +153,16 @@ def search(
     limit: int = DEFAULT_LIMIT,
 ) -> SearchResult:
     """The passages that best answer ``query``, or none if none do."""
+    # Bring the index up to date before reading it. Records are queued for
+    # reindexing when they change and the work is done here, at the one
+    # moment staleness would actually be visible -- so a risk score edited a
+    # second ago is not answered from its old value. Bounded, so a bulk
+    # import cannot turn one search into a minutes-long wait; whatever is
+    # left is picked up by the next search or the backfill command.
+    from app.services import document_index_service
+
+    document_index_service.drain(db)
+
     gaps = coverage_gaps(db, entity_type, entity_id)
 
     # A query with no word characters at all is punctuation, and there is
@@ -167,42 +191,26 @@ def search(
         [chunk_id for chunk_id, _ in vector_hits if chunk_id in admissible],
     )
 
-    # Scoping is applied here, on our side, against what the caller asked
-    # for -- the model supplies a query string and never a query.
     chunks = document_index_repository.chunks_by_id(db, [chunk_id for chunk_id, _ in ranked])
-    evidence_rows = {
-        row.id: row
-        for row in db.scalars(
-            _scope(
-                select(Evidence).where(
-                    Evidence.id.in_({c.evidence_id for c in chunks.values()} or {0})
-                ),
-                entity_type,
-                entity_id,
-            )
-        )
-    }
 
     citations: list[Citation] = []
     for chunk_id, score in ranked:
         chunk: DocumentChunk | None = chunks.get(chunk_id)
-        if chunk is None:
+        if chunk is None or not _in_scope(chunk, entity_type, entity_id):
             continue
-        evidence = evidence_rows.get(chunk.evidence_id)
-        if evidence is None:
-            continue  # out of scope for this search
         citations.append(
             Citation(
                 chunk_id=chunk.id,
-                evidence_id=evidence.id,
-                filename=evidence.filename,
+                source_type=str(chunk.source_type),
+                source_id=chunk.source_id,
+                source_title=chunk.source_title,
+                entity_type=str(chunk.entity_type),
+                entity_id=chunk.entity_id,
                 section=chunk.section,
                 source=str(chunk.source),
-                entity_type=evidence.entity_type,
-                entity_id=evidence.entity_id,
                 text=chunk.text,
                 score=score,
-                injection_findings=list(evidence.injection_findings or []),
+                injection_findings=list(chunk.injection_findings or []),
             )
         )
         if len(citations) >= limit:

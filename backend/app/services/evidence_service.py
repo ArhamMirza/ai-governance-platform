@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
 from app.core.exceptions import NotFoundError, ValidationError
+from app.models.document_chunk import SourceType
 from app.models.evidence import Evidence
 from app.repositories import (
     document_index_repository,
@@ -162,7 +163,7 @@ def delete_all_for_entity(db: Session, entity_type: str, entity_id: int) -> None
         # These documents can be tagged to framework controls too -- see
         # delete_evidence for why the tags can't outlive the file.
         framework_service.delete_tags(db, "Evidence", evidence.id)
-        document_index_repository.clear_for_evidence(db, evidence.id)
+        document_index_repository.clear_for_source(db, SourceType.EVIDENCE, evidence.id)
         evidence_repository.delete(db, evidence)
     folder_repository.delete_all_for_entity(db, entity_type, entity_id)
 
@@ -179,7 +180,7 @@ def delete_evidence(db: Session, evidence_id: int, actor_id: int | None) -> None
     # to this row -- and SQLite isn't running with foreign key enforcement
     # on anyway. Cleared explicitly, or a deleted document's text stays
     # retrievable and the assistant quotes a file that no longer exists.
-    document_index_repository.clear_for_evidence(db, evidence_id)
+    document_index_repository.clear_for_source(db, SourceType.EVIDENCE, evidence_id)
     evidence_repository.delete(db, evidence)
     audit_service.log(
         db,

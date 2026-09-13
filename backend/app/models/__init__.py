@@ -2,7 +2,7 @@ from app.models.ai_assist import AiAssistSettings, AiUsage
 from app.models.ai_system_lifecycle import AISystemLifecycle
 from app.models.audit_log import AuditLogEntry
 from app.models.data_inventory_record import DataInventoryRecord
-from app.models.document_chunk import ChunkSource, DocumentChunk, IndexStatus
+from app.models.document_chunk import ChunkSource, DocumentChunk, IndexStatus, SourceType
 from app.models.evidence import Evidence
 from app.models.folder import Folder
 from app.models.framework_control import FrameworkControl
@@ -13,6 +13,7 @@ from app.models.governance_role_assignment import GovernanceRoleAssignment
 from app.models.governance_role_delegation import GovernanceRoleDelegation
 from app.models.impact_assessment import ImpactAssessment
 from app.models.impact_factor_assessment import ImpactFactorAssessment
+from app.models.index_queue import IndexQueueEntry
 from app.models.policy import Policy
 from app.models.procedure import Procedure
 from app.models.risk_assessment import RiskAssessment
@@ -39,13 +40,22 @@ __all__ = [
     "GovernanceRoleDelegation",
     "ImpactAssessment",
     "ImpactFactorAssessment",
+    "IndexQueueEntry",
     "IndexStatus",
     "Policy",
     "Procedure",
     "RiskAssessment",
     "RiskCriteria",
     "Session",
+    "SourceType",
     "Sheet",
     "SheetRow",
     "User",
 ]
+
+# Imported last, once every model above exists: registering the listener
+# that keeps the search index current needs all of them. Importing it here
+# rather than from one entry point means the hook is attached anywhere the
+# models are -- the app, a script, a test -- so nothing can write a record
+# through a path that quietly skips reindexing.
+from app.core import index_hooks  # noqa: E402,F401  (import for side effect)
