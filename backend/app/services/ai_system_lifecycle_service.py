@@ -29,6 +29,21 @@ def _validate_ai_system_row(db: Session, ai_system_row_id: int) -> None:
         raise NotFoundError("AISystemRow", ai_system_row_id)
 
 
+def _require_not_archived(lifecycle: AISystemLifecycle) -> None:
+    """Once a system is archived, its life cycle record is meant to stay
+    exactly as it was signed off -- archive()'s own docstring promises it is
+    "kept read-only until the retention date passes." Every mutator below
+    calls this first: without it, anyone with edit rights could rewrite the
+    retention date on an already-archived system (making it read as expired
+    on the spot) or revert its stage, defeating the one guarantee retention
+    exists to make. Deleting the row is the sole exception, and it is gated
+    on retention_expired instead, in ai_system_inventory_service.delete_row."""
+    if lifecycle.archived_at is not None:
+        raise ConflictError(
+            "This system is archived; its life cycle record can't be changed."
+        )
+
+
 def get_or_create(db: Session, ai_system_row_id: int) -> AISystemLifecycle:
     """Every AI system has a life cycle; one is created at Inception on first
     request. Lazy rather than eager so systems that predate this feature --
@@ -104,6 +119,7 @@ def revert(
         raise ValidationError("Give a reason for moving this system back a stage.")
 
     lifecycle = get_or_create(db, ai_system_row_id)
+    _require_not_archived(lifecycle)
     target = previous_stage(lifecycle.current_stage)
     if target is None:
         raise ConflictError(
@@ -135,6 +151,7 @@ def set_deployment_record(
     actor_id: int | None,
 ) -> AISystemLifecycle:
     lifecycle = get_or_create(db, ai_system_row_id)
+    _require_not_archived(lifecycle)
     lifecycle.deployment_environment = environment
     lifecycle.deployment_version = version
     lifecycle.deployed_at = deployed_at
@@ -154,6 +171,7 @@ def set_monitoring(
     actor_id: int | None,
 ) -> AISystemLifecycle:
     lifecycle = get_or_create(db, ai_system_row_id)
+    _require_not_archived(lifecycle)
     lifecycle.monitoring_owner_id = monitoring_owner_id
     lifecycle.incident_escalation_path = incident_escalation_path
     lifecycle = ai_system_lifecycle_repository.save(db, lifecycle)
@@ -171,6 +189,7 @@ def set_owner(
     actor_id: int | None,
 ) -> AISystemLifecycle:
     lifecycle = get_or_create(db, ai_system_row_id)
+    _require_not_archived(lifecycle)
     lifecycle.owner_id = owner_id
     lifecycle = ai_system_lifecycle_repository.save(db, lifecycle)
     audit_service.log(
@@ -182,7 +201,7 @@ def set_owner(
 def request_deployment_approval(
     db: Session, ai_system_row_id: int, actor_id: int | None
 ) -> None:
-    get_or_create(db, ai_system_row_id)
+    _require_not_archived(get_or_create(db, ai_system_row_id))
     audit_service.log(
         db, DEPLOYMENT_APPROVAL_ENTITY_TYPE, ai_system_row_id,
         "submitted_for_review", actor_id,
@@ -195,6 +214,7 @@ def approve_deployment(
     """Whoever requested the release can't be the one who approves it -- the
     same rule policies and procedures already enforce."""
     lifecycle = get_or_create(db, ai_system_row_id)
+    _require_not_archived(lifecycle)
     governance_role_service.require_caigo(db, actor_id)
     try:
         audit_service.require_different_approver(
@@ -236,6 +256,7 @@ def set_retirement(
     actor_id: int | None,
 ) -> AISystemLifecycle:
     lifecycle = get_or_create(db, ai_system_row_id)
+    _require_not_archived(lifecycle)
     lifecycle.retirement_reason = retirement_reason
     lifecycle.retention_until = retention_until
     lifecycle = ai_system_lifecycle_repository.save(db, lifecycle)
@@ -249,7 +270,7 @@ def set_retirement(
 def request_retirement_approval(
     db: Session, ai_system_row_id: int, actor_id: int | None
 ) -> None:
-    get_or_create(db, ai_system_row_id)
+    _require_not_archived(get_or_create(db, ai_system_row_id))
     audit_service.log(
         db, RETIREMENT_APPROVAL_ENTITY_TYPE, ai_system_row_id,
         "submitted_for_review", actor_id,
@@ -260,6 +281,7 @@ def approve_retirement(
     db: Session, ai_system_row_id: int, actor_id: int | None
 ) -> AISystemLifecycle:
     lifecycle = get_or_create(db, ai_system_row_id)
+    _require_not_archived(lifecycle)
     governance_role_service.require_caigo(db, actor_id)
     try:
         audit_service.require_different_approver(
