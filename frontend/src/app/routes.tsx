@@ -15,6 +15,7 @@ import { ProcedureDetailPage } from "../pages/ProcedureDetailPage";
 import { ProceduresPage } from "../pages/ProceduresPage";
 import { RiskAssessmentDetailPage } from "../pages/RiskAssessmentDetailPage";
 import { RiskAssessmentsPage } from "../pages/RiskAssessmentsPage";
+import { SettingsPage } from "../pages/SettingsPage";
 import { UsersPage } from "../pages/UsersPage";
 import { Layout } from "./Layout";
 
@@ -44,6 +45,7 @@ export function AppRoutes() {
         <Route path="/governance" element={<GovernanceRolesPage />} />
         <Route path="/users" element={<UsersPage />} />
         <Route path="/handbook" element={<HandbookPage />} />
+        <Route path="/settings" element={<SettingsPage />} />
       </Routes>
     </Layout>
   );

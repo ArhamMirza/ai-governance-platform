@@ -8,10 +8,12 @@ from app.core.exceptions import (
     AuthorizationError,
     ConflictError,
     NotFoundError,
+    ServiceUnavailableError,
     ValidationError,
 )
 from app.dependencies import get_current_user
 from app.routers import (
+    ai_assist,
     ai_system_inventory,
     ai_system_lifecycle,
     audit_log,
@@ -67,6 +69,11 @@ def authentication_handler(request: Request, exc: AuthenticationError) -> JSONRe
     return JSONResponse(status_code=401, content={"detail": str(exc)})
 
 
+@app.exception_handler(ServiceUnavailableError)
+def service_unavailable_handler(request: Request, exc: ServiceUnavailableError) -> JSONResponse:
+    return JSONResponse(status_code=503, content={"detail": str(exc)})
+
+
 @app.exception_handler(AuthorizationError)
 def authorization_handler(request: Request, exc: AuthorizationError) -> JSONResponse:
     return JSONResponse(status_code=403, content={"detail": str(exc)})
@@ -100,3 +107,4 @@ app.include_router(framework_mapping.router, prefix="/api/v1", dependencies=_pro
 app.include_router(framework_soa.router, prefix="/api/v1", dependencies=_protected)
 app.include_router(users.router, prefix="/api/v1", dependencies=_protected)
 app.include_router(governance_roles.router, prefix="/api/v1", dependencies=_protected)
+app.include_router(ai_assist.router, prefix="/api/v1", dependencies=_protected)

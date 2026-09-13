@@ -1,6 +1,7 @@
 import { useState } from "react";
 
 import { readError } from "../../../shared/api/readError";
+import { DraftWithAiButton } from "../../ai-assist/components/DraftWithAiButton";
 import { useUpdateImpactFactor } from "../hooks";
 import type { ImpactFactorAssessment } from "../types";
 
@@ -78,6 +79,12 @@ export function ImpactFactorCard({
               onChange={(e) => setBenefits(e.target.value)}
               onBlur={() => benefits !== (factorAssessment.benefits ?? "") && save({ benefits })}
             />
+            <DraftWithAiButton
+              kind="impact_factor_benefits"
+              impactAssessmentId={impactAssessmentId}
+              factor={factor}
+              onDraft={setBenefits}
+            />
           </div>
 
           <div className="impact-factor-field">
@@ -90,6 +97,12 @@ export function ImpactFactorCard({
               value={harms}
               onChange={(e) => setHarms(e.target.value)}
               onBlur={() => harms !== (factorAssessment.harms ?? "") && save({ harms })}
+            />
+            <DraftWithAiButton
+              kind="impact_factor_harms"
+              impactAssessmentId={impactAssessmentId}
+              factor={factor}
+              onDraft={setHarms}
             />
           </div>
         </div>
@@ -104,6 +117,12 @@ export function ImpactFactorCard({
             value={criteria}
             onChange={(e) => setCriteria(e.target.value)}
             onBlur={() => criteria !== (factorAssessment.criteria ?? "") && save({ criteria })}
+          />
+          <DraftWithAiButton
+            kind="impact_factor_criteria"
+            impactAssessmentId={impactAssessmentId}
+            factor={factor}
+            onDraft={setCriteria}
           />
         </div>
 
