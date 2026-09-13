@@ -190,3 +190,35 @@ def test_deleting_an_ai_system_without_assessments_still_works(client: TestClien
     ).json()
 
     assert client.delete(f"/api/v1/ai-system-inventory/rows/{row['id']}").status_code == 204
+
+
+def test_reimport_matches_the_exported_id_and_leaves_an_unmatched_row_alone(
+    client: TestClient,
+) -> None:
+    """A re-upload used to delete and recreate every row, and SQLite reuses
+    a freed id -- silently attaching an unrelated existing system's life
+    cycle to whatever new row landed on it. The exported ID column is how a
+    re-upload recognizes its own rows now; one the file doesn't mention is
+    left as it was, not dropped."""
+    kept = client.post(
+        "/api/v1/ai-system-inventory/rows", json={"data": {"name": "Fraud Detector"}}
+    ).json()
+    edited = client.post(
+        "/api/v1/ai-system-inventory/rows", json={"data": {"name": "Resume Screener"}}
+    ).json()
+
+    # A file that mentions only the row being edited, by the id export_xlsx
+    # would have given it -- the same round trip a real re-upload follows.
+    csv_content = f"ID,Name\n{edited['id']},Resume Screener v2\n".encode()
+
+    response = client.post(
+        "/api/v1/ai-system-inventory/upload",
+        files={"file": ("reimport.csv", csv_content, "text/csv")},
+    )
+
+    assert response.status_code == 200
+    listing = client.get("/api/v1/ai-system-inventory").json()
+    rows_by_id = {row["id"]: row["data"] for row in listing["rows"]}
+    assert len(rows_by_id) == 2
+    assert rows_by_id[kept["id"]]["name"] == "Fraud Detector"
+    assert rows_by_id[edited["id"]]["name"] == "Resume Screener v2"

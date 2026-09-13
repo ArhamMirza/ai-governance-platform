@@ -246,19 +246,50 @@ def test_deleting_a_dataset_removes_its_record(db_session: Session) -> None:
         data_inventory_service.get_or_create_record(db_session, row.id)
 
 
-def test_importing_replaces_the_records_along_with_the_rows(db_session: Session) -> None:
-    """An import wipes every row, so the old records have to go with them
-    rather than being left pointing at rows that no longer exist."""
-    old = make_dataset(db_session)
-    data_inventory_service.get_or_create_record(db_session, old.id)
+def test_importing_matches_a_dataset_by_name_and_leaves_others_alone(
+    db_session: Session,
+) -> None:
+    """A re-upload used to wipe every row and recreate all of them, which
+    could silently reattach an existing dataset's review to whatever
+    unrelated row reused its old id (this session's archive/retention audit
+    found the same bug for an AI system's life cycle). A dataset the file
+    doesn't mention survives untouched; one whose name matches is updated
+    in place, keeping its id and therefore its record."""
+    kept = make_dataset(db_session, name="Resume corpus")
+    data_inventory_service.get_or_create_record(db_session, kept.id)
 
     csv = b"Dataset Name,Data Type\nApplicant CVs,training\n"
     data_inventory_service.import_upload(db_session, _upload(csv, "data.csv"), actor_id=None)
 
     rows = data_inventory_service.list_rows(db_session)
     records = data_inventory_service.list_records(db_session)
-    assert [r.data_inventory_row_id for r in records] == [row.id for row in rows]
+    assert {row.id for row in rows} == {record.data_inventory_row_id for record in records}
+    assert kept.id in {row.id for row in rows}
+    assert {row.data["dataset_name"] for row in rows} == {"Resume corpus", "Applicant CVs"}
     assert all(record.status == DataInventoryStatus.DRAFT for record in records)
+
+
+def test_importing_reverts_an_approved_datasets_review_only_if_its_data_changed(
+    db_session: Session, make_user
+) -> None:
+    owner = make_user()
+    row = make_dataset(db_session, owner_id=owner.id, name="Resume corpus")
+    data_inventory_service.submit_for_approval(db_session, row.id, actor_id=None)
+    data_inventory_service.approve(db_session, row.id, actor_id=None)
+
+    # Re-imported with a name match and identical data -- the approval
+    # survives, matching update_row's own "no change, no reset" rule.
+    csv = f"Dataset Name,Data Owner\nResume corpus,{owner.id}\n".encode()
+    data_inventory_service.import_upload(db_session, _upload(csv, "same.csv"), actor_id=None)
+    record = data_inventory_service.get_or_create_record(db_session, row.id)
+    assert record.status == DataInventoryStatus.APPROVED
+
+    # Re-imported again with the same name but a changed field -- the
+    # approval is withdrawn, the same as editing the row directly would do.
+    csv = f"Dataset Name,Data Owner,Data Type\nResume corpus,{owner.id},training\n".encode()
+    data_inventory_service.import_upload(db_session, _upload(csv, "changed.csv"), actor_id=None)
+    record = data_inventory_service.get_or_create_record(db_session, row.id)
+    assert record.status == DataInventoryStatus.DRAFT
 
 
 def test_importing_keeps_the_server_owned_status_column(db_session: Session) -> None:

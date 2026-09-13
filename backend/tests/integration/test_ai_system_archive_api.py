@@ -265,6 +265,43 @@ def test_expired_retention_is_surfaced_on_the_dashboard(
     assert expired["count"] == 1
 
 
+def test_reimporting_the_inventory_does_not_disturb_an_archived_systems_retention(
+    client: TestClient, login_as, caigo_admin, test_user
+) -> None:
+    """The bug this reproduces: a plain re-upload of the AI System Inventory
+    used to delete every row and recreate them, and SQLite reuses a freed
+    id -- so re-uploading a file that simply doesn't mention the archived
+    system (a filtered export, an "active systems only" roster) could
+    silently attach its retention-protected life cycle to whatever new row
+    landed on the freed id, while its own row vanished. The archived
+    system's row and lifecycle now survive a re-upload that never mentions
+    it, exactly as they'd survive any other operation that isn't its own
+    delete action."""
+    archived_id = archive_a_system(client, login_as, caigo_admin, test_user, FUTURE)
+    active_id = make_system(client, name="Fraud Detector")
+
+    # A file mentioning only the still-active system -- the archived one is
+    # not in it at all, matched by id or otherwise.
+    csv_content = f"ID,Name\n{active_id},Fraud Detector v2\n".encode()
+    response = client.post(
+        "/api/v1/ai-system-inventory/upload",
+        files={"file": ("reimport.csv", csv_content, "text/csv")},
+    )
+    assert response.status_code == 200
+
+    archived_lifecycle = lifecycle(client, archived_id)
+    assert archived_lifecycle["is_archived"] is True
+    assert archived_lifecycle["retention_until"] == FUTURE
+    assert archived_lifecycle["retention_expired"] is False
+
+    listing = client.get("/api/v1/ai-system-inventory").json()
+    assert [row["id"] for row in listing["rows"]] == [active_id]
+    assert listing["rows"][0]["data"]["name"] == "Fraud Detector v2"
+
+    archive_listing = client.get("/api/v1/ai-systems/archive").json()
+    assert [entry["ai_system_row_id"] for entry in archive_listing] == [archived_id]
+
+
 # --- Once archived, the record does not move -------------------------------
 #
 # Retention only means something if the record it protects can't be quietly

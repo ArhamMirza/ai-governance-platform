@@ -1,6 +1,7 @@
 import csv
 import io
 import re
+from dataclasses import dataclass
 
 import openpyxl
 from fastapi import UploadFile
@@ -205,11 +206,14 @@ def export_xlsx(db: Session, sheet_id: int) -> bytes:
     worksheet = workbook.active
     worksheet.title = sheet.title[:31] or "Sheet"
 
-    headers = [column["label"] for column in sheet.columns]
+    # A leading ID column, not part of sheet.columns -- see import_upload's
+    # own comment. Re-uploading this same file lets import match each row
+    # back to itself instead of recreating everything from scratch.
+    headers = ["ID"] + [column["label"] for column in sheet.columns]
     keys = [column["key"] for column in sheet.columns]
     worksheet.append(headers)
     for row in rows:
-        worksheet.append([row.data.get(key, "") for key in keys])
+        worksheet.append([row.id] + [row.data.get(key, "") for key in keys])
 
     buffer = io.BytesIO()
     workbook.save(buffer)
@@ -238,7 +242,52 @@ def _parse_xlsx(contents: bytes) -> tuple[list[str], list[list[str]]]:
     return headers, data_rows
 
 
-def import_upload(db: Session, sheet_id: int, file: UploadFile) -> Sheet:
+@dataclass
+class ImportOutcome:
+    """What import_upload actually did.
+
+    changed_row_ids is populated only for rows matched to an existing one
+    whose data genuinely differs from what was there before -- a caller
+    that gates something on a row's content uses this to react the same
+    way a single-row edit would. Data Inventory is the one that does:
+    withdrawing that dataset's approval, the same rule update_row already
+    enforces for a single-row edit."""
+
+    sheet: Sheet
+    changed_row_ids: set[int]
+
+
+def _parse_row_id(value: str) -> int | None:
+    """The exported ID column round-trips as plain text through CSV, but an
+    xlsx cell can come back as an int or a float depending on how the file
+    was saved -- "3" and "3.0" both mean row 3."""
+    try:
+        return int(value)
+    except ValueError:
+        pass
+    try:
+        return int(float(value))
+    except (TypeError, ValueError):
+        return None
+
+
+def import_upload(
+    db: Session, sheet_id: int, file: UploadFile, natural_key_column: str | None = None
+) -> ImportOutcome:
+    """Reconciles the file against the sheet's existing rows rather than
+    replacing them outright.
+
+    Every row this sheet carries a lifecycle, an assessment, evidence or a
+    review against is identified by its row id -- and a wholesale
+    delete-then-recreate broke that identity on every re-upload (SQLite
+    reuses a freed rowid, so a new row could silently inherit an old one's
+    entire history). Matching by id -- falling back to natural_key_column
+    for files that don't have the exported ID column at all -- keeps a
+    matched row's id, and its state, attached to the right record. A row
+    the file doesn't mention is left alone: import only adds and updates,
+    it never removes (there's a dedicated delete action for that, which
+    goes through the checks a bulk upload has no way to make -- e.g. an
+    archived AI system's retention)."""
     sheet = _get_or_raise(db, sheet_id)
     filename = file.filename or ""
     contents = file.file.read()
@@ -252,6 +301,21 @@ def import_upload(db: Session, sheet_id: int, file: UploadFile) -> Sheet:
 
     if not headers:
         raise ValidationError("File has no header row")
+
+    # The ID column (see export_xlsx) is how a re-upload recognizes its own
+    # rows. Pulled out before anything below ever sees it -- it must never
+    # become a real, editable grid column.
+    id_values: list[str] | None = None
+    for column_index, header in enumerate(headers):
+        if _slugify(header) == "id":
+            id_values = [
+                row[column_index] if column_index < len(row) else "" for row in data_rows
+            ]
+            headers = headers[:column_index] + headers[column_index + 1 :]
+            data_rows = [
+                row[:column_index] + row[column_index + 1 :] for row in data_rows
+            ]
+            break
 
     seen: dict[str, int] = {}
     keys = []
@@ -280,14 +344,57 @@ def import_upload(db: Session, sheet_id: int, file: UploadFile) -> Sheet:
     sheet.columns = columns
     sheet_repository.save(db, sheet)
 
-    sheet_repository.delete_all_rows(db, sheet_id)
+    existing = sheet_repository.list_rows(db, sheet_id)
+    by_id: dict[int, SheetRow] = {row.id: row for row in existing}
+    by_name: dict[str, SheetRow] = {}
+    if natural_key_column is not None and natural_key_column in keys:
+        for row in existing:
+            name = str(row.data.get(natural_key_column) or "").strip().casefold()
+            if name:
+                by_name[name] = row
+
+    def _consume(row: SheetRow) -> None:
+        by_id.pop(row.id, None)
+        if natural_key_column is not None:
+            name = str(row.data.get(natural_key_column) or "").strip().casefold()
+            by_name.pop(name, None)
+
+    changed_row_ids: set[int] = set()
     for index, values in enumerate(data_rows, start=1):
         # Ragged CSV/xlsx rows are tolerated -- extra/missing cells just mean
         # extra/missing keys in that row's data, not a hard error.
         row_data = {key: value for key, value in zip(keys, values, strict=False) if value != ""}
         row_data = _apply_computed_scores(sheet.entity_type, row_data)
-        sheet_repository.create_row(
-            db, SheetRow(sheet_id=sheet_id, row_index=index, data=row_data)
-        )
 
-    return sheet
+        match: SheetRow | None = None
+        if id_values is not None:
+            candidate_id = _parse_row_id(id_values[index - 1])
+            if candidate_id is not None:
+                match = by_id.get(candidate_id)
+        if match is None and natural_key_column is not None:
+            name = str(row_data.get(natural_key_column) or "").strip().casefold()
+            if name:
+                match = by_name.get(name)
+
+        if match is not None:
+            # Consumed regardless of which lookup found it, so a later file
+            # row can't also claim it through the other one.
+            _consume(match)
+            # Compared against what row_data would look like merged onto the
+            # row's own data, not against it raw: a server-owned cell (an
+            # approval status, a life cycle stage) lives in match.data but
+            # is never part of row_data -- the file has no reason to carry
+            # it -- so a raw comparison would call every previously-reviewed
+            # row "changed" on every import, whether or not anything the
+            # file actually controls did.
+            if {**match.data, **row_data} != match.data:
+                changed_row_ids.add(match.id)
+            match.row_index = index
+            match.data = row_data
+            sheet_repository.save_row(db, match)
+        else:
+            sheet_repository.create_row(
+                db, SheetRow(sheet_id=sheet_id, row_index=index, data=row_data)
+            )
+
+    return ImportOutcome(sheet=sheet, changed_row_ids=changed_row_ids)

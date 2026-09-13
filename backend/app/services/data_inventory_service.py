@@ -354,16 +354,34 @@ def export_xlsx(db: Session) -> bytes:
 
 
 def import_upload(db: Session, file: UploadFile, actor_id: int | None) -> Sheet:
-    """An import replaces every row, so the records pointing at the old ones
-    are dropped and the imported rows start their review from draft."""
+    """Matches rows to their existing dataset entry (by the file's ID column,
+    falling back to dataset_name -- see sheet_service.import_upload), so a
+    re-upload updates a dataset in place rather than losing its review to a
+    reused row id. A matched row whose data actually changed still has to
+    go back to draft, the same rule update_row already enforces for a
+    single-row edit -- an approval describes the dataset as it stood when
+    it was signed, and a bulk import is not an exception to that."""
     sheet = get_or_create_sheet(db)
     # sheet_service keeps the server-owned status column across the import.
-    result = sheet_service.import_upload(db, sheet.id, file)
+    outcome = sheet_service.import_upload(
+        db, sheet.id, file, natural_key_column=NAME_COLUMN_KEY
+    )
 
     rows = sheet_service.list_rows(db, sheet.id)
+    # Nothing is deleted by import any more, so this now only ever cleans up
+    # a record left behind by something else -- kept as a harmless backstop.
     data_inventory_record_repository.delete_orphaned(db, {row.id for row in rows})
     for row in rows:
-        get_or_create_record(db, row.id)
+        record = get_or_create_record(db, row.id)
+        if row.id in outcome.changed_row_ids:
+            _revert_review(db, row.id, actor_id)
+            record = get_or_create_record(db, row.id)
+        # The import just wrote this row's data wholesale from the file,
+        # which has no approval_status column of its own -- restamp the
+        # cell from the record regardless of path, or a matched row that
+        # didn't need reverting would show a blank status until something
+        # else happened to touch it.
+        _write_status_to_row(db, row.id, record.status)
 
     audit_service.log(db, ENTITY_TYPE, sheet.id, "sheet_uploaded", actor_id)
-    return result
+    return outcome.sheet
