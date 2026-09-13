@@ -44,3 +44,22 @@ def delete(db: Session, folder: Folder) -> None:
 
 def has_children(db: Session, folder_id: int) -> bool:
     return db.scalar(select(Folder.id).where(Folder.parent_folder_id == folder_id)) is not None
+
+
+def delete_all_for_entity(db: Session, entity_type: str, entity_id: int) -> None:
+    """Drops every folder for an entity that is itself being deleted.
+
+    entity_type/entity_id are stored on every folder row directly, not just
+    the root one, so this needs no recursive walk down the tree -- one query
+    already reaches every folder that belongs to this entity, at any depth."""
+    folders = list(
+        db.scalars(
+            select(Folder).where(
+                Folder.entity_type == entity_type, Folder.entity_id == entity_id
+            )
+        )
+    )
+    for folder in folders:
+        db.delete(folder)
+    if folders:
+        db.commit()

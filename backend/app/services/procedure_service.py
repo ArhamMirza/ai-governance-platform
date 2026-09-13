@@ -141,7 +141,13 @@ def delete_procedure(db: Session, procedure_id: int, actor_id: int | None) -> No
             f"Procedure {procedure_id} cannot be deleted while status is '{procedure.status}'; "
             "only draft procedures can be deleted"
         )
+    # Imported here rather than at module scope: evidence_service imports
+    # this module (to bump a draft's version when its documents change), so
+    # a top-level import back would be circular.
+    from app.services import evidence_service
+
     procedure_repository.delete(db, procedure)
+    evidence_service.delete_all_for_entity(db, "Procedure", procedure_id)
     framework_service.delete_tags(db, "Procedure", procedure_id)
     audit_service.log(db, "Procedure", procedure_id, "deleted", actor_id)
 
