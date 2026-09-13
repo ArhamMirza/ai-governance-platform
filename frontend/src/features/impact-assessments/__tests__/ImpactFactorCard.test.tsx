@@ -6,6 +6,11 @@ import { ImpactFactorCard } from "../components/ImpactFactorCard";
 import { useUpdateImpactFactor } from "../hooks";
 import type { ImpactFactorAssessment } from "../types";
 
+// Drafting has its own tests; here it only needs to render as it does with
+// no provider configured -- which is nothing.
+vi.mock("../../ai-assist/components/DraftWithAiButton", () => ({
+  DraftWithAiButton: () => null,
+}));
 vi.mock("../hooks");
 
 const factorAssessment: ImpactFactorAssessment = {

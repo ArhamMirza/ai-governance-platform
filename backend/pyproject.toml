@@ -17,6 +17,11 @@ dependencies = [
     "python-multipart>=0.0.12",
     "python-dotenv>=1.0",
     "openpyxl>=3.1",
+    # AI assistance. litellm gives one call shape across Anthropic, OpenAI,
+    # Gemini, Groq and locally-hosted models, so the provider is a setting
+    # rather than a rewrite; cryptography encrypts the stored API key.
+    "litellm>=1.55",
+    "cryptography>=43.0",
 ]
 
 [project.optional-dependencies]

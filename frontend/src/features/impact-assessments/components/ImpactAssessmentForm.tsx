@@ -1,6 +1,7 @@
 import { useState } from "react";
 
 import { readError } from "../../../shared/api/readError";
+import { DraftWithAiButton } from "../../ai-assist/components/DraftWithAiButton";
 import { StatusBadge } from "../../../shared/components/StatusBadge";
 import { ApprovalWithdrawalNotice } from "../../audit-log/ApprovalWithdrawalNotice";
 import { AuditLogViewer } from "../../audit-log/components/AuditLogViewer";
@@ -44,11 +45,17 @@ interface ImpactAssessmentFormProps {
 
 function NarrativeField({
   fieldKey,
+  kind,
+  impactAssessmentId,
   label,
   value,
   onSave,
 }: {
   fieldKey: string;
+  /** The assessment column this field fills, which is also what the model
+   * is asked to draft. */
+  kind: string;
+  impactAssessmentId: number;
   label: string;
   value: string;
   onSave: (value: string) => void;
@@ -63,6 +70,13 @@ function NarrativeField({
         value={text}
         onChange={(e) => setText(e.target.value)}
         onBlur={() => text !== value && onSave(text)}
+      />
+      {/* A draft lands in `text`, the same state typing lands in -- so it
+          saves the way any edit does, on blur, once the person has read it. */}
+      <DraftWithAiButton
+        kind={kind}
+        impactAssessmentId={impactAssessmentId}
+        onDraft={setText}
       />
     </div>
   );
@@ -186,6 +200,8 @@ export function ImpactAssessmentForm({
         <NarrativeField
           key={key}
           fieldKey={`${assessment.id}-${key}`}
+          kind={key}
+          impactAssessmentId={assessment.id}
           label={label}
           value={(assessment[key as keyof ImpactAssessment] as string | null) ?? ""}
           onSave={(value) => save({ [key]: value } as ImpactAssessmentUpdateInput)}

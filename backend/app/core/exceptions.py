@@ -35,3 +35,12 @@ class AuthorizationError(Exception):
 
     def __init__(self, message: str = "Not permitted") -> None:
         super().__init__(message)
+
+
+class ServiceUnavailableError(Exception):
+    """A feature that depends on something not configured or not reachable --
+    AI assistance with no provider set, say. Distinct from ValidationError
+    because the caller did nothing wrong; the deployment isn't set up."""
+
+    def __init__(self, message: str) -> None:
+        super().__init__(message)

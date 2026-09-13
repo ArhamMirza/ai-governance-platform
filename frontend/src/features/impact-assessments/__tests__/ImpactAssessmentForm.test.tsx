@@ -14,6 +14,11 @@ import {
 } from "../hooks";
 import type { ImpactAssessment } from "../types";
 
+// Drafting has its own tests; here it only needs to render as it does with
+// no provider configured -- which is nothing.
+vi.mock("../../ai-assist/components/DraftWithAiButton", () => ({
+  DraftWithAiButton: () => null,
+}));
 vi.mock("../hooks");
 vi.mock("../../users/hooks");
 vi.mock("../../audit-log/useCanApprove");
