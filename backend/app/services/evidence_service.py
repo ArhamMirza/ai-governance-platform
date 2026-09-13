@@ -2,6 +2,7 @@ import uuid
 from pathlib import Path
 
 from fastapi import UploadFile
+from sqlalchemy import Connection, Engine
 from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
@@ -122,17 +123,23 @@ def upload_evidence(
     return evidence
 
 
-def index_in_background(evidence_id: int) -> None:
+def index_in_background(bind: Engine | Connection, evidence_id: int) -> None:
     """Make one uploaded document searchable, after the upload has returned.
 
-    Opens its own session: the request's session is closed by the time a
-    background task runs. Never raises -- the document is already stored, and
-    a search gap is recorded on the row rather than thrown at nobody.
+    Takes the bind the request was using rather than reaching for the global
+    session factory. A background task needs its own session -- the request's
+    is closed by the time this runs -- but it must be a session on the *same*
+    database. Reaching for the global factory instead meant that anything
+    which had swapped the database out from under the app, a test above all,
+    got a background task quietly reading and writing somewhere else
+    entirely.
+
+    Never raises: the document is already stored and recorded, and a search
+    gap belongs on the row, not thrown at a caller who has already left.
     """
-    from app.core.database import SessionLocal
     from app.services import document_index_service
 
-    db = SessionLocal()
+    db = Session(bind=bind)
     try:
         document_index_service.index_quietly(db, evidence_id)
     finally:

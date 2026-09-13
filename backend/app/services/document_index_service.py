@@ -111,15 +111,22 @@ def index_quietly(db: Session, evidence_id: int) -> None:
     try:
         index_evidence(db, evidence_id)
     except Exception as exc:  # noqa: BLE001 -- indexing must never break an upload
-        db.rollback()
-        evidence = db.get(Evidence, evidence_id)
-        if evidence is not None:
-            _mark(
-                evidence,
-                IndexStatus.UNREADABLE,
-                f"Indexing failed ({type(exc).__name__}). The file itself is stored and safe.",
-            )
-            db.commit()
+        try:
+            db.rollback()
+            evidence = db.get(Evidence, evidence_id)
+            if evidence is not None:
+                _mark(
+                    evidence,
+                    IndexStatus.UNREADABLE,
+                    f"Indexing failed ({type(exc).__name__}). The file itself is stored and safe.",
+                )
+                db.commit()
+        except Exception:  # noqa: BLE001
+            # Recording why indexing failed must not itself be able to fail --
+            # if the database is the thing that is broken, the write above is
+            # the next thing to raise, and this runs in a background task
+            # whose exception surfaces nowhere useful.
+            db.rollback()
 
 
 def pending_evidence_ids(db: Session) -> list[int]:

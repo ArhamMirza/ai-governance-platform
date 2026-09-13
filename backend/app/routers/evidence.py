@@ -39,7 +39,7 @@ def upload_evidence(
     # scanned PDF. The upload is already complete and durable by this point,
     # so the person is not made to wait for a convenience.
     if background is not None:
-        background.add_task(evidence_service.index_in_background, evidence.id)
+        background.add_task(evidence_service.index_in_background, db.get_bind(), evidence.id)
     return evidence
 
 

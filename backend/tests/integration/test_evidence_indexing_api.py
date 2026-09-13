@@ -1,14 +1,12 @@
 """Uploading a document and having it become searchable, over the API.
 
-The indexing work runs as a FastAPI background task, which opens its own
-database session because the request's session is closed by the time it
-runs. Here that factory is pointed at the test session so the real wiring --
-router, background task, service -- is what actually executes.
+The indexing work runs as a FastAPI background task on its own session,
+bound to the same database the request used. Nothing is patched here: the
+real router, background task and service are what execute.
 """
 
 import io
 
-import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
@@ -18,28 +16,6 @@ from app.services import retrieval_service
 from tests.conftest import fake_image
 
 ENTITY = "AISystem"
-
-
-class _SharedSession:
-    """The test session, with close() disarmed.
-
-    The background task closes whatever session it opens; closing the one the
-    test is still using would end the test's transaction underneath it.
-    """
-
-    def __init__(self, session: Session) -> None:
-        self._session = session
-
-    def __getattr__(self, name: str):
-        return getattr(self._session, name)
-
-    def close(self) -> None:
-        pass
-
-
-@pytest.fixture(autouse=True)
-def background_tasks_use_the_test_session(db_session: Session, monkeypatch):
-    monkeypatch.setattr(database, "SessionLocal", lambda: _SharedSession(db_session))
 
 
 def upload(client: TestClient, filename: str, data: bytes, entity_id: int = 1):
@@ -120,3 +96,27 @@ def test_deleting_a_document_over_the_api_removes_it_from_search(
     assert client.delete(f"/api/v1/evidence/{created.json()['id']}").status_code == 204
 
     assert retrieval_service.search(db_session, "retention").citations == []
+
+
+def test_indexing_never_reaches_for_the_global_database(
+    client: TestClient, db_session: Session, monkeypatch
+) -> None:
+    """The background task must index into the database the request used.
+
+    Reaching for the global session factory instead passed locally, where a
+    development database happens to exist with the right tables, and failed
+    everywhere else -- including CI, where it opened an empty file and every
+    evidence upload in the suite died on "no such table: evidence". Worse
+    than the crash is the case where the file does exist: the task then
+    quietly reads and writes a different database than the request.
+    """
+    def explode() -> None:
+        raise AssertionError("background indexing used the global session factory")
+
+    monkeypatch.setattr(database, "SessionLocal", explode)
+
+    response = upload(client, "policy.txt", b"Personal data is retained for 24 months.")
+
+    assert response.status_code == 201
+    found = retrieval_service.search(db_session, "retention of personal data")
+    assert [c.filename for c in found.citations] == ["policy.txt"]
