@@ -321,6 +321,39 @@ def test_export_returns_xlsx(client: TestClient) -> None:
     assert response.content[:2] == b"PK"
 
 
+def test_reimport_by_id_keeps_a_risk_items_evidence_attached(client: TestClient) -> None:
+    """A re-upload used to delete and recreate every risk item, and SQLite
+    reuses a freed id -- so mitigation proof filed against one item could
+    silently end up attached to whatever unrelated item the next re-upload
+    happened to create at that same id. Re-imported by the id export gave
+    it, the row -- and its evidence -- stay attached to the same item."""
+    created = create_risk_assessment(client)
+    row = client.post(
+        f"/api/v1/risk-assessments/{created['id']}/rows",
+        json={"data": {"category": "Bias", "status": "open"}},
+    ).json()
+    upload = client.post(
+        "/api/v1/evidence",
+        data={"entity_type": "RiskItem", "entity_id": row["id"]},
+        files={"file": ("proof.pdf", b"mitigation evidence", "application/pdf")},
+    )
+    assert upload.status_code == 201, upload.text
+
+    csv_content = f"ID,Category,Status\n{row['id']},Bias,open\n".encode()
+    response = client.post(
+        f"/api/v1/risk-assessments/{created['id']}/upload",
+        files={"file": ("reimport.csv", csv_content, "text/csv")},
+    )
+    assert response.status_code == 200
+
+    sheet = client.get(f"/api/v1/risk-assessments/{created['id']}/sheet").json()
+    assert [r["id"] for r in sheet["rows"]] == [row["id"]]
+    evidence = client.get(
+        "/api/v1/evidence", params={"entity_type": "RiskItem", "entity_id": row["id"]}
+    ).json()
+    assert len(evidence) == 1
+
+
 def test_row_and_column_changes_are_audit_logged(client: TestClient) -> None:
     created = create_risk_assessment(client)
     ra_id = created["id"]

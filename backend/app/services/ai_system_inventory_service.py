@@ -166,6 +166,10 @@ def export_xlsx(db: Session) -> bytes:
 
 def import_upload(db: Session, file: UploadFile, actor_id: int | None) -> Sheet:
     sheet = get_or_create_sheet(db)
-    result = sheet_service.import_upload(db, sheet.id, file)
+    # Matched by name when the file has no ID column of its own -- see
+    # sheet_service.import_upload. A matched row keeps its id, so its
+    # lifecycle stays correctly attached instead of silently landing on
+    # whatever row reuses that id next.
+    outcome = sheet_service.import_upload(db, sheet.id, file, natural_key_column="name")
     audit_service.log(db, ENTITY_TYPE, sheet.id, "sheet_uploaded", actor_id)
-    return result
+    return outcome.sheet

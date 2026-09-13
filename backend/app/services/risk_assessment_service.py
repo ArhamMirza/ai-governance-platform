@@ -459,7 +459,12 @@ def import_upload(
     db: Session, risk_assessment_id: int, file: UploadFile, actor_id: int | None
 ) -> Sheet:
     risk_assessment = _get_or_raise(db, risk_assessment_id)
-    result = sheet_service.import_upload(db, risk_assessment.sheet_id, file)
+    # No natural_key_column: a risk item has nothing as reliably unique as an
+    # AI system's or a dataset's name (category/description can repeat), so
+    # only the file's own ID column (see sheet_service.import_upload) can
+    # match a row back to itself -- a file without one just creates fresh
+    # rows, same as today, rather than risking a wrong match.
+    outcome = sheet_service.import_upload(db, risk_assessment.sheet_id, file)
     audit_service.log(db, ENTITY_TYPE, risk_assessment_id, "sheet_uploaded", actor_id)
     _withdraw_approval_and_save(db, risk_assessment, actor_id)
-    return result
+    return outcome.sheet
