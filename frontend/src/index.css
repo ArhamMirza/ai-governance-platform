@@ -2899,3 +2899,250 @@ form.assistant-composer {
   clip: rect(0 0 0 0);
   white-space: nowrap;
 }
+
+/* ---------- AI draft of an impact assessment ---------- */
+
+.draft-launch,
+.draft-review {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 18px 20px;
+  margin: 18px 0 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.draft-launch {
+  border-style: dashed;
+  border-color: var(--border-strong);
+}
+
+.draft-launch-copy p {
+  font-size: 13.5px;
+  max-width: 68ch;
+  margin: 0;
+}
+
+.draft-launch > button {
+  align-self: flex-start;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-inverse);
+  background: var(--bg-sidebar);
+  border: 1px solid var(--bg-sidebar-active);
+  border-radius: var(--radius-md);
+  padding: 9px 16px;
+  cursor: pointer;
+}
+
+.draft-launch > button:hover:not(:disabled) {
+  background: var(--bg-sidebar-active);
+}
+
+.draft-review-title {
+  margin: 0 0 4px;
+  font-size: 15.5px;
+}
+
+.draft-review-meta,
+.draft-review-hint {
+  font-size: 12.5px;
+  color: var(--text-muted);
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.draft-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+}
+
+.draft-group-title {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  margin: 4px 0 0;
+}
+
+.draft-row {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.draft-row.is-applying {
+  border-color: var(--primary);
+  background: color-mix(in oklch, var(--primary-subtle) 45%, var(--bg-surface));
+}
+
+.draft-row-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.draft-apply {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  cursor: pointer;
+}
+
+.draft-apply input {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--primary);
+}
+
+.draft-row-label {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.draft-badge {
+  font-size: 11px;
+  font-weight: 600;
+  border-radius: 999px;
+  padding: 1px 8px;
+}
+
+.draft-badge-warning {
+  color: var(--warning-text);
+  background: var(--warning-subtle);
+}
+
+.draft-badge-neutral {
+  color: var(--neutral-text);
+  background: var(--neutral-subtle);
+}
+
+.draft-compare {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr);
+  gap: 12px;
+}
+
+@media (max-width: 760px) {
+  .draft-compare {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.draft-current,
+.draft-proposed {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.draft-caption {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  margin: 0;
+}
+
+.draft-empty {
+  font-size: 13px;
+  font-style: italic;
+  color: var(--text-faint);
+}
+
+.draft-current-text {
+  font-size: 13px;
+  color: var(--text-muted);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  margin: 0;
+  max-height: 160px;
+  overflow-y: auto;
+}
+
+.draft-proposed textarea,
+.draft-proposed select {
+  font-family: inherit;
+  font-size: 13.5px;
+  line-height: 1.45;
+  color: var(--text);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  padding: 7px 9px;
+  resize: vertical;
+  background: var(--bg-surface);
+}
+
+.draft-proposed select {
+  align-self: flex-start;
+  font-variant-numeric: tabular-nums;
+}
+
+.draft-proposed textarea:focus,
+.draft-proposed select:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--primary-subtle);
+}
+
+.draft-rationale {
+  font-size: 12.5px;
+  color: var(--text-muted);
+  margin: 0;
+}
+
+.draft-chips {
+  display: flex;
+  gap: 2px;
+  flex-wrap: wrap;
+}
+
+.draft-gap {
+  font-size: 12.5px;
+  color: var(--neutral-text);
+  background: var(--neutral-subtle);
+  border-radius: var(--radius-sm);
+  padding: 6px 9px;
+  margin: 0;
+}
+
+.draft-review-actions {
+  position: sticky;
+  bottom: 0;
+  display: flex;
+  gap: 8px;
+  padding: 12px 0 2px;
+  background: var(--bg-surface);
+  border-top: 1px solid var(--border);
+}
+
+.draft-apply-button {
+  font-family: inherit;
+  font-weight: 700;
+  color: var(--text-inverse);
+  background: var(--primary);
+  border: 1px solid var(--primary);
+  border-radius: var(--radius-sm);
+  padding: 8px 16px;
+  cursor: pointer;
+}
+
+.draft-apply-button:hover:not(:disabled) {
+  background: var(--primary-hover);
+  border-color: var(--primary-hover);
+}

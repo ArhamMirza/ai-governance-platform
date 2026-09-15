@@ -4,6 +4,7 @@ import { readError } from "../../../shared/api/readError";
 import { DraftWithAiButton } from "../../ai-assist/components/DraftWithAiButton";
 import { useUpdateImpactFactor } from "../hooks";
 import type { ImpactFactorAssessment } from "../types";
+import { useServerSyncedText } from "../useServerSyncedText";
 
 interface ImpactFactorCardProps {
   riskAssessmentId: number | null;
@@ -27,9 +28,11 @@ export function ImpactFactorCard({
   factorAssessment,
 }: ImpactFactorCardProps) {
   const updateFactor = useUpdateImpactFactor(riskAssessmentId, impactAssessmentId);
-  const [benefits, setBenefits] = useState(factorAssessment.benefits ?? "");
-  const [harms, setHarms] = useState(factorAssessment.harms ?? "");
-  const [criteria, setCriteria] = useState(factorAssessment.criteria ?? "");
+  // Synced, not copied once: save() sends all three, so a stale copy would
+  // wipe text applied from an AI draft the first time anyone picked a score.
+  const [benefits, setBenefits] = useServerSyncedText(factorAssessment.benefits ?? "");
+  const [harms, setHarms] = useServerSyncedText(factorAssessment.harms ?? "");
+  const [criteria, setCriteria] = useServerSyncedText(factorAssessment.criteria ?? "");
   const [error, setError] = useState<string | null>(null);
 
   const { factor, score } = factorAssessment;

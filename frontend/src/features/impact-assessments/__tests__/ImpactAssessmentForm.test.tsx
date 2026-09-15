@@ -19,6 +19,9 @@ import type { ImpactAssessment } from "../types";
 vi.mock("../../ai-assist/components/DraftWithAiButton", () => ({
   DraftWithAiButton: () => null,
 }));
+vi.mock("../components/AssessmentDraftPanel", () => ({
+  AssessmentDraftPanel: () => null,
+}));
 vi.mock("../hooks");
 vi.mock("../../users/hooks");
 vi.mock("../../audit-log/useCanApprove");

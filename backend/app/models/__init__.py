@@ -1,5 +1,6 @@
 from app.models.ai_assist import AiAssistSettings, AiUsage
 from app.models.ai_conversation import AiConversation, AiMessage, MessageRole
+from app.models.ai_draft import AiDraft, DraftStatus
 from app.models.ai_system_lifecycle import AISystemLifecycle
 from app.models.audit_log import AuditLogEntry
 from app.models.data_inventory_record import DataInventoryRecord
@@ -27,12 +28,14 @@ __all__ = [
     "AISystemLifecycle",
     "AiAssistSettings",
     "AiConversation",
+    "AiDraft",
     "AiMessage",
     "AiUsage",
     "AuditLogEntry",
     "ChunkSource",
     "DataInventoryRecord",
     "DocumentChunk",
+    "DraftStatus",
     "Evidence",
     "Folder",
     "FrameworkControl",

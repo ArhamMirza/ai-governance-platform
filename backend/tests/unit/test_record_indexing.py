@@ -318,3 +318,32 @@ def test_a_procedure_record_is_indexed_too(db_session: Session) -> None:
     assert search_titles(db_session, "incident response") == [
         "Procedure: Incident Response Procedure"
     ]
+
+
+def test_a_factor_nobody_has_written_up_is_not_indexed_as_a_passage(db_session: Session) -> None:
+    """A passage saying only "Factor: Fairness" matches every search that
+    mentions fairness and tells the reader nothing. Eight of them per
+    assessment crowded real evidence out of search results and drafts."""
+    from app.models.impact_factor_assessment import ImpactFactorAssessment
+
+    row = make_sheet_row(db_session, "AISystemInventory", {"name": "Resume Screener"})
+    assessment = ImpactAssessment(ai_system_row_id=row.id)
+    db_session.add(assessment)
+    db_session.commit()
+    db_session.add_all(
+        [
+            ImpactFactorAssessment(impact_assessment_id=assessment.id, factor="Fairness"),
+            ImpactFactorAssessment(
+                impact_assessment_id=assessment.id, factor="Privacy", harms="Stores CVs."
+            ),
+        ]
+    )
+    db_session.commit()
+
+    document_index_service.index_record(db_session, SourceType.IMPACT_ASSESSMENT, assessment.id)
+
+    sections = [
+        c.section for c in chunks_of(db_session, SourceType.IMPACT_ASSESSMENT, assessment.id)
+    ]
+    assert "Impact factor: Privacy" in sections
+    assert "Impact factor: Fairness" not in sections
