@@ -7,7 +7,10 @@ every Risk Assessment for that system shares the same impact history.
 Each assessment carries a fixed scorecard of the eight ISO 42005 impact
 factors -- benefits/harms/criteria written up by a human, score assigned
 manually for now (a future pass can derive it automatically from the
-benefits/harms/criteria text instead)."""
+benefits/harms/criteria text instead).
+
+An assessment can't be submitted, or approved at either stage, until it is
+fully written up -- see missing_content for what that requires."""
 
 from sqlalchemy.orm import Session
 
@@ -50,6 +53,20 @@ _GATED_STATUSES = {
 
 MIN_SCORE = 1
 MAX_SCORE = 5
+
+# What an assessment must contain before anyone can be asked to sign it off
+# (see missing_content). Labelled as the form labels them, so the refusal
+# names sections the way the person fixing them will find them.
+REQUIRED_NARRATIVE_FIELDS: dict[str, str] = {
+    "system_description": "System Description",
+    "intended_purpose": "Intended Purpose",
+    "foreseeable_misuse": "Foreseeable Misuse",
+    "data_and_model_info": "Data & Model Information",
+    "deployment_environment": "Deployment Environment",
+    "affected_interested_parties": "Affected Interested Parties",
+    "human_oversight_role": "Role of Human Oversight",
+    "conclusion": "Conclusion",
+}
 
 
 def _get_or_raise(db: Session, impact_assessment_id: int) -> ImpactAssessment:
@@ -157,6 +174,81 @@ def update(
     return impact_assessment
 
 
+def _is_blank(text: str | None) -> bool:
+    return text is None or not text.strip()
+
+
+def _join(items: list[str]) -> str:
+    """"A", "A and B", "A, B and C"."""
+    return items[0] if len(items) == 1 else f"{', '.join(items[:-1])} and {items[-1]}"
+
+
+def _factors_phrase(names: list[str], singular: str, plural: str) -> str:
+    """"1 factor is unscored (Privacy)", "2 factors are unscored (Privacy,
+    Safety)", or "all 8 factors are unscored" rather than listing all eight."""
+    if len(names) == len(IMPACT_FACTORS):
+        return f"all {len(names)} factors {plural}"
+    if len(names) == 1:
+        return f"1 factor {singular} ({names[0]})"
+    return f"{len(names)} factors {plural} ({', '.join(names)})"
+
+
+def missing_content(db: Session, impact_assessment: ImpactAssessment) -> list[str]:
+    """What stops this assessment being ready for sign-off, one phrase per
+    kind of gap; empty when it's ready.
+
+    Required means: every narrative section has something written in it, and
+    every one of the eight ISO/IEC 42005 factors has a 1-5 score plus its
+    benefits and harms written up -- the scorecard's own guidance is to write
+    those before scoring, so a bare score isn't an assessment of anything.
+    Scoring criteria stay optional: they explain the scale, not this system's
+    impact. Whitespace-only text counts as empty."""
+    gaps: list[str] = []
+
+    empty_sections = [
+        label
+        for field, label in REQUIRED_NARRATIVE_FIELDS.items()
+        if _is_blank(getattr(impact_assessment, field))
+    ]
+    if empty_sections:
+        verb = "is" if len(empty_sections) == 1 else "are"
+        gaps.append(f"{_join(empty_sections)} {verb} empty")
+
+    # Walked in IMPACT_FACTORS order rather than row order, so the message
+    # lists factors the way the scorecard does. A missing row (never expected
+    # -- all eight are seeded on create) counts as blank throughout.
+    by_factor = {f.factor: f for f in get_factors(db, impact_assessment.id)}
+    unscored: list[str] = []
+    no_benefits: list[str] = []
+    no_harms: list[str] = []
+    for name in IMPACT_FACTORS:
+        row = by_factor.get(name)
+        score = row.score if row else None
+        if score is None or not (MIN_SCORE <= score <= MAX_SCORE):
+            unscored.append(name)
+        if row is None or _is_blank(row.benefits):
+            no_benefits.append(name)
+        if row is None or _is_blank(row.harms):
+            no_harms.append(name)
+
+    if unscored:
+        gaps.append(_factors_phrase(unscored, "is unscored", "are unscored"))
+    if no_benefits:
+        gaps.append(
+            _factors_phrase(no_benefits, "has no benefits written", "have no benefits written")
+        )
+    if no_harms:
+        gaps.append(_factors_phrase(no_harms, "has no harms written", "have no harms written"))
+    return gaps
+
+
+def _require_complete(db: Session, impact_assessment: ImpactAssessment, action: str) -> None:
+    gaps = missing_content(db, impact_assessment)
+    if gaps:
+        message = _join(gaps)
+        raise ValidationError(f"Can't {action}: {message[0].upper()}{message[1:]}.")
+
+
 def _withdraw_approval(
     db: Session, impact_assessment: ImpactAssessment, actor_id: int | None
 ) -> None:
@@ -186,6 +278,7 @@ def submit_for_owner_approval(
         pre_approval_label="draft",
         pending_owner_status=ImpactAssessmentStatus.PENDING_OWNER_APPROVAL,
         pending_caigo_status=ImpactAssessmentStatus.PENDING_CAIGO_APPROVAL,
+        require_ready=lambda: _require_complete(db, impact_assessment, "submit"),
     )
     impact_assessment = impact_assessment_repository.save(db, impact_assessment)
     audit_service.log(db, ENTITY_TYPE, impact_assessment_id, "submitted_for_review", actor_id)
@@ -195,6 +288,10 @@ def submit_for_owner_approval(
 def approve_owner_stage(
     db: Session, impact_assessment_id: int, actor_id: int | None
 ) -> ImpactAssessment:
+    """Checked for completeness again, not only at submission: an assessment
+    already pending when that rule arrived never passed it, and editing one
+    in the pipeline sends it back to draft anyway, so this refuses nothing a
+    submission would have let through."""
     impact_assessment = _get_or_raise(db, impact_assessment_id)
     approval_chain_service.approve_owner_stage(
         db,
@@ -205,6 +302,7 @@ def approve_owner_stage(
         caigo_approval_entity_type=CAIGO_APPROVAL_ENTITY_TYPE,
         pending_owner_status=ImpactAssessmentStatus.PENDING_OWNER_APPROVAL,
         pending_caigo_status=ImpactAssessmentStatus.PENDING_CAIGO_APPROVAL,
+        require_ready=lambda: _require_complete(db, impact_assessment, "approve"),
     )
     return impact_assessment_repository.save(db, impact_assessment)
 
@@ -212,6 +310,7 @@ def approve_owner_stage(
 def approve_caigo_stage(
     db: Session, impact_assessment_id: int, actor_id: int | None
 ) -> ImpactAssessment:
+    """Re-checks completeness for the same reason approve_owner_stage does."""
     impact_assessment = _get_or_raise(db, impact_assessment_id)
     approval_chain_service.approve_caigo_stage(
         db,
@@ -221,6 +320,7 @@ def approve_caigo_stage(
         caigo_approval_entity_type=CAIGO_APPROVAL_ENTITY_TYPE,
         pending_caigo_status=ImpactAssessmentStatus.PENDING_CAIGO_APPROVAL,
         completed_status=ImpactAssessmentStatus.COMPLETED,
+        require_ready=lambda: _require_complete(db, impact_assessment, "approve"),
     )
     return impact_assessment_repository.save(db, impact_assessment)
 

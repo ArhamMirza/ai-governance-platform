@@ -205,12 +205,20 @@ def _recomplete(db: Session, risk_assessment_id: int) -> None:
 # ---------- impact assessments ----------
 
 
+def _factor(db: Session, assessment_id: int, name: str):
+    factors = impact_assessment_service.get_factors(db, assessment_id)
+    return next(f for f in factors if f.factor == name)
+
+
 def test_rescoring_an_impact_factor_withdraws_the_approval(db_session: Session) -> None:
     ai_system_row_id = make_ai_system(db_session)
     assessment_id = complete_impact_assessment_db(db_session, ai_system_row_id)
+    fairness = _factor(db_session, assessment_id, "Fairness")
 
     impact_assessment_service.update_factor(
-        db_session, assessment_id, "Fairness", None, None, None, 3, actor_id=None
+        db_session, assessment_id, "Fairness",
+        fairness.benefits, fairness.harms, fairness.criteria, fairness.score % 5 + 1,
+        actor_id=None,
     )
 
     assessment = impact_assessment_service.get(db_session, assessment_id)
@@ -223,9 +231,14 @@ def test_an_impact_factor_edit_that_changes_nothing_leaves_the_approval(
 ) -> None:
     ai_system_row_id = make_ai_system(db_session)
     assessment_id = complete_impact_assessment_db(db_session, ai_system_row_id)
+    # Resending exactly what's already there -- a completed assessment has
+    # every factor written up, so blanks here would be a real edit.
+    fairness = _factor(db_session, assessment_id, "Fairness")
 
     impact_assessment_service.update_factor(
-        db_session, assessment_id, "Fairness", None, None, None, None, actor_id=None
+        db_session, assessment_id, "Fairness",
+        fairness.benefits, fairness.harms, fairness.criteria, fairness.score,
+        actor_id=None,
     )
 
     assessment = impact_assessment_service.get(db_session, assessment_id)

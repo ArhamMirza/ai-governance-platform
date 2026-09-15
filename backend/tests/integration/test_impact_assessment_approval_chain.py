@@ -6,6 +6,7 @@ the Chief AI Governance Officer gives the final sign-off.
 from fastapi.testclient import TestClient
 
 from app.models.user import User, UserRole
+from tests.helpers import fill_impact_assessment
 from tests.integration.test_impact_assessments_api import create_impact_assessment
 
 
@@ -20,6 +21,7 @@ def test_full_approval_chain_completes_and_stamps_review_dates(
     client: TestClient, make_user, login_as, caigo_admin
 ) -> None:
     created = create_impact_assessment(client)
+    fill_impact_assessment(client, created["id"])
     owner = make_user()
     set_owner(client, created["ai_system_row_id"], owner.id)
 
@@ -54,6 +56,7 @@ def test_owner_submitting_their_own_work_skips_the_owner_stage(
     client: TestClient, test_user: User, caigo_admin, login_as
 ) -> None:
     created = create_impact_assessment(client)
+    fill_impact_assessment(client, created["id"])
     set_owner(client, created["ai_system_row_id"], test_user.id)
 
     submitted = client.post(
@@ -75,6 +78,7 @@ def test_only_the_owner_can_approve_the_owner_stage(
     client: TestClient, make_user, login_as
 ) -> None:
     created = create_impact_assessment(client)
+    fill_impact_assessment(client, created["id"])
     owner = make_user()
     set_owner(client, created["ai_system_row_id"], owner.id)
     client.post(f"/api/v1/impact-assessments/{created['id']}/submit-for-owner-approval")
@@ -90,6 +94,7 @@ def test_non_caigo_admin_cannot_approve_the_caigo_stage(
     client: TestClient, make_user, login_as
 ) -> None:
     created = create_impact_assessment(client)
+    fill_impact_assessment(client, created["id"])
     owner = make_user()
     set_owner(client, created["ai_system_row_id"], owner.id)
     client.post(f"/api/v1/impact-assessments/{created['id']}/submit-for-owner-approval")
@@ -137,6 +142,7 @@ def test_cannot_revert_a_completed_assessment_via_plain_update(
     moving status back to draft -- only draft may be set directly, and only
     while the record isn't already in the pipeline."""
     created = create_impact_assessment(client)
+    fill_impact_assessment(client, created["id"])
     owner = make_user()
     set_owner(client, created["ai_system_row_id"], owner.id)
     client.post(f"/api/v1/impact-assessments/{created['id']}/submit-for-owner-approval")
@@ -161,12 +167,34 @@ def test_submitting_without_an_ai_system_owner_is_rejected(client: TestClient) -
     put the assessment in pending_owner_approval with no one able to ever
     approve it -- reject the submission itself instead."""
     created = create_impact_assessment(client)
+    fill_impact_assessment(client, created["id"])
 
     response = client.post(
         f"/api/v1/impact-assessments/{created['id']}/submit-for-owner-approval"
     )
 
     assert response.status_code == 400
+    assert "no owner assigned" in response.json()["detail"]
+    assert (
+        client.get(f"/api/v1/impact-assessments/{created['id']}").json()["status"]
+        == "draft"
+    )
+
+
+def test_submitting_an_empty_assessment_is_refused_with_what_is_missing(
+    client: TestClient, make_user
+) -> None:
+    created = create_impact_assessment(client)
+    set_owner(client, created["ai_system_row_id"], make_user().id)
+
+    response = client.post(
+        f"/api/v1/impact-assessments/{created['id']}/submit-for-owner-approval"
+    )
+
+    assert response.status_code == 400
+    detail = response.json()["detail"]
+    assert detail.startswith("Can't submit: System Description, ")
+    assert "all 8 factors are unscored" in detail
     assert (
         client.get(f"/api/v1/impact-assessments/{created['id']}").json()["status"]
         == "draft"

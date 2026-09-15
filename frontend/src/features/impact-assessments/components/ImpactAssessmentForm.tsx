@@ -98,28 +98,60 @@ function ApprovalWorkflow({
     assessment.ai_system_row_id,
   );
   const caigoApproval = useCanApprove("ImpactAssessmentCaigoApproval", assessment.id);
+  const [error, setError] = useState<string | null>(null);
+
+  // The server refuses an assessment that isn't fully written up and says
+  // exactly what's missing -- that message is the whole point of the refusal,
+  // so it's shown as-is rather than swallowed.
+  const run = async (mutation: { mutateAsync: () => Promise<unknown> }, fallback: string) => {
+    setError(null);
+    try {
+      await mutation.mutateAsync();
+    } catch (err) {
+      setError(readError(err, fallback));
+    }
+  };
+  const errorAlert = error && <p role="alert">{error}</p>;
 
   if (assessment.status === "draft") {
     return (
-      <button onClick={() => submit.mutate()} disabled={submit.isPending}>
-        {submit.isPending ? "Submitting..." : "Submit for Approval"}
-      </button>
+      <>
+        {errorAlert}
+        <button
+          onClick={() => run(submit, "Failed to submit for approval")}
+          disabled={submit.isPending}
+        >
+          {submit.isPending ? "Submitting..." : "Submit for Approval"}
+        </button>
+      </>
     );
   }
   if (assessment.status === "pending_owner_approval") {
     return ownerApproval.canApprove ? (
-      <button onClick={() => approveOwnerStage.mutate()} disabled={approveOwnerStage.isPending}>
-        {approveOwnerStage.isPending ? "Approving..." : "Approve"}
-      </button>
+      <>
+        {errorAlert}
+        <button
+          onClick={() => run(approveOwnerStage, "Failed to approve")}
+          disabled={approveOwnerStage.isPending}
+        >
+          {approveOwnerStage.isPending ? "Approving..." : "Approve"}
+        </button>
+      </>
     ) : (
       <p className="approval-note">{ownerApproval.reason}</p>
     );
   }
   if (assessment.status === "pending_caigo_approval") {
     return caigoApproval.canApprove ? (
-      <button onClick={() => approveCaigoStage.mutate()} disabled={approveCaigoStage.isPending}>
-        {approveCaigoStage.isPending ? "Approving..." : "Approve"}
-      </button>
+      <>
+        {errorAlert}
+        <button
+          onClick={() => run(approveCaigoStage, "Failed to approve")}
+          disabled={approveCaigoStage.isPending}
+        >
+          {approveCaigoStage.isPending ? "Approving..." : "Approve"}
+        </button>
+      </>
     ) : (
       <p className="approval-note">{caigoApproval.reason}</p>
     );
