@@ -19,7 +19,9 @@ import {
   useUpdateImpactAssessment,
 } from "../hooks";
 import { IMPACT_FACTORS } from "../impactFactors";
+import { useServerSyncedText } from "../useServerSyncedText";
 import type { ImpactAssessment, ImpactAssessmentUpdateInput, ImpactFactorAssessment } from "../types";
+import { AssessmentDraftPanel } from "./AssessmentDraftPanel";
 import { ImpactFactorCard } from "./ImpactFactorCard";
 
 const ENTITY_TYPE = "ImpactAssessment";
@@ -60,7 +62,7 @@ function NarrativeField({
   value: string;
   onSave: (value: string) => void;
 }) {
-  const [text, setText] = useState(value);
+  const [text, setText] = useServerSyncedText(value);
   return (
     <div className="impact-assessment-field">
       <label htmlFor={`impact-${fieldKey}`}>{label}</label>
@@ -195,6 +197,8 @@ export function ImpactAssessmentForm({
           ))}
         </select>
       </div>
+
+      <AssessmentDraftPanel riskAssessmentId={riskAssessmentId} assessment={assessment} />
 
       {NARRATIVE_FIELDS.map(({ key, label }) => (
         <NarrativeField

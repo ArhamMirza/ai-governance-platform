@@ -202,17 +202,20 @@ def _render_impact_assessment(db: Session, assessment_id: int) -> RenderedRecord
         .all()
     )
     for scored in factors:
-        body = _lines(
-            [
-                ("Factor", scored.factor),
-                ("Score", scored.score),
-                ("Benefits", scored.benefits),
-                ("Harms", scored.harms),
-                ("Scoring criteria", scored.criteria),
-            ]
-        )
-        if body:
-            segments.append(Segment(text=body, section=f"Impact factor: {scored.factor}"))
+        written = [
+            ("Score", scored.score),
+            ("Benefits", scored.benefits),
+            ("Harms", scored.harms),
+            ("Scoring criteria", scored.criteria),
+        ]
+        # A factor nobody has scored or written up is only its own name. As a
+        # passage it matches every search that mentions that factor and says
+        # nothing -- eight such passages per assessment crowded real evidence
+        # out of both search results and drafting sources.
+        if not _lines(written):
+            continue
+        body = _lines([("Factor", scored.factor), *written])
+        segments.append(Segment(text=body, section=f"Impact factor: {scored.factor}"))
 
     label = f"Impact assessment: {system_name}" if system_name else "Impact assessment"
     return RenderedRecord(

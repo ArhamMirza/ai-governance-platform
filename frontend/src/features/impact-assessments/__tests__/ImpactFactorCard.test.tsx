@@ -113,4 +113,67 @@ describe("ImpactFactorCard", () => {
       });
     });
   });
+
+  describe("when the record changes underneath it", () => {
+    // Applying an AI draft, or a colleague's save, changes the factor after
+    // this card has copied it into local state.
+    function cardFor(overrides: Partial<ImpactFactorAssessment>) {
+      return (
+        <ImpactFactorCard
+          riskAssessmentId={1}
+          impactAssessmentId={2}
+          factorAssessment={{ ...factorAssessment, ...overrides }}
+        />
+      );
+    }
+
+    it("shows the new text in a field nobody has touched", () => {
+      mockHook();
+      const { rerender } = render(cardFor({}));
+
+      rerender(cardFor({ harms: "Applied from the AI draft." }));
+
+      expect(screen.getByLabelText("Harms for Fairness")).toHaveValue("Applied from the AI draft.");
+    });
+
+    it("does not wipe applied text when a score is picked afterwards", async () => {
+      // save() sends all three text fields. With a stale copy, choosing a
+      // score silently saved the old empty text over what was just applied.
+      const mutateAsync = mockHook();
+      const user = userEvent.setup();
+      const { rerender } = render(cardFor({}));
+
+      rerender(
+        cardFor({
+          benefits: "Applied benefits.",
+          harms: "Applied harms.",
+          criteria: "Applied criteria.",
+        }),
+      );
+      await user.click(screen.getByRole("radio", { name: "Fairness score 3" }));
+
+      await waitFor(() =>
+        expect(mutateAsync).toHaveBeenCalledWith({
+          factor: "Fairness",
+          data: {
+            benefits: "Applied benefits.",
+            harms: "Applied harms.",
+            criteria: "Applied criteria.",
+            score: 3,
+          },
+        }),
+      );
+    });
+
+    it("keeps what someone is in the middle of typing", async () => {
+      mockHook();
+      const user = userEvent.setup();
+      const { rerender } = render(cardFor({}));
+
+      await user.type(screen.getByLabelText("Harms for Fairness"), "My own words");
+      rerender(cardFor({ harms: "Someone else's save." }));
+
+      expect(screen.getByLabelText("Harms for Fairness")).toHaveValue("My own words");
+    });
+  });
 });

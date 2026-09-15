@@ -29,6 +29,7 @@ from app.routers import (
     framework_tags,
     governance_roles,
     health,
+    impact_assessment_drafts,
     impact_assessments,
     policies,
     procedures,
@@ -110,3 +111,4 @@ app.include_router(users.router, prefix="/api/v1", dependencies=_protected)
 app.include_router(governance_roles.router, prefix="/api/v1", dependencies=_protected)
 app.include_router(ai_assist.router, prefix="/api/v1", dependencies=_protected)
 app.include_router(assistant.router, prefix="/api/v1", dependencies=_protected)
+app.include_router(impact_assessment_drafts.router, prefix="/api/v1", dependencies=_protected)

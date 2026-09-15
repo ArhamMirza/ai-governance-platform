@@ -29,7 +29,6 @@ prompt injection a wrong sentence rather than a governance decision.
 """
 
 import math
-import re
 import struct
 from dataclasses import dataclass
 
@@ -40,9 +39,7 @@ from app.core import ai_prompting, embeddings
 from app.core.exceptions import NotFoundError, ServiceUnavailableError, ValidationError
 from app.models.ai_conversation import AiConversation, AiMessage, MessageRole
 from app.models.document_chunk import DocumentChunk, SourceType
-from app.models.risk_assessment import RiskAssessment
-from app.models.sheet import SheetRow
-from app.services import ai_assist_service, retrieval_service
+from app.services import ai_assist_service, citation_service, retrieval_service
 
 # How many recent messages are replayed word for word. Older ones are folded
 # into the rolling summary, so a long conversation keeps its thread without
@@ -60,8 +57,11 @@ SUMMARY_MAX_TOKENS = 350
 RECALL_LIMIT = 2
 RECALL_MIN_SIMILARITY = 0.55
 
-_CITATION = re.compile(r"\[S(\d+)\]")
-_UNTRUSTED_TAG = re.compile(r"</?source_[0-9a-f]+[^>]*>", re.IGNORECASE)
+# Shared with whole-record drafting, so both judge support by the same rules.
+_CITATION = citation_service.CITATION
+_UNTRUSTED_TAG = citation_service.UNTRUSTED_TAG
+_strip_fabricated = citation_service.strip_fabricated
+_citation_href = citation_service.href_for
 
 FABRICATION_NOTE = (
     "Part of this answer cited sources that were never provided, and those claims "
@@ -481,72 +481,6 @@ def _verify(answer: str, sources: list[_Source]) -> tuple[list[int], list[int]]:
     supported = [n for n in cited if n in given]
     fabricated = [n for n in cited if n not in given]
     return supported, fabricated
-
-
-# A sentence, with any citation markers that trail its full stop kept with it:
-# "Kept 24 months. [S1]" is one sentence citing S1, not two. A full stop only
-# ends a sentence when whitespace or the end of the line follows it, so
-# "A.5.23", "v2.0" and "1.5 FTE" are not cut apart -- control references are
-# the commonest thing in these answers and the worst thing to mangle. An
-# abbreviation like "e.g." still reads as a boundary; that costs a stray
-# fragment at worst, never a claim kept that should have gone.
-_SENTENCE = re.compile(r"[^\n]*?(?:[.!?]+(?:\s*\[S\d+\])*(?=\s|$)|$)")
-
-
-def _strip_fabricated(answer: str, fabricated: list[int]) -> str:
-    """Remove fabricated citations, and any claim that rested only on one.
-
-    Deleting just the marker would leave the sentence standing, uncited, and
-    still reading as a fact -- which is exactly the hallucination the check
-    exists to catch. A sentence citing a real source as well as an invented
-    one keeps its real support and loses only the invented marker.
-    """
-    bad = set(fabricated)
-
-    def without_bad_markers(text: str) -> str:
-        text = _CITATION.sub(lambda m: "" if int(m.group(1)) in bad else m.group(0), text)
-        # Close the gap a removed marker leaves: "the board [S9]." -> "the board."
-        return re.sub(r"[ \t]+([.,;:!?])", r"\1", re.sub(r"[ \t]{2,}", " ", text))
-
-    kept_lines = []
-    for line in answer.split("\n"):
-        kept = []
-        for sentence in _SENTENCE.findall(line):
-            if not sentence.strip():
-                continue
-            cited = {int(n) for n in _CITATION.findall(sentence)}
-            if cited and cited <= bad:
-                continue
-            kept.append(without_bad_markers(sentence))
-        text = "".join(kept).strip()
-        # A bullet whose only content was the removed claim goes with it.
-        if re.fullmatch(r"([-*•]|\d+\.)?", text):
-            text = ""
-        kept_lines.append(text)
-    return re.sub(r"\n{3,}", "\n\n", "\n".join(kept_lines)).strip()
-
-
-def _citation_href(db: Session, entity_type: str, entity_id: int) -> str | None:
-    """Where in the application the cited record can be opened."""
-    if entity_type == SourceType.POLICY:
-        return f"/policies/{entity_id}"
-    if entity_type == SourceType.PROCEDURE:
-        return f"/procedures/{entity_id}"
-    if entity_type == SourceType.AI_SYSTEM:
-        return f"/ai-systems/{entity_id}"
-    if entity_type == SourceType.IMPACT_ASSESSMENT:
-        return f"/impact-assessments/{entity_id}"
-    if entity_type == SourceType.DATA_INVENTORY:
-        return "/data-inventory"
-    if entity_type == SourceType.RISK_ITEM:
-        row = db.get(SheetRow, entity_id)
-        assessment = (
-            db.scalar(select(RiskAssessment).where(RiskAssessment.sheet_id == row.sheet_id))
-            if row is not None
-            else None
-        )
-        return f"/risk-assessments/{assessment.id}" if assessment else "/risk-assessments"
-    return None
 
 
 def _serialise(db: Session, source: _Source) -> dict:

@@ -20,7 +20,7 @@ export function impactAssessmentKey(impactAssessmentId: number) {
 /** An impact assessment can be worked on before any risk assessment exists
  * for its AI system, so every mutation refreshes the global list and only
  * additionally refreshes a risk assessment's list when viewed from one. */
-function useInvalidateImpactAssessments(
+export function useInvalidateImpactAssessments(
   riskAssessmentId: number | null,
   impactAssessmentId?: number,
 ) {
