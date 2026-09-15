@@ -10,7 +10,7 @@ from pathlib import Path
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
-from app.models.document_chunk import ChunkSource, DocumentChunk, IndexStatus
+from app.models.document_chunk import ChunkSource, DocumentChunk, IndexStatus, SourceType
 from app.models.evidence import Evidence
 from app.services import document_index_service, evidence_service
 from tests.conftest import fake_image
@@ -39,9 +39,16 @@ def add_document(
 
 
 def chunks_for(db: Session, evidence_id: int) -> list[DocumentChunk]:
+    return chunks_of(db, SourceType.EVIDENCE, evidence_id)
+
+
+def chunks_of(db: Session, source_type: str, source_id: int) -> list[DocumentChunk]:
     return (
         db.query(DocumentChunk)
-        .filter(DocumentChunk.evidence_id == evidence_id)
+        .filter(
+            DocumentChunk.source_type == source_type,
+            DocumentChunk.source_id == source_id,
+        )
         .order_by(DocumentChunk.ordinal)
         .all()
     )

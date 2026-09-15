@@ -37,7 +37,7 @@ def test_an_exact_control_id_is_found_by_keyword_search(db_session, tmp_path) ->
 
     result = retrieval_service.search(db_session, "A.5.23")
 
-    assert [c.filename for c in result.citations] == ["soa.txt"]
+    assert [c.source_title for c in result.citations] == ["soa.txt"]
 
 
 def test_a_passage_only_the_vector_search_found_is_still_returned(
@@ -167,7 +167,7 @@ def test_a_search_scoped_to_one_system_does_not_see_anothers_documents(
 
     result = retrieval_service.search(db_session, "retention", entity_type=ENTITY, entity_id=1)
 
-    assert [c.filename for c in result.citations] == ["mine.txt"]
+    assert [c.source_title for c in result.citations] == ["mine.txt"]
 
 
 def test_a_deleted_document_is_no_longer_retrievable(db_session, tmp_path) -> None:
@@ -204,9 +204,9 @@ def test_a_citation_says_where_it_came_from(db_session, tmp_path) -> None:
 
     citation = retrieval_service.search(db_session, "retention").citations[0]
 
-    assert citation.filename == "policy.txt"
+    assert citation.source_title == "policy.txt"
     assert "policy.txt" in citation.reference
-    assert citation.evidence_id and citation.chunk_id
+    assert citation.source_id and citation.chunk_id
 
 
 def test_a_citation_from_a_scan_says_it_was_read_by_ocr(db_session, tmp_path) -> None:

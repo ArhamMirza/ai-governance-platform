@@ -33,7 +33,7 @@ def test_an_uploaded_document_becomes_searchable(
 
     assert response.status_code == 201
     found = retrieval_service.search(db_session, "retention of personal data")
-    assert [c.filename for c in found.citations] == ["policy.txt"]
+    assert [c.source_title for c in found.citations] == ["policy.txt"]
 
 
 def test_a_photograph_of_an_approval_becomes_searchable(
@@ -119,4 +119,4 @@ def test_indexing_never_reaches_for_the_global_database(
 
     assert response.status_code == 201
     found = retrieval_service.search(db_session, "retention of personal data")
-    assert [c.filename for c in found.citations] == ["policy.txt"]
+    assert [c.source_title for c in found.citations] == ["policy.txt"]

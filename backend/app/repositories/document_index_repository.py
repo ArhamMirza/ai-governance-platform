@@ -97,10 +97,15 @@ def fts_query(query: str) -> str | None:
     return " OR ".join(terms)
 
 
-def clear_for_evidence(db: Session, evidence_id: int) -> None:
-    """Remove every trace of one document from all three tables."""
+def clear_for_source(db: Session, source_type: str, source_id: int) -> None:
+    """Remove every trace of one source from all three tables."""
     chunk_ids = list(
-        db.scalars(select(DocumentChunk.id).where(DocumentChunk.evidence_id == evidence_id))
+        db.scalars(
+            select(DocumentChunk.id).where(
+                DocumentChunk.source_type == source_type,
+                DocumentChunk.source_id == source_id,
+            )
+        )
     )
     if not chunk_ids:
         return
@@ -108,7 +113,11 @@ def clear_for_evidence(db: Session, evidence_id: int) -> None:
     db.execute(text(f"DELETE FROM document_chunks_fts WHERE rowid IN ({placeholders})"))
     if _ensure_vector_table(db):
         db.execute(text(f"DELETE FROM chunk_vectors WHERE chunk_id IN ({placeholders})"))
-    db.execute(delete(DocumentChunk).where(DocumentChunk.evidence_id == evidence_id))
+    db.execute(
+        delete(DocumentChunk).where(
+            DocumentChunk.source_type == source_type, DocumentChunk.source_id == source_id
+        )
+    )
 
 
 def add_chunks(
