@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { NavLink } from "react-router-dom";
 
+import { AssistantPanel } from "../features/assistant/components/AssistantPanel";
 import { useCurrentUser, useLogout } from "../features/auth/hooks";
 import { hasPermission } from "../features/auth/permissions";
 
@@ -207,6 +208,7 @@ export function Layout({ children }: { children: ReactNode }) {
         )}
       </aside>
       <main className="main-content">{children}</main>
+      <AssistantPanel />
     </div>
   );
 }

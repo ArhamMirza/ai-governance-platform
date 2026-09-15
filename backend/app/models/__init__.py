@@ -1,4 +1,5 @@
 from app.models.ai_assist import AiAssistSettings, AiUsage
+from app.models.ai_conversation import AiConversation, AiMessage, MessageRole
 from app.models.ai_system_lifecycle import AISystemLifecycle
 from app.models.audit_log import AuditLogEntry
 from app.models.data_inventory_record import DataInventoryRecord
@@ -25,6 +26,8 @@ from app.models.user import User
 __all__ = [
     "AISystemLifecycle",
     "AiAssistSettings",
+    "AiConversation",
+    "AiMessage",
     "AiUsage",
     "AuditLogEntry",
     "ChunkSource",
@@ -42,6 +45,7 @@ __all__ = [
     "ImpactFactorAssessment",
     "IndexQueueEntry",
     "IndexStatus",
+    "MessageRole",
     "Policy",
     "Procedure",
     "RiskAssessment",
