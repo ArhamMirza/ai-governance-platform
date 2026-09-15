@@ -20,7 +20,7 @@ all three so they cannot drift apart.
 from datetime import UTC, datetime
 from enum import StrEnum
 
-from sqlalchemy import JSON, DateTime, Integer, String, Text
+from sqlalchemy import JSON, DateTime, Index, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.database import Base
@@ -71,13 +71,19 @@ class SourceType(StrEnum):
 
 class DocumentChunk(Base):
     __tablename__ = "document_chunks"
+    # Composite, because every query asks for both halves together: "this
+    # source" to replace it, "this entity" to scope a search to it.
+    __table_args__ = (
+        Index("ix_document_chunks_source", "source_type", "source_id"),
+        Index("ix_document_chunks_entity", "entity_type", "entity_id"),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     # What this passage is. No foreign key: a chunk can come from any of
     # seven tables, and one nullable key per table would be worse than a
     # pair of columns that says plainly which one it means.
-    source_type: Mapped[str] = mapped_column(String(30), index=True)
-    source_id: Mapped[int] = mapped_column(Integer, index=True)
+    source_type: Mapped[str] = mapped_column(String(30))
+    source_id: Mapped[int] = mapped_column(Integer)
     # Denormalised so a citation can name its source without joining seven
     # tables at search time. Rewritten whenever the source is reindexed,
     # which is every time the source changes.
@@ -85,8 +91,8 @@ class DocumentChunk(Base):
     # What this passage is about -- for evidence, the record it was uploaded
     # against; for a record, itself. This is what scoping a search to one AI
     # system searches on.
-    entity_type: Mapped[str] = mapped_column(String(30), index=True)
-    entity_id: Mapped[int] = mapped_column(Integer, index=True)
+    entity_type: Mapped[str] = mapped_column(String(30))
+    entity_id: Mapped[int] = mapped_column(Integer)
     # Position within the document, so neighbouring passages can be shown
     # around a hit and citations read in a sensible order.
     ordinal: Mapped[int] = mapped_column(Integer)

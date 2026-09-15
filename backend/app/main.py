@@ -16,6 +16,7 @@ from app.routers import (
     ai_assist,
     ai_system_inventory,
     ai_system_lifecycle,
+    assistant,
     audit_log,
     auth,
     dashboard,
@@ -108,3 +109,4 @@ app.include_router(framework_soa.router, prefix="/api/v1", dependencies=_protect
 app.include_router(users.router, prefix="/api/v1", dependencies=_protected)
 app.include_router(governance_roles.router, prefix="/api/v1", dependencies=_protected)
 app.include_router(ai_assist.router, prefix="/api/v1", dependencies=_protected)
+app.include_router(assistant.router, prefix="/api/v1", dependencies=_protected)

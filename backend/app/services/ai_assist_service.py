@@ -189,17 +189,36 @@ def status(db: Session) -> AiAssistStatus:
 # ---------- talking to the model ----------
 
 
-def _model_string(row: AiAssistSettings) -> str:
+def _model_string(row: AiAssistSettings, model: str | None = None) -> str:
     """The provider-qualified name LiteLLM routes on.
 
     The one place provider-specific naming is known -- everything upstream
     deals in "the configured model".
     """
+    name = model or row.model
     if row.provider == AiProvider.LOCAL:
         # Served through LiteLLM's OpenAI-compatible path against the org's
         # own base_url, which covers Ollama, vLLM and LM Studio alike.
-        return f"openai/{row.model}"
-    return f"{row.provider}/{row.model}"
+        return f"openai/{name}"
+    return f"{row.provider}/{name}"
+
+
+def _system_message(row: AiAssistSettings, system: str, cache: bool) -> dict:
+    """The system prompt, marked cacheable where the provider needs telling.
+
+    The system prompt is the one part of every request that is identical
+    from call to call, which makes it the part worth caching. OpenAI and
+    Gemini cache a repeated prefix on their own; Anthropic only caches what
+    is explicitly marked, so it is marked here and nowhere else.
+    """
+    if cache and row.provider == AiProvider.ANTHROPIC:
+        return {
+            "role": "system",
+            "content": [
+                {"type": "text", "text": system, "cache_control": {"type": "ephemeral"}}
+            ],
+        }
+    return {"role": "system", "content": system}
 
 
 def _complete(
@@ -210,8 +229,17 @@ def _complete(
     feature: str,
     actor_id: int | None,
     max_tokens: int = MAX_OUTPUT_TOKENS,
+    fast: bool = False,
+    cache_system: bool = False,
+    temperature: float = 0.3,
 ) -> str:
-    """One model call, budgeted and accounted for."""
+    """One model call, budgeted and accounted for.
+
+    ``fast`` routes to the admin's cheaper model where one is configured --
+    for the housekeeping calls (summarising history, rewriting a follow-up
+    into a standalone search) that do not need the main model's judgement
+    and would otherwise spend it.
+    """
     row = _row(db)
     reason = _unavailable_reason(row)
     if reason is not None:
@@ -230,12 +258,12 @@ def _complete(
     from litellm import completion
 
     kwargs: dict = {
-        "model": _model_string(row),
-        "messages": [{"role": "system", "content": system}, *messages],
+        "model": _model_string(row, row.fast_model if fast else None),
+        "messages": [_system_message(row, system, cache_system), *messages],
         "max_tokens": max_tokens,
-        # Low, not zero: this drafts governance text, where a predictable,
+        # Low, not zero by default: governance text, where a predictable,
         # conservative register beats variety.
-        "temperature": 0.3,
+        "temperature": temperature,
     }
     api_key = decrypt(row.api_key_encrypted) if row.api_key_encrypted else None
     if api_key:
@@ -275,7 +303,7 @@ def _complete(
             user_id=actor_id,
             feature=feature,
             provider=row.provider,
-            model=row.model,
+            model=(row.fast_model if fast and row.fast_model else row.model),
             prompt_tokens=int(getattr(usage, "prompt_tokens", 0) or 0),
             completion_tokens=int(getattr(usage, "completion_tokens", 0) or 0),
             created_at=datetime.now(UTC),

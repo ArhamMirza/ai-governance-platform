@@ -20,6 +20,17 @@ if config.config_file_name is not None:
 
 target_metadata = Base.metadata
 
+# Document search's FTS5 and sqlite-vec tables are virtual tables created by
+# raw DDL, so they aren't in the models -- and SQLite backs each one with
+# several shadow tables. Left visible to autogenerate, every future revision
+# would propose dropping the search index.
+_SEARCH_TABLE_PREFIXES = ("document_chunks_fts", "chunk_vectors")
+
+
+def include_object(obj, name, type_, reflected, compare_to):  # noqa: ANN001
+    table = name if type_ == "table" else getattr(getattr(obj, "table", None), "name", "")
+    return not str(table or "").startswith(_SEARCH_TABLE_PREFIXES)
+
 # other values from the config, defined by the needs of env.py,
 # can be acquired:
 # my_important_option = config.get_main_option("my_important_option")
@@ -41,7 +52,7 @@ def run_migrations_offline() -> None:
     url = config.get_main_option("sqlalchemy.url")
     context.configure(
         url=url,
-        target_metadata=target_metadata,
+        target_metadata=target_metadata, include_object=include_object,
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
     )
@@ -68,7 +79,7 @@ def run_migrations_online() -> None:
 
     with connectable.connect() as connection:
         context.configure(
-            connection=connection, target_metadata=target_metadata
+            connection=connection, target_metadata=target_metadata, include_object=include_object
         )
 
         with context.begin_transaction():

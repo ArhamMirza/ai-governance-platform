@@ -1,6 +1,16 @@
+import os
 from functools import lru_cache
 
 from pydantic import model_validator
+
+# LiteLLM downloads its model price list from raw.githubusercontent.com the
+# moment it is imported. No record data goes with it, but it is still an
+# outbound connection -- on a deployment running a self-hosted model, the
+# settings page tells people nothing leaves the building, and on an
+# air-gapped network the import stalls until the fetch times out. The copy
+# bundled with the package is used instead. Set here, at the earliest import
+# in the app, because it only takes effect if it is set before LiteLLM loads.
+os.environ.setdefault("LITELLM_LOCAL_MODEL_COST_MAP", "True")
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # The value shipped in .env.example. It is public, so anything encrypted

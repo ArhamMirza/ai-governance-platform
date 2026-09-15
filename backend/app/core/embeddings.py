@@ -15,6 +15,7 @@ interchangeable: BGE models are trained with an instruction prefix on the
 query side, and using the wrong one costs real retrieval accuracy.
 """
 
+import threading
 from collections.abc import Sequence
 
 MODEL_NAME = "BAAI/bge-small-en-v1.5"
@@ -25,6 +26,11 @@ _QUERY_INSTRUCTION = "Represent this sentence for searching relevant passages: "
 
 _model = None
 _unavailable_reason: str | None = None
+# The model is loaded once per process, and the first requests after a start
+# can arrive together -- a warm-up and a question, or two people's questions.
+# Without this, each would build its own ONNX session and all but one would
+# be thrown away.
+_load_lock = threading.Lock()
 
 
 def _load():
@@ -32,16 +38,34 @@ def _load():
     global _model, _unavailable_reason
     if _model is not None or _unavailable_reason is not None:
         return _model
-    try:
-        from fastembed import TextEmbedding
+    with _load_lock:
+        if _model is not None or _unavailable_reason is not None:
+            return _model
+        try:
+            from fastembed import TextEmbedding
 
-        _model = TextEmbedding(model_name=MODEL_NAME)
-    except Exception as exc:  # noqa: BLE001 -- a missing wheel, no disk, no network on first run
-        # Recorded rather than raised: without vectors, search falls back to
-        # keywords, which is worse but not broken.
-        _unavailable_reason = f"{type(exc).__name__}: {exc}"
-        return None
+            _model = TextEmbedding(model_name=MODEL_NAME)
+        except Exception as exc:  # noqa: BLE001 -- a missing wheel, no disk, no network on first run
+            # Recorded rather than raised: without vectors, search falls back
+            # to keywords, which is worse but not broken.
+            _unavailable_reason = f"{type(exc).__name__}: {exc}"
+            return None
     return _model
+
+
+def warm() -> None:
+    """Load the model and the model client now, so no question pays for it.
+
+    Both are loaded on first use, and on a fresh process that first use costs
+    several seconds -- which, landing on someone's first question, reads as
+    the assistant being broken. Safe to call repeatedly; everything after the
+    first call is a no-op.
+    """
+    _load()
+    try:
+        import litellm  # noqa: F401  (imported to pay its import cost now)
+    except ImportError:
+        pass
 
 
 def available() -> bool:
