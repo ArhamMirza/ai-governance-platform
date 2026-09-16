@@ -93,6 +93,22 @@ describe("AssistantMessageView", () => {
     expect(screen.getByText(/Read from a scan/)).toBeInTheDocument();
   });
 
+  it("marks a citation that came from a structured lookup rather than retrieved text", () => {
+    renderMessage(
+      answer({
+        citations: [
+          citation({
+            source_type: "Tool",
+            title: "Live lookup: AI system inventory",
+            href: "/ai-systems",
+          }),
+        ],
+      }),
+    );
+
+    expect(screen.getByText(/exact, not retrieved text/)).toBeInTheDocument();
+  });
+
   it("links an evidence citation to the file itself", () => {
     renderMessage(
       answer({

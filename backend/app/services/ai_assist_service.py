@@ -203,6 +203,37 @@ def _model_string(row: AiAssistSettings, model: str | None = None) -> str:
     return f"{row.provider}/{name}"
 
 
+def _tool_call_to_dict(call: object) -> dict:
+    if isinstance(call, dict):
+        return call
+    function = getattr(call, "function", None)
+    return {
+        "id": getattr(call, "id", ""),
+        "type": getattr(call, "type", "function"),
+        "function": {
+            "name": getattr(function, "name", ""),
+            "arguments": getattr(function, "arguments", "{}"),
+        },
+    }
+
+
+def _message_to_dict(message: object) -> dict:
+    """A model's reply as a plain dict, whatever object shape it arrived in.
+
+    litellm's own Message class has ``model_dump()``; test doubles for it
+    generally do not, and forcing every test to build a real one just to
+    satisfy this call would be a worse coupling than tolerating both here.
+    """
+    if hasattr(message, "model_dump"):
+        return message.model_dump()
+    tool_calls = getattr(message, "tool_calls", None)
+    return {
+        "role": getattr(message, "role", "assistant"),
+        "content": getattr(message, "content", None),
+        "tool_calls": [_tool_call_to_dict(c) for c in tool_calls] if tool_calls else None,
+    }
+
+
 def _system_message(row: AiAssistSettings, system: str, cache: bool) -> dict:
     """The system prompt, marked cacheable where the provider needs telling.
 
@@ -233,7 +264,42 @@ def _complete(
     cache_system: bool = False,
     temperature: float = 0.3,
 ) -> str:
-    """One model call, budgeted and accounted for.
+    """One model call, budgeted and accounted for, returning its text.
+
+    A thin wrapper over ``_complete_message`` for the common case of callers
+    that only want the answer, not whether the model asked to use a tool.
+    """
+    message = _complete_message(
+        db,
+        system=system,
+        messages=messages,
+        feature=feature,
+        actor_id=actor_id,
+        max_tokens=max_tokens,
+        fast=fast,
+        cache_system=cache_system,
+        temperature=temperature,
+    )
+    return (message.get("content") or "").strip()
+
+
+def _complete_message(
+    db: Session,
+    *,
+    system: str,
+    messages: list[dict],
+    feature: str,
+    actor_id: int | None,
+    max_tokens: int = MAX_OUTPUT_TOKENS,
+    fast: bool = False,
+    cache_system: bool = False,
+    temperature: float = 0.3,
+    tools: list[dict] | None = None,
+) -> dict:
+    """One model call, budgeted and accounted for, returning the raw message.
+
+    Used instead of ``_complete`` by a caller that needs to see ``tool_calls``
+    -- the assistant's structured-lookup loop -- rather than only the text.
 
     ``fast`` routes to the admin's cheaper model where one is configured --
     for the housekeeping calls (summarising history, rewriting a follow-up
@@ -265,6 +331,9 @@ def _complete(
         # conservative register beats variety.
         "temperature": temperature,
     }
+    if tools:
+        kwargs["tools"] = tools
+        kwargs["tool_choice"] = "auto"
     api_key = decrypt(row.api_key_encrypted) if row.api_key_encrypted else None
     if api_key:
         kwargs["api_key"] = api_key
@@ -309,7 +378,7 @@ def _complete(
             created_at=datetime.now(UTC),
         ),
     )
-    return (response.choices[0].message.content or "").strip()
+    return _message_to_dict(response.choices[0].message)
 
 
 # ---------- drafting ----------

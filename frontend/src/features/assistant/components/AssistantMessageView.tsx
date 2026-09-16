@@ -147,6 +147,9 @@ export function AssistantMessageView({ message }: { message: AssistantMessage })
               <span className="assistant-source-number">{citation.n}</span>
               <div className="assistant-source-detail">
                 <SourceLink citation={citation} />
+                {citation.source_type === "Tool" && (
+                  <span className="assistant-source-badge">Live lookup — exact, not retrieved text</span>
+                )}
                 {citation.read_by_ocr && (
                   <span className="assistant-source-badge">Read from a scan — may be imperfect</span>
                 )}

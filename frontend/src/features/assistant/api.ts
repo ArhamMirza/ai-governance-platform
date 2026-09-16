@@ -19,16 +19,22 @@ export interface Conversation {
 }
 
 /** A source an answer cited, checked on the server against what was
- * actually retrieved for that turn before it was allowed through. */
+ * actually retrieved for that turn before it was allowed through.
+ *
+ * "Tool" is not a governance record: it marks a citation as the result of a
+ * structured lookup (an exact count or list from the database) rather than
+ * a passage retrieval found. It is rendered the same as any other citation
+ * -- numbered, linked, checked -- so a reader never has to tell them apart
+ * to trust one. */
 export interface Citation {
   n: number;
   chunk_id: number;
-  source_type: RecordType;
+  source_type: RecordType | "Tool";
   source_id: number;
   title: string;
   section: string | null;
   read_by_ocr: boolean;
-  entity_type: RecordType;
+  entity_type: RecordType | "Tool";
   entity_id: number;
   href: string | null;
   download_evidence_id: number | null;
