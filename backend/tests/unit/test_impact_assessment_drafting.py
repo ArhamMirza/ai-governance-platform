@@ -233,6 +233,32 @@ def test_organisation_context_reaches_the_model(configured, model) -> None:
     assert "Signs off every impact assessment before deployment." in prompt
 
 
+def test_iso_42001_context_of_the_organization_reaches_the_model_unconditionally(
+    configured, model
+) -> None:
+    """Always pinned in (see pinned_context.py), not merely retrieved --
+    present for every draft whether or not it happens to rank."""
+    from app.services import organization_context_service
+
+    db = configured
+    organization_context_service.get_or_create(db)
+    organization_context_service.update(
+        db,
+        {
+            "organization_description": "A resume-screening vendor.",
+            "ai_usage_overview": "Ranks applicants for human review.",
+        },
+        actor_id=None,
+    )
+    _row, assessment_id = make_system(db)
+
+    drafting.generate_draft(db, assessment_id, actor_id=None)
+
+    prompt = model.prompt("descriptive")
+    assert "A resume-screening vendor." in prompt
+    assert "Ranks applicants for human review." in prompt
+
+
 def test_another_ai_systems_records_never_reach_the_model(configured, model, tmp_path) -> None:
     """The easiest way to produce a plausible draft, and the worst: another
     system's harms stated as this one's, cited and wrong."""

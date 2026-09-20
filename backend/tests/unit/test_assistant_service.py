@@ -260,6 +260,33 @@ def test_sources_reach_the_model_inside_the_turns_untrusted_tag(
     assert prompt.count(f"<source_{nonce}") == prompt.count(f"</source_{nonce}>")
 
 
+def test_organization_context_grounds_every_answer_unconditionally(
+    configured, test_user, model
+) -> None:
+    """Pinned in (see pinned_context.py), not merely retrieved -- present
+    whether or not this question would have ranked it."""
+    from app.services import organization_context_service
+
+    db = configured
+    organization_context_service.get_or_create(db)
+    organization_context_service.update(
+        db,
+        {
+            "organization_description": "A resume-screening vendor.",
+            "ai_usage_overview": "Ranks applicants for human review.",
+        },
+        actor_id=None,
+    )
+    model.answers = ["We are a resume-screening vendor."]
+
+    conversation = assistant_service.start_conversation(db, test_user.id)
+    assistant_service.ask(db, test_user.id, conversation.id, "What does this organisation do?")
+
+    prompt = model.last_prompt()
+    assert "A resume-screening vendor." in prompt
+    assert "Ranks applicants for human review." in prompt
+
+
 def test_a_verified_citation_comes_back_with_where_to_find_it(
     configured, test_user, model
 ) -> None:
@@ -373,13 +400,15 @@ def test_a_fabrication_that_survives_the_retry_is_stripped_and_recorded(
 def test_every_citation_is_fabricated_when_there_were_no_sources_at_all(
     configured, test_user, model
 ) -> None:
+    """S9 doesn't exist even counting the always-pinned governance-roles
+    source at S1 (see pinned_context.py) -- there aren't nine sources."""
     db = configured
-    model.answers = ["Our policy says 24 months [S1].", "Our policy says 24 months [S1]."]
+    model.answers = ["Our policy says 24 months [S9].", "Our policy says 24 months [S9]."]
 
     conversation = assistant_service.start_conversation(db, test_user.id)
     message = assistant_service.ask(db, test_user.id, conversation.id, "peregrine falcon")
 
-    assert message.fabricated_citations == [1]
+    assert message.fabricated_citations == [9]
     assert message.citations == []
 
 
@@ -831,8 +860,10 @@ def test_a_claim_whose_only_citation_was_invented_is_removed_not_just_uncited(
 def test_an_answer_resting_entirely_on_invented_sources_is_replaced(
     configured, test_user, model
 ) -> None:
+    """S9 doesn't exist even counting the always-pinned governance-roles
+    source at S1 (see pinned_context.py) -- there aren't nine sources."""
     db = configured
-    model.answers = ["Our policy says 24 months [S1].", "Our policy says 24 months [S1]."]
+    model.answers = ["Our policy says 24 months [S9].", "Our policy says 24 months [S9]."]
 
     conversation = assistant_service.start_conversation(db, test_user.id)
     message = assistant_service.ask(db, test_user.id, conversation.id, "peregrine falcon")
@@ -1006,11 +1037,13 @@ def test_the_system_prompt_tells_the_model_to_prefer_a_tool_for_counts(
 
 
 def test_multiple_tool_rounds_are_chained_into_one_answer(configured, test_user, model) -> None:
+    """S1 is the always-pinned governance-roles source (see pinned_context.py);
+    the two tool results are numbered after it."""
     db = configured
     model.answers = [
         ToolCall("governance_coverage_summary", {}),
         ToolCall("list_ai_systems", {"missing_risk_assessment": True}),
-        "Two lookups done [S1] [S2].",
+        "Two lookups done [S2] [S3].",
     ]
 
     conversation = assistant_service.start_conversation(db, test_user.id)
