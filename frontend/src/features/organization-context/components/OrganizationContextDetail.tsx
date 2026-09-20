@@ -14,6 +14,7 @@ import {
   useSubmitOrganizationContextForReview,
   useUpdateOrganizationContext,
 } from "../hooks";
+import { OrganizationContextDraftPanel } from "./OrganizationContextDraftPanel";
 
 const ISSUE_CATEGORY_OPTIONS = [
   { value: "Internal", label: "Internal" },
@@ -117,6 +118,8 @@ export function OrganizationContextDetail() {
             <p className="approval-note">{reason}</p>
           ))}
       </div>
+
+      <OrganizationContextDraftPanel context={context} />
 
       <h3>Organization Description and Use of AI</h3>
       <NarrativeField
