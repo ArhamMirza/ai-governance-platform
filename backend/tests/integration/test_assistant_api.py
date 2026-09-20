@@ -121,8 +121,12 @@ def test_deleting_a_conversation(client: TestClient) -> None:
 
 
 def test_warming_starts_in_the_background_and_returns_at_once(client: TestClient) -> None:
-    with patch("app.core.embeddings.warm") as warm:
+    with (
+        patch("app.core.embeddings.warm") as warm,
+        patch("app.core.reranking.warm") as warm_reranker,
+    ):
         response = client.post("/api/v1/assistant/warm")
 
     assert response.status_code == 202
     warm.assert_called_once()
+    warm_reranker.assert_called_once()

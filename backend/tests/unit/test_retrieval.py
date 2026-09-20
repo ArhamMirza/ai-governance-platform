@@ -11,6 +11,7 @@ directly rather than pretending the stub understood a paraphrase.
 
 from sqlalchemy.orm import Session
 
+from app.core import reranking
 from app.repositories import document_index_repository
 from app.services import document_index_service, evidence_service, retrieval_service
 from tests.unit.test_document_indexing import ENTITY, add_document, chunks_for
@@ -93,6 +94,65 @@ def test_search_reports_which_retrievers_actually_ran(db_session, tmp_path, monk
     monkeypatch.setattr(document_index_repository, "vector_ranked", lambda *_a, **_k: [])
 
     assert retrieval_service.search(db_session, "retention").mode == "keyword"
+
+
+# ---------- reranking ----------
+
+
+def test_a_reranker_can_promote_a_passage_fusion_ranked_lower(
+    db_session, tmp_path, monkeypatch
+) -> None:
+    """The one case fusion alone can't fix: two passages both mention the
+    query's words, but only one actually answers it. A cross-encoder is the
+    signal that tells them apart -- fusion order alone can't."""
+    vague = index(db_session, tmp_path, "vague.txt", "Retention schedules exist.")
+    exact = index(db_session, tmp_path, "exact.txt", "Retention is 24 months for applicant data.")
+    vague_id = chunk_ids(db_session, vague.id)[0]
+    exact_id = chunk_ids(db_session, exact.id)[0]
+
+    # Fusion (by itself) ranks the vaguer passage first.
+    monkeypatch.setattr(
+        document_index_repository, "keyword_ranked", lambda *_a, **_k: [vague_id, exact_id]
+    )
+    monkeypatch.setattr(document_index_repository, "vector_ranked", lambda *_a, **_k: [])
+    # The cross-encoder disagrees, and scores the one that actually answers
+    # the question higher.
+    monkeypatch.setattr(
+        reranking,
+        "rerank",
+        lambda query, passages: [0.1 if "schedules exist" in p else 9.0 for p in passages],
+    )
+
+    result = retrieval_service.search(db_session, "how long is data retained")
+
+    assert [c.chunk_id for c in result.citations][0] == exact_id
+
+
+def test_reranking_only_touches_the_top_fused_window(db_session, tmp_path, monkeypatch) -> None:
+    """Scoring the whole corpus this way would be far too slow -- only the
+    fused, already-filtered top few dozen are ever handed to it."""
+    seen: list[str] = []
+    monkeypatch.setattr(
+        reranking,
+        "rerank",
+        lambda query, passages: seen.extend(passages) or [0.0] * len(passages),
+    )
+    for i in range(retrieval_service.RERANK_CANDIDATES + 5):
+        index(db_session, tmp_path, f"policy-{i}.txt", "Retention is 24 months.", entity_id=i)
+
+    retrieval_service.search(db_session, "retention")
+
+    assert len(seen) == retrieval_service.RERANK_CANDIDATES
+
+
+def test_search_still_works_when_the_reranker_is_unavailable(db_session, tmp_path) -> None:
+    """Degrades to fusion order, the same as an embedder that can't load --
+    it does not break search."""
+    index(db_session, tmp_path, "policy.txt", "Retention is 24 months.")
+
+    result = retrieval_service.search(db_session, "retention")
+
+    assert [c.source_title for c in result.citations] == ["policy.txt"]
 
 
 # ---------- refusing to answer ----------

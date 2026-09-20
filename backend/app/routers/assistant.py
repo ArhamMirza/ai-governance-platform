@@ -13,7 +13,7 @@ else's. There is no admin view of other people's chats.
 from fastapi import APIRouter, BackgroundTasks, Depends
 from sqlalchemy.orm import Session
 
-from app.core import embeddings
+from app.core import embeddings, reranking
 from app.core.database import get_db
 from app.dependencies import get_current_user
 from app.models.user import User
@@ -34,10 +34,11 @@ def warm(background: BackgroundTasks, _user: User = Depends(get_current_user)) -
     """Start loading the models in the background, before anyone asks.
 
     Called when the assistant first appears in a browser. A fresh server
-    otherwise spends its first several seconds loading the embedding model
-    and the model client -- on the first question someone asks.
+    otherwise spends its first several seconds loading the embedding model,
+    the reranker and the model client -- on the first question someone asks.
     """
     background.add_task(embeddings.warm)
+    background.add_task(reranking.warm)
     return {"status": "warming"}
 
 
