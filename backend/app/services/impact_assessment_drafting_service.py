@@ -39,7 +39,7 @@ from pydantic import BaseModel
 from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 
-from app.core import ai_prompting
+from app.core import ai_prompting, embeddings
 from app.core.concurrency import claim_transition
 from app.core.exceptions import (
     ConflictError,
@@ -248,15 +248,23 @@ def _gather(
     ]
     per_query: list[list[dict]] = []
     for query in queries:
+        # Embedded once per query text, not once per scope below. The vector
+        # depends only on what the query says, not on which scope it is then
+        # searched against, and embedding is the one genuinely expensive step
+        # in a search -- real model inference, unlike the SQL around it.
+        # Fifteen sections searched across three scopes each had been paying
+        # for that inference forty-five times over for fifteen results.
+        query_vector = embeddings.embed_query(query)
         found = []
         for scope in (
             {"entity_type": SourceType.AI_SYSTEM, "entity_id": assessment.ai_system_row_id},
             {"entity_type": SourceType.IMPACT_ASSESSMENT, "entity_id": assessment.id},
             {},
         ):
-            for citation in retrieval_service.search(
-                db, query, limit=RESULTS_PER_SECTION, **scope
-            ).citations:
+            result = retrieval_service.search_with_vector(
+                db, query, query_vector, limit=RESULTS_PER_SECTION, **scope
+            )
+            for citation in result.citations:
                 if _belongs_here(citation, assessment.ai_system_row_id, assessment.id):
                     found.append(_from_chunk(db, citation))
         per_query.append(found)

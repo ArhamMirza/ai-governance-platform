@@ -15,6 +15,7 @@ from unittest.mock import patch
 import pytest
 from sqlalchemy.orm import Session
 
+from app.core import embeddings
 from app.core.exceptions import (
     ConflictError,
     NotFoundError,
@@ -184,6 +185,34 @@ def test_the_ai_system_record_is_what_the_model_drafts_from(configured, model) -
     assert "Ranks job applicants by predicted fit." in prompt
     assert f'<source_{nonce} label="S1"' in prompt
     assert prompt.count(f"<source_{nonce}") == prompt.count(f"</source_{nonce}>")
+
+
+def test_each_section_query_is_embedded_once_not_once_per_scope(
+    configured, model, monkeypatch
+) -> None:
+    """Gathering context searches every section across three scopes --
+    the AI system, the assessment, and the organisation at large -- with the
+    same query text each time. Embedding is the expensive step (real model
+    inference), and it does not depend on which scope the vector is then
+    searched against, so it must be paid once per section, not three times.
+    Fifteen sections searched across three scopes each had been costing
+    forty-five embeddings for a result that only ever needed fifteen."""
+    db = configured
+    _row, assessment_id = make_system(db)
+    calls: list[str] = []
+    real_embed_query = embeddings.embed_query
+
+    def counting(text: str):
+        calls.append(text)
+        return real_embed_query(text)
+
+    monkeypatch.setattr(embeddings, "embed_query", counting)
+
+    drafting.generate_draft(db, assessment_id, actor_id=None)
+
+    # 7 descriptive sections + 8 impact factors = 15 distinct queries.
+    assert len(calls) == 15
+    assert len(set(calls)) == 15
 
 
 def test_organisation_context_reaches_the_model(configured, model) -> None:

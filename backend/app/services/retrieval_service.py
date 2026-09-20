@@ -165,16 +165,63 @@ def search(
 
     gaps = coverage_gaps(db, entity_type, entity_id)
 
-    # A query with no word characters at all is punctuation, and there is
-    # nothing to ground an answer in. Worth its own guard rather than letting
-    # it through: an empty query embeds to a zero vector, which sits within
-    # the distance floor of every passage in the corpus and would return the
-    # whole record as "relevant".
     if not _HAS_WORD_CHARACTER.search(query):
         return SearchResult(citations=[], mode="keyword", coverage_gaps=gaps)
 
+    citations, mode = _ranked_citations(
+        db, query, embeddings.embed_query(query), entity_type=entity_type, entity_id=entity_id,
+        limit=limit,
+    )
+    return SearchResult(citations=citations, mode=mode, coverage_gaps=gaps)
+
+
+def search_with_vector(
+    db: Session,
+    query: str,
+    query_vector: list[float] | None,
+    *,
+    entity_type: str | None = None,
+    entity_id: int | None = None,
+    limit: int = DEFAULT_LIMIT,
+) -> SearchResult:
+    """Hybrid search using an already-computed query embedding.
+
+    For a caller that runs the *same* query text against several different
+    scopes back to back -- whole-assessment drafting does this once per
+    section, scoped first to the AI system, then the assessment, then the
+    organisation at large -- embedding is the expensive step (real ONNX
+    inference, unlike the cheap SQL either side of it), and the vector for a
+    given piece of text does not depend on which scope it is then searched
+    against. Calling ``search()`` three times for that recomputed it three
+    times for an identical result. This takes the vector once, from
+    ``embeddings.embed_query``, and reuses it.
+
+    Deliberately skips the index drain and the coverage-gap query that
+    ``search()`` does: both are real DB round trips a caller making several
+    of these calls in a row does not want paid three times over for the same
+    outcome. Call ``document_index_service.drain`` once yourself first, and
+    ``coverage_gaps`` once for whatever scope you actually need it in --
+    exactly what the drafting caller this was built for already did.
+    """
+    if not _HAS_WORD_CHARACTER.search(query):
+        return SearchResult(citations=[], mode="keyword")
+    citations, mode = _ranked_citations(
+        db, query, query_vector, entity_type=entity_type, entity_id=entity_id, limit=limit,
+    )
+    return SearchResult(citations=citations, mode=mode)
+
+
+def _ranked_citations(
+    db: Session,
+    query: str,
+    query_vector: list[float] | None,
+    *,
+    entity_type: str | None,
+    entity_id: int | None,
+    limit: int,
+) -> tuple[list[Citation], str]:
     keyword_ids = document_index_repository.keyword_ranked(db, query)
-    vector_hits = document_index_repository.vector_ranked(db, embeddings.embed_query(query))
+    vector_hits = document_index_repository.vector_ranked(db, query_vector)
     mode = "hybrid" if vector_hits else "keyword"
 
     # The floor, applied before fusion so an unrelated passage cannot be
@@ -184,7 +231,7 @@ def search(
     }
     admissible = set(keyword_ids) | near_enough
     if not admissible:
-        return SearchResult(citations=[], mode=mode, coverage_gaps=gaps)
+        return [], mode
 
     ranked = document_index_repository.fuse(
         [i for i in keyword_ids if i in admissible],
@@ -216,7 +263,7 @@ def search(
         if len(citations) >= limit:
             break
 
-    return SearchResult(citations=citations, mode=mode, coverage_gaps=gaps)
+    return citations, mode
 
 
 def verify_cited_ids(cited: list[int], retrieved: set[int]) -> tuple[list[int], list[int]]:
