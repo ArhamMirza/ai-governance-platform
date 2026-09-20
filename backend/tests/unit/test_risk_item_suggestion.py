@@ -160,6 +160,32 @@ def test_the_ai_system_record_is_what_the_model_suggests_from(configured, model)
     assert prompt.count(f"<source_{nonce}") == prompt.count(f"</source_{nonce}>")
 
 
+def test_iso_42001_context_of_the_organization_reaches_the_model_unconditionally(
+    configured, model
+) -> None:
+    """Always pinned in (see pinned_context.py), not merely retrieved --
+    present for every suggestion run whether or not it happens to rank."""
+    from app.services import organization_context_service
+
+    db = configured
+    organization_context_service.get_or_create(db)
+    organization_context_service.update(
+        db,
+        {
+            "organization_description": "A resume-screening vendor.",
+            "ai_usage_overview": "Ranks applicants for human review.",
+        },
+        actor_id=None,
+    )
+    assessment_id = make_risk_assessment(db)
+
+    suggesting.generate_suggestions(db, assessment_id, actor_id=None)
+
+    prompt = model.prompt()
+    assert "A resume-screening vendor." in prompt
+    assert "Ranks applicants for human review." in prompt
+
+
 def test_a_score_is_never_asked_of_the_model_nor_stored_on_a_proposal(configured, model) -> None:
     """inherent_risk_score is always likelihood x impact, computed server-side
     on every write -- the model proposes the inputs, never the arithmetic."""

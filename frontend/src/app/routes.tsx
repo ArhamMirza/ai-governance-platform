@@ -9,6 +9,7 @@ import { FrameworksPage } from "../pages/FrameworksPage";
 import { GovernanceRolesPage } from "../pages/GovernanceRolesPage";
 import { HandbookPage } from "../pages/HandbookPage";
 import { ImpactAssessmentDetailPage } from "../pages/ImpactAssessmentDetailPage";
+import { OrganizationContextPage } from "../pages/OrganizationContextPage";
 import { PoliciesPage } from "../pages/PoliciesPage";
 import { PolicyDetailPage } from "../pages/PolicyDetailPage";
 import { ProcedureDetailPage } from "../pages/ProcedureDetailPage";
@@ -24,6 +25,7 @@ export function AppRoutes() {
     <Layout>
       <Routes>
         <Route path="/" element={<DashboardPage />} />
+        <Route path="/organization-context" element={<OrganizationContextPage />} />
         <Route path="/policies" element={<PoliciesPage />} />
         <Route path="/policies/:policyId" element={<PolicyDetailPage />} />
         <Route path="/procedures" element={<ProceduresPage />} />

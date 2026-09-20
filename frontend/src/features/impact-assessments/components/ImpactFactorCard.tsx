@@ -4,7 +4,7 @@ import { readError } from "../../../shared/api/readError";
 import { DraftWithAiButton } from "../../ai-assist/components/DraftWithAiButton";
 import { useUpdateImpactFactor } from "../hooks";
 import type { ImpactFactorAssessment } from "../types";
-import { useServerSyncedText } from "../useServerSyncedText";
+import { useServerSyncedText } from "../../../shared/hooks/useServerSyncedText";
 
 interface ImpactFactorCardProps {
   riskAssessmentId: number | null;

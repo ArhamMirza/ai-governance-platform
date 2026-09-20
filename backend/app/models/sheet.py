@@ -5,12 +5,17 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.database import Base
 
-# Sheets the app treats as the one and only sheet of their kind -- both are
+# Sheets the app treats as the one and only sheet of their kind -- all are
 # reached through a get_or_create that would otherwise let two simultaneous
 # first requests each provision their own. Deliberately not every entity
 # type: a risk assessment gets a fresh "Risk Items" sheet per assessment, so
 # a blanket unique constraint on entity_type would break them outright.
-SINGLETON_ENTITY_TYPES = ("AISystemInventory", "DataInventory")
+SINGLETON_ENTITY_TYPES = (
+    "AISystemInventory",
+    "DataInventory",
+    "OrganizationalIssues",
+    "InterestedParties",
+)
 
 _SINGLETON_PREDICATE = text(
     "entity_type IN ('{}')".format("', '".join(SINGLETON_ENTITY_TYPES))

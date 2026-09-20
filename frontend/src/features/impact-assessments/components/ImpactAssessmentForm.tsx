@@ -19,7 +19,7 @@ import {
   useUpdateImpactAssessment,
 } from "../hooks";
 import { IMPACT_FACTORS } from "../impactFactors";
-import { useServerSyncedText } from "../useServerSyncedText";
+import { useServerSyncedText } from "../../../shared/hooks/useServerSyncedText";
 import type { ImpactAssessment, ImpactAssessmentUpdateInput, ImpactFactorAssessment } from "../types";
 import { AssessmentDraftPanel } from "./AssessmentDraftPanel";
 import { ImpactFactorCard } from "./ImpactFactorCard";

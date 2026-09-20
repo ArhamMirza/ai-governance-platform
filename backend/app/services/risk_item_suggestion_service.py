@@ -48,7 +48,6 @@ from app.core.exceptions import (
 from app.core.impact_factors import IMPACT_FACTORS
 from app.models.ai_draft import AiDraft, DraftStatus
 from app.models.document_chunk import DocumentChunk, SourceType
-from app.models.governance_role import GovernanceRole
 from app.models.risk_assessment import RiskAssessment
 from app.repositories import sheet_repository
 from app.services import (
@@ -57,6 +56,7 @@ from app.services import (
     citation_service,
     document_index_service,
     impact_assessment_service,
+    pinned_context,
     retrieval_service,
     risk_assessment_service,
 )
@@ -187,28 +187,6 @@ def _belongs_here(
     }
 
 
-def _governance_roles(db: Session) -> dict | None:
-    roles = list(db.scalars(select(GovernanceRole).order_by(GovernanceRole.id)))
-    lines = [
-        f"{role.name}: {role.responsibilities}"
-        for role in roles
-        if (role.responsibilities or "").strip()
-    ]
-    if not lines:
-        return None
-    return {
-        "key": ("roles", 0),
-        "title": "Governance roles and responsibilities",
-        "section": None,
-        "kind": "GovernanceRoles",
-        "text": "\n".join(lines),
-        "href": "/governance",
-        "download_evidence_id": None,
-        "read_by_ocr": False,
-        "injection_findings": [],
-    }
-
-
 def _existing_items_note(rows) -> str:  # noqa: ANN001 -- list[SheetRow]
     if not rows:
         return "None yet -- this risk assessment has no risk items recorded so far."
@@ -244,9 +222,12 @@ def _gather(
             .order_by(DocumentChunk.ordinal)
         )
         pinned.extend(_from_chunk(db, chunk) for chunk in chunks)
-    roles = _governance_roles(db)
+    roles = pinned_context.governance_roles(db)
     if roles:
         pinned.append(roles)
+    context = pinned_context.organization_context(db)
+    if context:
+        pinned.append(context)
 
     queries = [
         f"{system_name} {factor}: harms, safeguards and residual exposure"

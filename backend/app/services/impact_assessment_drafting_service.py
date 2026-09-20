@@ -50,7 +50,6 @@ from app.core.exceptions import (
 from app.core.impact_factors import IMPACT_FACTORS
 from app.models.ai_draft import AiDraft, DraftStatus
 from app.models.document_chunk import DocumentChunk, SourceType
-from app.models.governance_role import GovernanceRole
 from app.models.impact_assessment import ImpactAssessment
 from app.repositories import impact_factor_assessment_repository, sheet_repository
 from app.schemas.impact_assessment import ImpactAssessmentUpdate
@@ -60,6 +59,7 @@ from app.services import (
     citation_service,
     document_index_service,
     impact_assessment_service,
+    pinned_context,
     retrieval_service,
 )
 
@@ -196,28 +196,6 @@ def _belongs_here(
     }
 
 
-def _governance_roles(db: Session) -> dict | None:
-    roles = list(db.scalars(select(GovernanceRole).order_by(GovernanceRole.id)))
-    lines = [
-        f"{role.name}: {role.responsibilities}"
-        for role in roles
-        if (role.responsibilities or "").strip()
-    ]
-    if not lines:
-        return None
-    return {
-        "key": ("roles", 0),
-        "title": "Governance roles and responsibilities",
-        "section": None,
-        "kind": "GovernanceRoles",
-        "text": "\n".join(lines),
-        "href": "/governance",
-        "download_evidence_id": None,
-        "read_by_ocr": False,
-        "injection_findings": [],
-    }
-
-
 def _gather(
     db: Session, assessment: ImpactAssessment, system_name: str
 ) -> tuple[list[_Source], list[retrieval_service.CoverageGap]]:
@@ -236,9 +214,12 @@ def _gather(
         )
     )
     candidates: list[dict] = [_from_chunk(db, chunk) for chunk in pinned]
-    roles = _governance_roles(db)
+    roles = pinned_context.governance_roles(db)
     if roles:
         candidates.append(roles)
+    context = pinned_context.organization_context(db)
+    if context:
+        candidates.append(context)
 
     # One ranked list per section, then interleaved, so every section
     # contributes its best evidence before any section contributes its second.

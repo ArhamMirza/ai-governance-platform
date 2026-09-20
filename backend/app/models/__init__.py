@@ -16,6 +16,7 @@ from app.models.governance_role_delegation import GovernanceRoleDelegation
 from app.models.impact_assessment import ImpactAssessment
 from app.models.impact_factor_assessment import ImpactFactorAssessment
 from app.models.index_queue import IndexQueueEntry
+from app.models.organization_context import OrganizationContext, OrganizationContextStatus
 from app.models.policy import Policy
 from app.models.procedure import Procedure
 from app.models.risk_assessment import RiskAssessment
@@ -49,6 +50,8 @@ __all__ = [
     "IndexQueueEntry",
     "IndexStatus",
     "MessageRole",
+    "OrganizationContext",
+    "OrganizationContextStatus",
     "Policy",
     "Procedure",
     "RiskAssessment",
