@@ -7,7 +7,7 @@ from sqlalchemy import create_engine, select
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
 
-from app.core import embeddings, ocr, vector_store
+from app.core import embeddings, ocr, reranking, vector_store
 from app.core.database import Base, get_db
 from app.core.framework_reference_data import as_rows
 from app.core.governance_role_seed_data import DEFAULT_ROLES
@@ -59,15 +59,24 @@ def _hashing_vector(text: str) -> list[float]:
 def local_models_are_stubbed(monkeypatch):
     """No test downloads or runs a real model.
 
-    The embedder and the OCR engine both fetch weights on first use. Left
-    real, the suite would pull hundreds of megabytes on a cold CI runner and
-    fail whenever the network did -- so both are replaced with deterministic
-    stubs, and the real ones are exercised by hand.
+    The embedder, the reranker and the OCR engine all fetch weights on first
+    use. Left real, the suite would pull hundreds of megabytes on a cold CI
+    runner and fail whenever the network did -- so all three are replaced
+    with stubs, and the real ones are exercised by hand.
+
+    The reranker's stub is "unavailable" rather than a fake scorer: unlike
+    the embedder's hashing vector, there's no cheap deterministic stand-in
+    for cross-encoder relevance that wouldn't just be asserting its own
+    fake logic. Leaving it unavailable means retrieval falls back to fusion
+    order -- the behaviour every existing retrieval test already assumes --
+    and the tests that actually exercise reranking install their own stub
+    for `reranking.rerank` locally.
     """
     monkeypatch.setattr(
         embeddings, "embed_passages", lambda texts: [_hashing_vector(t) for t in texts]
     )
     monkeypatch.setattr(embeddings, "embed_query", lambda text: _hashing_vector(text))
+    monkeypatch.setattr(reranking, "rerank", lambda query, passages: None)
     monkeypatch.setattr(ocr, "available", lambda: True)
     monkeypatch.setattr(
         ocr,

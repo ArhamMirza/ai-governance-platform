@@ -7,6 +7,13 @@ keywords are worst at, which is a question phrased nothing like the document
 that answers it. Fusing them is not belt-and-braces; each covers the other's
 characteristic failure.
 
+A third step runs after fusion: the fused top RERANK_CANDIDATES are handed
+to a local cross-encoder (see reranking.py) that reads the query and each
+passage together, rather than comparing them independently the way BM25 and
+the bi-encoder embedding both do. That catches passages which merely share
+vocabulary with the query but don't actually answer it -- the fused order
+alone can't tell those apart.
+
 Two things here matter more than ranking:
 
 **Returning nothing is a valid answer.** Something is always nearest in
@@ -27,12 +34,19 @@ from dataclasses import dataclass, field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.core import embeddings
+from app.core import embeddings, reranking
 from app.models.document_chunk import DocumentChunk, IndexStatus
 from app.models.evidence import Evidence
 from app.repositories import document_index_repository
 
 DEFAULT_LIMIT = 6
+
+# How many of the fused, in-scope candidates get reranked. Every caller's
+# limit is well under this (DEFAULT_LIMIT is 6; the widest is 16 sources
+# spread across many queries, never 16 from one), so nothing past this
+# window could ever be returned anyway -- reranking more would just cost
+# more cross-encoder calls for candidates that can't surface.
+RERANK_CANDIDATES = 20
 
 # L2 distance between normalised bge-small-en-v1.5 embeddings, above which a
 # passage is treated as unrelated however well it ranked.
@@ -240,30 +254,54 @@ def _ranked_citations(
 
     chunks = document_index_repository.chunks_by_id(db, [chunk_id for chunk_id, _ in ranked])
 
-    citations: list[Citation] = []
+    candidates: list[tuple[DocumentChunk, float]] = []
     for chunk_id, score in ranked:
         chunk: DocumentChunk | None = chunks.get(chunk_id)
         if chunk is None or not _in_scope(chunk, entity_type, entity_id):
             continue
-        citations.append(
-            Citation(
-                chunk_id=chunk.id,
-                source_type=str(chunk.source_type),
-                source_id=chunk.source_id,
-                source_title=chunk.source_title,
-                entity_type=str(chunk.entity_type),
-                entity_id=chunk.entity_id,
-                section=chunk.section,
-                source=str(chunk.source),
-                text=chunk.text,
-                score=score,
-                injection_findings=list(chunk.injection_findings or []),
-            )
-        )
-        if len(citations) >= limit:
+        candidates.append((chunk, score))
+        if len(candidates) >= RERANK_CANDIDATES:
             break
 
+    candidates = _reranked(query, candidates)
+
+    citations = [
+        Citation(
+            chunk_id=chunk.id,
+            source_type=str(chunk.source_type),
+            source_id=chunk.source_id,
+            source_title=chunk.source_title,
+            entity_type=str(chunk.entity_type),
+            entity_id=chunk.entity_id,
+            section=chunk.section,
+            source=str(chunk.source),
+            text=chunk.text,
+            score=score,
+            injection_findings=list(chunk.injection_findings or []),
+        )
+        for chunk, score in candidates[:limit]
+    ]
+
     return citations, mode
+
+
+def _reranked(
+    query: str, candidates: list[tuple[DocumentChunk, float]]
+) -> list[tuple[DocumentChunk, float]]:
+    """Candidates in cross-encoder order, each still paired with its fusion
+    score. Unchanged if the reranker can't run here -- fusion order is a
+    reasonable ranking on its own, and search should degrade, not break."""
+    if not candidates:
+        return candidates
+    cross_scores = reranking.rerank(query, [chunk.text for chunk, _ in candidates])
+    if cross_scores is None:
+        return candidates
+    return [
+        pair
+        for _, pair in sorted(
+            zip(cross_scores, candidates, strict=True), key=lambda paired: paired[0], reverse=True
+        )
+    ]
 
 
 def verify_cited_ids(cited: list[int], retrieved: set[int]) -> tuple[list[int], list[int]]:

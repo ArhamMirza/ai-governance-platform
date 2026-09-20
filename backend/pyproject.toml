@@ -24,7 +24,8 @@ dependencies = [
     "cryptography>=43.0",
     # Document search over uploaded evidence. Everything here runs on this
     # machine: sqlite-vec puts the vector index in the database file the app
-    # already has, and fastembed and rapidocr are ONNX models on the CPU, so
+    # already has, and fastembed (embedding and, via the same package,
+    # cross-encoder reranking) and rapidocr are ONNX models on the CPU, so
     # turning on document search does not start sending evidence anywhere.
     "sqlite-vec>=0.1.9",
     "fastembed>=0.4",
