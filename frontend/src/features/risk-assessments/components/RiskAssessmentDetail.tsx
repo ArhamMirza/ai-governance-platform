@@ -24,6 +24,7 @@ import { isRiskItemOverdue } from "../riskMonitoring";
 import { RiskAssessmentHeader } from "./RiskAssessmentHeader";
 import { RiskItemPanel } from "./RiskItemPanel";
 import { RiskMatrix } from "./RiskMatrix";
+import { RiskSuggestionPanel } from "./RiskSuggestionPanel";
 
 const COMPUTED_COLUMNS = ["inherent_risk_score", "residual_risk_score"];
 const LONG_TEXT_COLUMNS = ["description", "mitigation"];
@@ -82,6 +83,7 @@ export function RiskAssessmentDetail({ riskAssessmentId }: RiskAssessmentDetailP
 
       <h3>Risk Items</h3>
       <ApprovalWithdrawalNotice status={riskAssessment.status} />
+      <RiskSuggestionPanel riskAssessmentId={riskAssessmentId} />
       <DataGrid
         queryKey={[...queryKey]}
         adapter={adapter}
