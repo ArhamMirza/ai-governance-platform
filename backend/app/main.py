@@ -35,6 +35,7 @@ from app.routers import (
     procedures,
     risk_assessments,
     risk_criteria,
+    risk_item_suggestions,
     users,
 )
 
@@ -112,3 +113,4 @@ app.include_router(governance_roles.router, prefix="/api/v1", dependencies=_prot
 app.include_router(ai_assist.router, prefix="/api/v1", dependencies=_protected)
 app.include_router(assistant.router, prefix="/api/v1", dependencies=_protected)
 app.include_router(impact_assessment_drafts.router, prefix="/api/v1", dependencies=_protected)
+app.include_router(risk_item_suggestions.router, prefix="/api/v1", dependencies=_protected)
