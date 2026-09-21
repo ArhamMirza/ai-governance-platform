@@ -37,6 +37,14 @@ class AuthorizationError(Exception):
         super().__init__(message)
 
 
+class RateLimitedError(Exception):
+    """Too many attempts in a short window -- 429, distinct from bad
+    credentials so a client backs off instead of retrying immediately."""
+
+    def __init__(self, message: str = "Too many attempts. Try again later.") -> None:
+        super().__init__(message)
+
+
 class ServiceUnavailableError(Exception):
     """A feature that depends on something not configured or not reachable --
     AI assistance with no provider set, say. Distinct from ValidationError

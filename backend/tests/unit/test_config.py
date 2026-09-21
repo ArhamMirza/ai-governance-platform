@@ -15,7 +15,7 @@ from app.core.config import DEFAULT_SECRET_KEY, Settings
 @pytest.mark.parametrize("environment", ["production", "PROD", "staging", "test"])
 def test_a_real_deployment_refuses_to_start_on_the_example_secret(environment: str) -> None:
     with pytest.raises(PydanticValidationError) as caught:
-        Settings(environment=environment, secret_key=DEFAULT_SECRET_KEY)
+        Settings(environment=environment, secret_key=DEFAULT_SECRET_KEY, cookie_secure=True)
 
     # The message has to say what to do about it, not just that it's wrong.
     assert "SECRET_KEY" in str(caught.value)
@@ -32,6 +32,23 @@ def test_local_development_still_runs_on_the_example_secret() -> None:
 
 
 def test_a_real_deployment_starts_once_the_secret_is_its_own() -> None:
-    settings = Settings(environment="production", secret_key="a-secret-of-its-own")
+    settings = Settings(
+        environment="production", secret_key="a-secret-of-its-own", cookie_secure=True
+    )
 
     assert settings.is_real_deployment is True
+
+
+@pytest.mark.parametrize("environment", ["production", "PROD", "staging", "test"])
+def test_a_real_deployment_refuses_to_start_with_cookie_secure_false(environment: str) -> None:
+    with pytest.raises(PydanticValidationError) as caught:
+        Settings(environment=environment, secret_key="a-secret-of-its-own", cookie_secure=False)
+
+    assert "COOKIE_SECURE" in str(caught.value)
+
+
+def test_local_development_still_runs_with_cookie_secure_false() -> None:
+    settings = Settings(environment="development", cookie_secure=False)
+
+    assert settings.cookie_secure is False
+    assert settings.is_real_deployment is False

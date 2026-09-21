@@ -59,6 +59,24 @@ class Settings(BaseSettings):
             )
         return self
 
+    @model_validator(mode="after")
+    def _require_secure_cookies_on_a_real_deployment(self) -> "Settings":
+        """Refuse to start a real deployment with cookie_secure left False.
+
+        Without the Secure flag, the browser will happily send the session
+        cookie over a plain http connection -- exactly the case a public
+        deployment (reachable outside a trusted local network) can't rule
+        out. cookie_secure defaults to False only so a fresh checkout still
+        runs over http://localhost without extra setup.
+        """
+        if self.is_real_deployment and not self.cookie_secure:
+            raise ValueError(
+                "COOKIE_SECURE is False on a real deployment. Session cookies would be sent "
+                "over plain http. Set COOKIE_SECURE=true (the deployment must be served over "
+                "https for the cookie to still reach it)."
+            )
+        return self
+
 
 @lru_cache
 def get_settings() -> Settings:

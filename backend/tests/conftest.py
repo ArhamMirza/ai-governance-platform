@@ -18,7 +18,7 @@ from app.models.framework_control import FrameworkControl
 from app.models.framework_soa_entry import FrameworkSoaEntry
 from app.models.governance_role import GovernanceRole
 from app.models.user import User, UserRole
-from app.services import evidence_service, governance_role_service
+from app.services import auth_service, evidence_service, governance_role_service
 
 TEST_DATABASE_URL = "sqlite:///:memory:"
 
@@ -102,6 +102,17 @@ def create_search_tables(engine) -> None:
                 "CREATE VIRTUAL TABLE IF NOT EXISTS chunk_vectors USING vec0("
                 f"chunk_id INTEGER PRIMARY KEY, embedding FLOAT[{dimensions}])"
             )
+
+
+@pytest.fixture(autouse=True)
+def _clear_login_lockouts():
+    """auth_service's failed-login tracker is a module-level dict, so
+    without this a login failure in one test could count toward another
+    test's lockout threshold -- it shares nothing else across tests, every
+    other fixture here builds a fresh db per test."""
+    auth_service._failed_logins.clear()
+    yield
+    auth_service._failed_logins.clear()
 
 
 @pytest.fixture(autouse=True)

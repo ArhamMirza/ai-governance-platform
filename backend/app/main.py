@@ -8,6 +8,7 @@ from app.core.exceptions import (
     AuthorizationError,
     ConflictError,
     NotFoundError,
+    RateLimitedError,
     ServiceUnavailableError,
     ValidationError,
 )
@@ -82,6 +83,11 @@ def service_unavailable_handler(request: Request, exc: ServiceUnavailableError) 
 @app.exception_handler(AuthorizationError)
 def authorization_handler(request: Request, exc: AuthorizationError) -> JSONResponse:
     return JSONResponse(status_code=403, content={"detail": str(exc)})
+
+
+@app.exception_handler(RateLimitedError)
+def rate_limited_handler(request: Request, exc: RateLimitedError) -> JSONResponse:
+    return JSONResponse(status_code=429, content={"detail": str(exc)})
 
 
 # Every business router requires a logged-in session (reads included, not

@@ -9,7 +9,12 @@ from datetime import UTC, datetime, timedelta
 
 from sqlalchemy.orm import Session as DbSession
 
-from app.core.exceptions import AuthenticationError, ConflictError, ValidationError
+from app.core.exceptions import (
+    AuthenticationError,
+    ConflictError,
+    RateLimitedError,
+    ValidationError,
+)
 from app.core.security import (
     generate_session_token,
     hash_password,
@@ -22,6 +27,28 @@ from app.repositories import session_repository, user_repository
 from app.schemas.auth import LoginRequest, RegisterRequest
 
 SESSION_LIFETIME = timedelta(days=14)
+
+# Failed-login lockout. In-memory and per-process, which is fine for this
+# app's single-process, single-tenant deployment model (like the rest of
+# its state, it resets on restart) -- the point is to make a public login
+# form an unattractive brute-force target, not to survive a restart.
+_FAILED_LOGIN_WINDOW = timedelta(minutes=15)
+_MAX_FAILED_LOGINS = 5
+_MAX_TRACKED_EMAILS = 10_000
+
+_failed_logins: dict[str, list[datetime]] = {}
+
+
+def _recent_failures(email: str, now: datetime) -> list[datetime]:
+    attempts = [t for t in _failed_logins.get(email, []) if now - t < _FAILED_LOGIN_WINDOW]
+    _failed_logins[email] = attempts
+    return attempts
+
+
+def _record_failure(email: str, now: datetime) -> None:
+    if len(_failed_logins) >= _MAX_TRACKED_EMAILS and email not in _failed_logins:
+        _failed_logins.clear()
+    _failed_logins.setdefault(email, []).append(now)
 
 
 def _utc_now_naive() -> datetime:
@@ -51,15 +78,24 @@ def register(db: DbSession, data: RegisterRequest) -> User:
 
 
 def authenticate(db: DbSession, data: LoginRequest) -> User:
-    user = user_repository.get_by_email(db, data.email.strip().lower())
+    email = data.email.strip().lower()
+    now = _utc_now_naive()
+    if len(_recent_failures(email, now)) >= _MAX_FAILED_LOGINS:
+        raise RateLimitedError(
+            "Too many failed login attempts for this account. Try again in 15 minutes."
+        )
+
+    user = user_repository.get_by_email(db, email)
     # Verify against a real hash even on a missing user, so the response
     # time doesn't leak whether the email is registered.
     password_hash = user.password_hash if user is not None else hash_password("")
     valid = verify_password(data.password, password_hash)
     if user is None or not valid:
+        _record_failure(email, now)
         raise AuthenticationError("Incorrect email or password.")
     if not user.is_active:
         raise AuthenticationError("This account has been deactivated.")
+    _failed_logins.pop(email, None)
     return user
 
 
