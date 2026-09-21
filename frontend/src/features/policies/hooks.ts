@@ -4,10 +4,10 @@ import type { QueryClient } from "@tanstack/react-query";
 import { policiesApi } from "./api";
 import type { PolicyCreateInput, PolicyUpdateInput } from "./types";
 
-const policiesKey = ["policies"] as const;
-const policyKey = (id: number) => ["policies", id] as const;
+export const policiesKey = ["policies"] as const;
+export const policyKey = (id: number) => ["policies", id] as const;
 const policyVersionsKey = (id: number) => ["policies", id, "versions"] as const;
-const policyAuditLogKey = (id: number) => ["audit-log", "Policy", id] as const;
+export const policyAuditLogKey = (id: number) => ["audit-log", "Policy", id] as const;
 
 export function usePolicies() {
   return useQuery({ queryKey: policiesKey, queryFn: policiesApi.list });

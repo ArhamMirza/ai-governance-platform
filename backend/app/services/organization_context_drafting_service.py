@@ -40,25 +40,20 @@ from app.core.exceptions import (
 from app.models.ai_draft import AiDraft, DraftStatus
 from app.models.document_chunk import SourceType
 from app.models.organization_context import OrganizationContext
-from app.models.policy import PolicyStatus
-from app.models.procedure import ProcedureStatus
 from app.services import (
     ai_assist_service,
-    ai_system_inventory_service,
     audit_service,
     citation_service,
     document_index_service,
+    drafting_context,
     organization_context_service,
     pinned_context,
-    policy_service,
-    procedure_service,
     retrieval_service,
 )
 
 ENTITY_TYPE = organization_context_service.ENTITY_TYPE
 
 MAX_SOURCES = 20
-MAX_SUMMARY_ROWS = 20
 RESULTS_PER_QUERY = 3
 MAX_SOURCE_CHARS = 1_200
 MAX_FIELD_CHARS = 2_000
@@ -167,78 +162,6 @@ def _draft_for(db: Session, draft_id: int) -> AiDraft:
 # ---------- context ----------
 
 
-def _capped(lines: list[str]) -> str:
-    shown = lines[:MAX_SUMMARY_ROWS]
-    if len(lines) > MAX_SUMMARY_ROWS:
-        shown.append(f"...and {len(lines) - MAX_SUMMARY_ROWS} more not shown.")
-    return "\n".join(shown)
-
-
-def _ai_systems_summary(db: Session) -> dict | None:
-    rows = ai_system_inventory_service.list_rows(db)
-    lines = [
-        f"- {data.get('name') or 'Unnamed system'}: {data.get('purpose')}"
-        if (data := row.data or {}).get("purpose")
-        else f"- {data.get('name') or 'Unnamed system'}"
-        for row in rows
-    ]
-    if not lines:
-        return None
-    return {
-        "n": 0,
-        "title": "AI systems in the inventory",
-        "section": None,
-        "kind": "AISystemsSummary",
-        "text": _capped(lines),
-        "href": "/ai-systems",
-        "download_evidence_id": None,
-        "read_by_ocr": False,
-        "injection_findings": [],
-    }
-
-
-def _policies_summary(db: Session) -> dict | None:
-    lines = [
-        f"- {p.title}: {p.description}"
-        for p in policy_service.list_policies(db)
-        if p.status != PolicyStatus.RETIRED and (p.description or "").strip()
-    ]
-    if not lines:
-        return None
-    return {
-        "n": 0,
-        "title": "Policies",
-        "section": None,
-        "kind": "PoliciesSummary",
-        "text": _capped(lines),
-        "href": "/policies",
-        "download_evidence_id": None,
-        "read_by_ocr": False,
-        "injection_findings": [],
-    }
-
-
-def _procedures_summary(db: Session) -> dict | None:
-    lines = [
-        f"- {p.title}: {p.description}"
-        for p in procedure_service.list_procedures(db)
-        if p.status != ProcedureStatus.RETIRED and (p.description or "").strip()
-    ]
-    if not lines:
-        return None
-    return {
-        "n": 0,
-        "title": "Procedures",
-        "section": None,
-        "kind": "ProceduresSummary",
-        "text": _capped(lines),
-        "href": "/procedures",
-        "download_evidence_id": None,
-        "read_by_ocr": False,
-        "injection_findings": [],
-    }
-
-
 def _from_chunk(db: Session, chunk: retrieval_service.Citation) -> dict:
     source_type = str(chunk.source_type)
     return {
@@ -286,9 +209,9 @@ def _gather(db: Session) -> tuple[list[dict], list[retrieval_service.CoverageGap
 
     candidates: list[dict] = []
     for entry in (
-        _ai_systems_summary(db),
-        _policies_summary(db),
-        _procedures_summary(db),
+        drafting_context.ai_systems_summary(db),
+        drafting_context.policies_summary(db),
+        drafting_context.procedures_summary(db),
         pinned_context.governance_roles(db),
     ):
         if entry is not None:
