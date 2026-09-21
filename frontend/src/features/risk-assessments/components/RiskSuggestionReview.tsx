@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 
 import { API_BASE_URL } from "../../../shared/api/httpClient";
 import { readError } from "../../../shared/api/readError";
+import { DraftGuidanceField } from "../../../shared/components/DraftGuidanceField";
 import {
   type AcceptedRiskItem,
   type RiskSuggestion,
@@ -10,6 +11,7 @@ import {
   type RiskSuggestionSource,
   useApplyRiskSuggestions,
   useDiscardRiskSuggestions,
+  useGenerateRiskSuggestions,
 } from "../aiRiskSuggestions";
 
 interface Choice {
@@ -259,6 +261,7 @@ export function RiskSuggestionReview({
   const [error, setError] = useState<string | null>(null);
   const apply = useApplyRiskSuggestions(riskAssessmentId);
   const discard = useDiscardRiskSuggestions(riskAssessmentId);
+  const revise = useGenerateRiskSuggestions(riskAssessmentId);
 
   const setChoice = (key: string) => (next: Choice) =>
     setChoices((previous) => ({ ...previous, [key]: next }));
@@ -293,6 +296,15 @@ export function RiskSuggestionReview({
       await discard.mutateAsync(draft.id);
     } catch (err) {
       setError(readError(err, "Couldn’t discard the suggestions"));
+    }
+  };
+
+  const onRevise = async (instructions: string) => {
+    setError(null);
+    try {
+      await revise.mutateAsync(instructions || undefined);
+    } catch (err) {
+      setError(readError(err, "Couldn’t redraft"));
     }
   };
 
@@ -348,6 +360,18 @@ export function RiskSuggestionReview({
           <SourceList draft={draft} />
         </div>
       )}
+
+      <div className="draft-group">
+        <h5 className="draft-group-title">Not quite right?</h5>
+        <DraftGuidanceField
+          label="Add guidance and redraft"
+          placeholder="e.g. Focus more on third-party access risks."
+          submitLabel="Redraft with this guidance"
+          pendingLabel="Redrafting…"
+          isPending={revise.isPending}
+          onSubmit={onRevise}
+        />
+      </div>
 
       {error && (
         <p className="assistant-flag assistant-flag-danger" role="alert">

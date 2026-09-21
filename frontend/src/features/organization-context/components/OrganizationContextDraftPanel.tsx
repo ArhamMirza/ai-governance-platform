@@ -1,6 +1,7 @@
 import { useState } from "react";
 
 import { readError } from "../../../shared/api/readError";
+import { DraftGuidanceField } from "../../../shared/components/DraftGuidanceField";
 import { useAiAssistStatus } from "../../ai-assist/hooks";
 import {
   useGenerateOrganizationContextDraft,
@@ -42,10 +43,10 @@ export function OrganizationContextDraftPanel({ context }: { context: Organizati
     );
   }
 
-  const onGenerate = async () => {
+  const onGenerate = async (instructions: string) => {
     setError(null);
     try {
-      await generate.mutateAsync();
+      await generate.mutateAsync(instructions || undefined);
     } catch (err) {
       setError(readError(err, "Couldn’t draft the organization’s context"));
     }
@@ -62,9 +63,14 @@ export function OrganizationContextDraftPanel({ context }: { context: Organizati
           rests on. Nothing is saved until you review it.
         </p>
       </div>
-      <button type="button" onClick={onGenerate} disabled={generate.isPending || latest.isLoading}>
-        {generate.isPending ? "Drafting — this can take a minute…" : "Draft with AI"}
-      </button>
+      <DraftGuidanceField
+        label="Guidance (optional)"
+        placeholder="e.g. Keep the description under two sentences; emphasize our GDPR posture."
+        submitLabel="Draft with AI"
+        pendingLabel="Drafting — this can take a minute…"
+        isPending={generate.isPending || latest.isLoading}
+        onSubmit={onGenerate}
+      />
       {generate.isPending && (
         <p className="assistant-working" role="status">
           <span className="assistant-working-dot" aria-hidden="true" />

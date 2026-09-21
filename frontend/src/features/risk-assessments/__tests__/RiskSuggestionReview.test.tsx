@@ -196,6 +196,19 @@ describe("RiskSuggestionReview", () => {
 
     expect(discard).toHaveBeenCalledWith(9);
   });
+
+  it("redrafts with new guidance", async () => {
+    generate.mockResolvedValue(standard());
+    renderReview();
+
+    await userEvent.type(
+      screen.getByLabelText("Add guidance and redraft"),
+      "Focus on data leakage risks.",
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Redraft with this guidance" }));
+
+    expect(generate).toHaveBeenCalledWith("Focus on data leakage risks.");
+  });
 });
 
 describe("RiskSuggestionPanel", () => {
@@ -220,9 +233,13 @@ describe("RiskSuggestionPanel", () => {
     vi.mocked(useLatestRiskSuggestions).mockReturnValue({ data: null, isLoading: false } as never);
 
     renderPanel();
+    await userEvent.type(
+      screen.getByLabelText("Guidance (optional)"),
+      "Focus on third-party access.",
+    );
     await userEvent.click(screen.getByRole("button", { name: "Suggest risk items" }));
 
-    expect(generate).toHaveBeenCalled();
+    expect(generate).toHaveBeenCalledWith("Focus on third-party access.");
   });
 
   it("reopens suggestions still waiting for review", () => {

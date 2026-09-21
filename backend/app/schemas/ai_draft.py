@@ -65,3 +65,11 @@ class AcceptedField(BaseModel):
 class ApplyDraftRequest(BaseModel):
     # Only the fields being applied. Anything left out keeps its current value.
     accepted: list[AcceptedField]
+
+
+class GenerateDraftRequest(BaseModel):
+    """Optional guidance layered on top of what the draft would otherwise
+    gather on its own -- scope, emphasis or tone, not another source.
+    Shared by every drafting feature's generate endpoint."""
+
+    instructions: str | None = None

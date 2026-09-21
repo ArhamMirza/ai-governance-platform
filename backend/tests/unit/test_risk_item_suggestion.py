@@ -403,6 +403,56 @@ def test_generating_suggestions_is_recorded_with_the_model_that_wrote_them(
     assert (entry.diff["provider"], entry.diff["model"]) == ("anthropic", "claude-sonnet-5")
 
 
+def test_extra_instructions_reach_the_model(configured, model) -> None:
+    db = configured
+    assessment_id = make_risk_assessment(db)
+
+    suggesting.generate_suggestions(
+        db, assessment_id, actor_id=None, extra_instructions="Focus on data leakage risks."
+    )
+
+    assert "Focus on data leakage risks." in model.prompt()
+
+
+def test_no_instructions_means_no_guidance_block(configured, model) -> None:
+    db = configured
+    assessment_id = make_risk_assessment(db)
+
+    suggesting.generate_suggestions(db, assessment_id, actor_id=None)
+
+    assert "guidance from the requester" not in model.prompt()
+
+
+def test_overlong_instructions_are_rejected(configured, model) -> None:
+    db = configured
+    assessment_id = make_risk_assessment(db)
+    too_long = "x" * (suggesting.MAX_INSTRUCTIONS_CHARS + 1)
+
+    with pytest.raises(ValidationError, match="guidance"):
+        suggesting.generate_suggestions(
+            db, assessment_id, actor_id=None, extra_instructions=too_long
+        )
+    assert model.calls == []
+
+
+def test_revising_with_new_instructions_supersedes_the_pending_draft(configured, model) -> None:
+    db = configured
+    assessment_id = make_risk_assessment(db)
+    first = suggesting.generate_suggestions(
+        db, assessment_id, actor_id=None, extra_instructions="Focus on privacy."
+    )
+
+    second = suggesting.generate_suggestions(
+        db, assessment_id, actor_id=None, extra_instructions="Focus on safety."
+    )
+
+    db.refresh(first)
+    assert first.status == DraftStatus.SUPERSEDED
+    assert suggesting.latest_suggestions(db, assessment_id).id == second.id
+    assert "Focus on privacy." in model.prompt(0)
+    assert "Focus on safety." in model.prompt(1)
+
+
 def test_no_provider_means_no_calls_and_no_draft(db_session, model) -> None:
     assessment_id = make_risk_assessment(db_session)
 

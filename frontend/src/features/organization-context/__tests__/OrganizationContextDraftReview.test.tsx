@@ -259,6 +259,19 @@ describe("OrganizationContextDraftReview", () => {
 
     expect(discard).toHaveBeenCalledWith(9);
   });
+
+  it("redrafts with new guidance", async () => {
+    generate.mockResolvedValue(standard());
+    renderReview();
+
+    await userEvent.type(
+      screen.getByLabelText("Add guidance and redraft"),
+      "Say more about GDPR.",
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Redraft with this guidance" }));
+
+    expect(generate).toHaveBeenCalledWith("Say more about GDPR.");
+  });
 });
 
 describe("OrganizationContextDraftPanel", () => {
@@ -286,9 +299,26 @@ describe("OrganizationContextDraftPanel", () => {
     } as never);
 
     renderPanel();
+    await userEvent.type(
+      screen.getByLabelText("Guidance (optional)"),
+      "Keep it under two sentences.",
+    );
     await userEvent.click(screen.getByRole("button", { name: "Draft with AI" }));
 
-    expect(generate).toHaveBeenCalled();
+    expect(generate).toHaveBeenCalledWith("Keep it under two sentences.");
+  });
+
+  it("drafts with no guidance when the field is left empty", async () => {
+    vi.mocked(useAiAssistStatus).mockReturnValue({ data: { available: true } } as never);
+    vi.mocked(useLatestOrganizationContextDraft).mockReturnValue({
+      data: null,
+      isLoading: false,
+    } as never);
+
+    renderPanel();
+    await userEvent.click(screen.getByRole("button", { name: "Draft with AI" }));
+
+    expect(generate).toHaveBeenCalledWith(undefined);
   });
 
   it("reopens a draft that is still waiting for review", () => {

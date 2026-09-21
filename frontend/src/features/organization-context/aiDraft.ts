@@ -82,7 +82,8 @@ export interface AcceptedContextDraft {
 const BASE = "/organization-context/ai-draft";
 
 export const organizationContextDraftApi = {
-  generate: () => httpClient.post<OrganizationContextDraft>(BASE),
+  generate: (instructions?: string) =>
+    httpClient.post<OrganizationContextDraft>(BASE, { instructions: instructions || null }),
   latest: () => httpClient.get<OrganizationContextDraft | null>(`${BASE}/latest`),
   apply: (draftId: number, accepted: AcceptedContextDraft) =>
     httpClient.post<OrganizationContext>(`${BASE}/${draftId}/apply`, accepted),
@@ -104,7 +105,7 @@ export function useLatestOrganizationContextDraft(enabled: boolean) {
 export function useGenerateOrganizationContextDraft() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: () => organizationContextDraftApi.generate(),
+    mutationFn: (instructions?: string) => organizationContextDraftApi.generate(instructions),
     onSuccess: (draft) => queryClient.setQueryData(draftKey, draft),
   });
 }

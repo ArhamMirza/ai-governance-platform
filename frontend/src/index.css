@@ -2925,7 +2925,28 @@ form.assistant-composer {
   margin: 0;
 }
 
-.draft-launch > button {
+.draft-guidance-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: flex-start;
+}
+
+.draft-guidance-field label {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  color: var(--text-faint);
+}
+
+.draft-guidance-field textarea {
+  width: 100%;
+  max-width: 60ch;
+  font-family: inherit;
+  resize: vertical;
+}
+
+.draft-guidance-field button {
   align-self: flex-start;
   font-family: inherit;
   font-size: 13px;
@@ -2938,7 +2959,7 @@ form.assistant-composer {
   cursor: pointer;
 }
 
-.draft-launch > button:hover:not(:disabled) {
+.draft-guidance-field button:hover:not(:disabled) {
   background: var(--bg-sidebar-active);
 }
 

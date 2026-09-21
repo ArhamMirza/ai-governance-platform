@@ -242,6 +242,19 @@ describe("AssessmentDraftReview", () => {
 
     expect(discard).toHaveBeenCalledWith(21);
   });
+
+  it("redrafts with new guidance", async () => {
+    generate.mockResolvedValue(standard());
+    renderReview();
+
+    await userEvent.type(
+      screen.getByLabelText("Add guidance and redraft"),
+      "Say more about human oversight.",
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Redraft with this guidance" }));
+
+    expect(generate).toHaveBeenCalledWith("Say more about human oversight.");
+  });
 });
 
 describe("AssessmentDraftPanel", () => {
@@ -266,9 +279,13 @@ describe("AssessmentDraftPanel", () => {
     vi.mocked(useLatestAssessmentDraft).mockReturnValue({ data: null, isLoading: false } as never);
 
     renderPanel();
+    await userEvent.type(
+      screen.getByLabelText("Guidance (optional)"),
+      "Emphasize data minimization.",
+    );
     await userEvent.click(screen.getByRole("button", { name: "Draft with AI" }));
 
-    expect(generate).toHaveBeenCalled();
+    expect(generate).toHaveBeenCalledWith("Emphasize data minimization.");
   });
 
   it("reopens a draft that is still waiting for review", () => {

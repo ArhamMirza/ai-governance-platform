@@ -1,6 +1,7 @@
 import { useState } from "react";
 
 import { readError } from "../../../shared/api/readError";
+import { DraftGuidanceField } from "../../../shared/components/DraftGuidanceField";
 import { useAiAssistStatus } from "../../ai-assist/hooks";
 import { useGenerateRiskSuggestions, useLatestRiskSuggestions } from "../aiRiskSuggestions";
 import { RiskSuggestionReview } from "./RiskSuggestionReview";
@@ -34,10 +35,10 @@ export function RiskSuggestionPanel({ riskAssessmentId }: { riskAssessmentId: nu
     );
   }
 
-  const onGenerate = async () => {
+  const onGenerate = async (instructions: string) => {
     setError(null);
     try {
-      await generate.mutateAsync();
+      await generate.mutateAsync(instructions || undefined);
     } catch (err) {
       setError(readError(err, "Couldn’t suggest risk items"));
     }
@@ -54,9 +55,14 @@ export function RiskSuggestionPanel({ riskAssessmentId }: { riskAssessmentId: nu
           Nothing is added until you review it.
         </p>
       </div>
-      <button type="button" onClick={onGenerate} disabled={generate.isPending || latest.isLoading}>
-        {generate.isPending ? "Reading the record…" : "Suggest risk items"}
-      </button>
+      <DraftGuidanceField
+        label="Guidance (optional)"
+        placeholder="e.g. Focus on data leakage and third-party access risks."
+        submitLabel="Suggest risk items"
+        pendingLabel="Reading the record…"
+        isPending={generate.isPending || latest.isLoading}
+        onSubmit={onGenerate}
+      />
       {generate.isPending && (
         <p className="assistant-working" role="status">
           <span className="assistant-working-dot" aria-hidden="true" />

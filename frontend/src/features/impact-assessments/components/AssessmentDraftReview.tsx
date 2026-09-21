@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 
 import { API_BASE_URL } from "../../../shared/api/httpClient";
 import { readError } from "../../../shared/api/readError";
+import { DraftGuidanceField } from "../../../shared/components/DraftGuidanceField";
 import {
   type AcceptedField,
   type AssessmentDraft,
@@ -10,6 +11,7 @@ import {
   type DraftSource,
   useApplyAssessmentDraft,
   useDiscardAssessmentDraft,
+  useGenerateAssessmentDraft,
 } from "../aiDraft";
 import { IMPACT_FACTORS } from "../impactFactors";
 import type { ImpactAssessment } from "../types";
@@ -224,6 +226,7 @@ export function AssessmentDraftReview({
   const [error, setError] = useState<string | null>(null);
   const apply = useApplyAssessmentDraft(riskAssessmentId, assessment.id);
   const discard = useDiscardAssessmentDraft(assessment.id);
+  const revise = useGenerateAssessmentDraft(assessment.id);
 
   const byKey = useMemo(
     () => Object.fromEntries(draft.proposals.map((p) => [p.key, p])),
@@ -256,6 +259,15 @@ export function AssessmentDraftReview({
       await discard.mutateAsync(draft.id);
     } catch (err) {
       setError(readError(err, "Couldn’t discard the draft"));
+    }
+  };
+
+  const onRevise = async (instructions: string) => {
+    setError(null);
+    try {
+      await revise.mutateAsync(instructions || undefined);
+    } catch (err) {
+      setError(readError(err, "Couldn’t redraft"));
     }
   };
 
@@ -333,6 +345,18 @@ export function AssessmentDraftReview({
       <div className="draft-group">
         <h5 className="draft-group-title">Sources</h5>
         <SourceList draft={draft} />
+      </div>
+
+      <div className="draft-group">
+        <h5 className="draft-group-title">Not quite right?</h5>
+        <DraftGuidanceField
+          label="Add guidance and redraft"
+          placeholder="e.g. Say more about the human oversight in place."
+          submitLabel="Redraft with this guidance"
+          pendingLabel="Redrafting…"
+          isPending={revise.isPending}
+          onSubmit={onRevise}
+        />
       </div>
 
       {error && (

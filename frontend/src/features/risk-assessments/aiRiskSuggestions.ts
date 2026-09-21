@@ -60,8 +60,10 @@ const base = (riskAssessmentId: number) =>
   `/risk-assessments/${riskAssessmentId}/ai-risk-suggestions`;
 
 export const riskSuggestionsApi = {
-  generate: (riskAssessmentId: number) =>
-    httpClient.post<RiskSuggestions>(base(riskAssessmentId)),
+  generate: (riskAssessmentId: number, instructions?: string) =>
+    httpClient.post<RiskSuggestions>(base(riskAssessmentId), {
+      instructions: instructions || null,
+    }),
   latest: (riskAssessmentId: number) =>
     httpClient.get<RiskSuggestions | null>(`${base(riskAssessmentId)}/latest`),
   apply: (riskAssessmentId: number, draftId: number, accepted: AcceptedRiskItem[]) =>
@@ -86,7 +88,8 @@ export function useLatestRiskSuggestions(riskAssessmentId: number, enabled: bool
 export function useGenerateRiskSuggestions(riskAssessmentId: number) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: () => riskSuggestionsApi.generate(riskAssessmentId),
+    mutationFn: (instructions?: string) =>
+      riskSuggestionsApi.generate(riskAssessmentId, instructions),
     onSuccess: (draft) => queryClient.setQueryData(riskSuggestionsKey(riskAssessmentId), draft),
   });
 }

@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 
 import { API_BASE_URL } from "../../../shared/api/httpClient";
 import { readError } from "../../../shared/api/readError";
+import { DraftGuidanceField } from "../../../shared/components/DraftGuidanceField";
 import {
   type AcceptedContextDraft,
   type ContextDraftSource,
@@ -10,6 +11,7 @@ import {
   type OrganizationContextDraft,
   useApplyOrganizationContextDraft,
   useDiscardOrganizationContextDraft,
+  useGenerateOrganizationContextDraft,
 } from "../aiDraft";
 import type { OrganizationContext } from "../types";
 
@@ -301,6 +303,7 @@ export function OrganizationContextDraftReview({
   const [error, setError] = useState<string | null>(null);
   const apply = useApplyOrganizationContextDraft();
   const discard = useDiscardOrganizationContextDraft();
+  const revise = useGenerateOrganizationContextDraft();
 
   const setChoice = (key: string) => (next: Choice) =>
     setChoices((previous) => ({ ...previous, [key]: next }));
@@ -353,6 +356,15 @@ export function OrganizationContextDraftReview({
       await discard.mutateAsync(draft.id);
     } catch (err) {
       setError(readError(err, "Couldn’t discard the draft"));
+    }
+  };
+
+  const onRevise = async (instructions: string) => {
+    setError(null);
+    try {
+      await revise.mutateAsync(instructions || undefined);
+    } catch (err) {
+      setError(readError(err, "Couldn’t redraft"));
     }
   };
 
@@ -433,6 +445,18 @@ export function OrganizationContextDraftReview({
           <SourceList draft={draft} />
         </div>
       )}
+
+      <div className="draft-group">
+        <h5 className="draft-group-title">Not quite right?</h5>
+        <DraftGuidanceField
+          label="Add guidance and redraft"
+          placeholder="e.g. Say more about our data retention practices."
+          submitLabel="Redraft with this guidance"
+          pendingLabel="Redrafting…"
+          isPending={revise.isPending}
+          onSubmit={onRevise}
+        />
+      </div>
 
       {error && (
         <p className="assistant-flag assistant-flag-danger" role="alert">

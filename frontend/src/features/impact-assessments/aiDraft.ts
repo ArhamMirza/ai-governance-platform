@@ -56,7 +56,8 @@ export interface AcceptedField {
 const base = (assessmentId: number) => `/impact-assessments/${assessmentId}/ai-drafts`;
 
 export const assessmentDraftApi = {
-  generate: (assessmentId: number) => httpClient.post<AssessmentDraft>(base(assessmentId)),
+  generate: (assessmentId: number, instructions?: string) =>
+    httpClient.post<AssessmentDraft>(base(assessmentId), { instructions: instructions || null }),
   latest: (assessmentId: number) =>
     httpClient.get<AssessmentDraft | null>(`${base(assessmentId)}/latest`),
   apply: (assessmentId: number, draftId: number, accepted: AcceptedField[]) =>
@@ -81,7 +82,7 @@ export function useLatestAssessmentDraft(assessmentId: number, enabled: boolean)
 export function useGenerateAssessmentDraft(assessmentId: number) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: () => assessmentDraftApi.generate(assessmentId),
+    mutationFn: (instructions?: string) => assessmentDraftApi.generate(assessmentId, instructions),
     onSuccess: (draft) => queryClient.setQueryData(draftKey(assessmentId), draft),
   });
 }

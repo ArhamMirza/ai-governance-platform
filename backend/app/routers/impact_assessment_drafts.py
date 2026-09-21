@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.dependencies import get_current_actor_id
 from app.routers.impact_assessments import _to_read
-from app.schemas.ai_draft import AiDraftRead, ApplyDraftRequest
+from app.schemas.ai_draft import AiDraftRead, ApplyDraftRequest, GenerateDraftRequest
 from app.schemas.impact_assessment import ImpactAssessmentRead
 from app.services import impact_assessment_drafting_service as drafting
 
@@ -22,10 +22,13 @@ router = APIRouter(prefix="/impact-assessments", tags=["impact-assessments"])
 @router.post("/{impact_assessment_id}/ai-drafts", response_model=AiDraftRead, status_code=201)
 def generate_draft(
     impact_assessment_id: int,
+    data: GenerateDraftRequest | None = None,
     db: Session = Depends(get_db),
     actor_id: int | None = Depends(get_current_actor_id),
 ) -> AiDraftRead:
-    return drafting.generate_draft(db, impact_assessment_id, actor_id)
+    return drafting.generate_draft(
+        db, impact_assessment_id, actor_id, data.instructions if data else None
+    )
 
 
 @router.get("/{impact_assessment_id}/ai-drafts/latest", response_model=AiDraftRead | None)
