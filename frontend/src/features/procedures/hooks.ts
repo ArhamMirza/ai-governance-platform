@@ -4,8 +4,8 @@ import type { QueryClient } from "@tanstack/react-query";
 import { proceduresApi } from "./api";
 import type { ProcedureCreateInput, ProcedureUpdateInput } from "./types";
 
-const proceduresKey = ["procedures"] as const;
-const procedureKey = (id: number) => ["procedures", id] as const;
+export const proceduresKey = ["procedures"] as const;
+export const procedureKey = (id: number) => ["procedures", id] as const;
 const procedureVersionsKey = (id: number) => ["procedures", id, "versions"] as const;
 
 export function useProcedures() {

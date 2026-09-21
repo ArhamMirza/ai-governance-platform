@@ -13,6 +13,7 @@ import {
   useSubmitForReview,
   useUpdateProcedure,
 } from "../hooks";
+import { ProcedureDraftPanel } from "./ProcedureDraftPanel";
 
 interface ProcedureDetailProps {
   procedureId: number;
@@ -90,6 +91,8 @@ export function ProcedureDetail({ procedureId }: ProcedureDetailProps) {
           </button>
         )}
       </div>
+
+      <ProcedureDraftPanel procedure={procedure} />
 
       <h3>Framework Tags</h3>
       <FrameworkTagPicker entityType="Procedure" entityId={procedureId} />
