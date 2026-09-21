@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.dependencies import get_current_actor_id
 from app.routers.risk_assessments import _to_read
+from app.schemas.ai_draft import GenerateDraftRequest
 from app.schemas.risk_assessment import RiskAssessmentRead
 from app.schemas.risk_item_suggestion import ApplySuggestionsRequest, RiskSuggestionsRead
 from app.services import risk_item_suggestion_service as suggestions
@@ -24,10 +25,13 @@ router = APIRouter(prefix="/risk-assessments", tags=["risk-assessments"])
 )
 def generate_suggestions(
     risk_assessment_id: int,
+    data: GenerateDraftRequest | None = None,
     db: Session = Depends(get_db),
     actor_id: int | None = Depends(get_current_actor_id),
 ) -> RiskSuggestionsRead:
-    return suggestions.generate_suggestions(db, risk_assessment_id, actor_id)
+    return suggestions.generate_suggestions(
+        db, risk_assessment_id, actor_id, data.instructions if data else None
+    )
 
 
 @router.get(

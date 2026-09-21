@@ -178,6 +178,21 @@ def test_every_ai_system_policy_and_procedure_reaches_the_model(configured, mode
     assert "How models get reviewed." in prompt
 
 
+def test_interested_party_guidance_asks_for_general_internal_and_external_categories(
+    configured, model
+) -> None:
+    """A real gap found in use: without this, proposed interested parties
+    collapsed into a restatement of the governance roles table -- internal
+    accountability assignments, not the organization's actual external
+    stakeholders (regulators, customers, the public, and so on)."""
+    drafting.generate_draft(configured, actor_id=None)
+
+    prompt = model.prompt()
+    assert "internal parties" in prompt
+    assert "external" in prompt
+    assert "do not just restate the governance roles" in prompt
+
+
 def test_governance_roles_reach_the_model(configured, model) -> None:
     from app.models.governance_role import GovernanceRole
 
@@ -344,6 +359,44 @@ def test_generating_a_draft_is_recorded_with_the_model_that_wrote_it(configured,
     )
     assert entry.diff["draft_id"] == draft.id
     assert (entry.diff["provider"], entry.diff["model"]) == ("anthropic", "claude-sonnet-5")
+
+
+# ---------- guidance ----------
+
+
+def test_extra_instructions_reach_the_model(configured, model) -> None:
+    drafting.generate_draft(
+        configured, actor_id=None, extra_instructions="Keep the description under two sentences."
+    )
+
+    assert "Keep the description under two sentences." in model.prompt()
+
+
+def test_no_instructions_means_no_guidance_block(configured, model) -> None:
+    drafting.generate_draft(configured, actor_id=None)
+
+    assert "guidance from the requester" not in model.prompt()
+
+
+def test_overlong_instructions_are_rejected(configured, model) -> None:
+    too_long = "x" * (drafting.MAX_INSTRUCTIONS_CHARS + 1)
+
+    with pytest.raises(ValidationError, match="guidance"):
+        drafting.generate_draft(configured, actor_id=None, extra_instructions=too_long)
+    assert model.calls == []
+
+
+def test_revising_with_new_instructions_supersedes_the_pending_draft(configured, model) -> None:
+    db = configured
+    first = drafting.generate_draft(db, actor_id=None, extra_instructions="Focus on privacy.")
+
+    second = drafting.generate_draft(db, actor_id=None, extra_instructions="Focus on safety.")
+
+    db.refresh(first)
+    assert first.status == DraftStatus.SUPERSEDED
+    assert drafting.latest_draft(db).id == second.id
+    assert "Focus on privacy." in model.prompt(0)
+    assert "Focus on safety." in model.prompt(1)
 
 
 def test_no_provider_means_no_calls_and_no_draft(db_session, model) -> None:

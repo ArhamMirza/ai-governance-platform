@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.dependencies import get_current_actor_id
+from app.schemas.ai_draft import GenerateDraftRequest
 from app.schemas.organization_context import OrganizationContextRead
 from app.schemas.organization_context_draft import (
     ApplyOrganizationContextDraftRequest,
@@ -24,10 +25,11 @@ router = APIRouter(prefix="/organization-context/ai-draft", tags=["organization-
 
 @router.post("", response_model=OrganizationContextDraftRead, status_code=201)
 def generate_draft(
+    data: GenerateDraftRequest | None = None,
     db: Session = Depends(get_db),
     actor_id: int | None = Depends(get_current_actor_id),
 ) -> OrganizationContextDraftRead:
-    return drafting.generate_draft(db, actor_id)
+    return drafting.generate_draft(db, actor_id, data.instructions if data else None)
 
 
 @router.get("/latest", response_model=OrganizationContextDraftRead | None)

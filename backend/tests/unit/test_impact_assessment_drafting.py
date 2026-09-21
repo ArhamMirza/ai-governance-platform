@@ -524,6 +524,58 @@ def test_generating_a_draft_is_recorded_with_the_model_that_wrote_it(configured,
     assert (entry.diff["provider"], entry.diff["model"]) == ("anthropic", "claude-sonnet-5")
 
 
+# ---------- guidance ----------
+
+
+def test_extra_instructions_reach_both_prompts(configured, model) -> None:
+    db = configured
+    _row, assessment_id = make_system(db)
+
+    drafting.generate_draft(
+        db, assessment_id, actor_id=None, extra_instructions="Emphasize data minimization."
+    )
+
+    assert "Emphasize data minimization." in model.prompt("descriptive")
+    assert "Emphasize data minimization." in model.prompt("factors")
+
+
+def test_no_instructions_means_no_guidance_block(configured, model) -> None:
+    db = configured
+    _row, assessment_id = make_system(db)
+
+    drafting.generate_draft(db, assessment_id, actor_id=None)
+
+    assert "guidance from the requester" not in model.prompt("descriptive")
+    assert "guidance from the requester" not in model.prompt("factors")
+
+
+def test_overlong_instructions_are_rejected(configured, model) -> None:
+    db = configured
+    _row, assessment_id = make_system(db)
+    too_long = "x" * (drafting.MAX_INSTRUCTIONS_CHARS + 1)
+
+    with pytest.raises(ValidationError, match="guidance"):
+        drafting.generate_draft(db, assessment_id, actor_id=None, extra_instructions=too_long)
+    assert model.calls == []
+
+
+def test_revising_with_new_instructions_supersedes_the_pending_draft(configured, model) -> None:
+    db = configured
+    _row, assessment_id = make_system(db)
+    first = drafting.generate_draft(
+        db, assessment_id, actor_id=None, extra_instructions="Focus on privacy."
+    )
+
+    second = drafting.generate_draft(
+        db, assessment_id, actor_id=None, extra_instructions="Focus on safety."
+    )
+
+    db.refresh(first)
+    assert first.status == DraftStatus.SUPERSEDED
+    assert drafting.latest_draft(db, assessment_id).id == second.id
+    assert "Focus on safety." in model.prompt("descriptive")
+
+
 def test_no_provider_means_no_calls_and_no_draft(db_session, model) -> None:
     _row, assessment_id = make_system(db_session)
 

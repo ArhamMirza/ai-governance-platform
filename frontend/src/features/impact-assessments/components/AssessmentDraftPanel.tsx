@@ -1,6 +1,7 @@
 import { useState } from "react";
 
 import { readError } from "../../../shared/api/readError";
+import { DraftGuidanceField } from "../../../shared/components/DraftGuidanceField";
 import { useAiAssistStatus } from "../../ai-assist/hooks";
 import { useGenerateAssessmentDraft, useLatestAssessmentDraft } from "../aiDraft";
 import type { ImpactAssessment } from "../types";
@@ -40,10 +41,10 @@ export function AssessmentDraftPanel({
     );
   }
 
-  const onGenerate = async () => {
+  const onGenerate = async (instructions: string) => {
     setError(null);
     try {
-      await generate.mutateAsync();
+      await generate.mutateAsync(instructions || undefined);
     } catch (err) {
       setError(readError(err, "Couldn’t draft the assessment"));
     }
@@ -61,9 +62,14 @@ export function AssessmentDraftPanel({
           until you review it.
         </p>
       </div>
-      <button type="button" onClick={onGenerate} disabled={generate.isPending || latest.isLoading}>
-        {generate.isPending ? "Drafting — this can take a minute…" : "Draft with AI"}
-      </button>
+      <DraftGuidanceField
+        label="Guidance (optional)"
+        placeholder="e.g. Emphasize data minimization; keep sections concise."
+        submitLabel="Draft with AI"
+        pendingLabel="Drafting — this can take a minute…"
+        isPending={generate.isPending || latest.isLoading}
+        onSubmit={onGenerate}
+      />
       {generate.isPending && (
         <p className="assistant-working" role="status">
           <span className="assistant-working-dot" aria-hidden="true" />
