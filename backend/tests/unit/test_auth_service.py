@@ -3,7 +3,12 @@ from datetime import UTC, datetime, timedelta
 import pytest
 from sqlalchemy.orm import Session
 
-from app.core.exceptions import AuthenticationError, ConflictError, ValidationError
+from app.core.exceptions import (
+    AuthenticationError,
+    ConflictError,
+    RateLimitedError,
+    ValidationError,
+)
 from app.core.security import hash_session_token
 from app.models.session import Session as UserSession
 from app.repositories import session_repository
@@ -81,6 +86,63 @@ def test_authenticate_rejects_unknown_email(db_session: Session) -> None:
         auth_service.authenticate(
             db_session, LoginRequest(email="nobody@example.com", password="whatever1")
         )
+
+
+def test_authenticate_locks_out_after_repeated_failures(db_session: Session) -> None:
+    auth_service.register(db_session, make_register())
+
+    for _ in range(auth_service._MAX_FAILED_LOGINS):
+        with pytest.raises(AuthenticationError):
+            auth_service.authenticate(
+                db_session, LoginRequest(email="ada@example.com", password="wrong")
+            )
+
+    with pytest.raises(RateLimitedError):
+        auth_service.authenticate(
+            db_session, LoginRequest(email="ada@example.com", password="supersecret1")
+        )
+
+
+def test_authenticate_lockout_is_scoped_to_one_email(db_session: Session) -> None:
+    auth_service.register(db_session, make_register())
+
+    for _ in range(auth_service._MAX_FAILED_LOGINS):
+        with pytest.raises(AuthenticationError):
+            auth_service.authenticate(
+                db_session, LoginRequest(email="ada@example.com", password="wrong")
+            )
+
+    # A different (unknown) email is unaffected by ada@example.com's lockout.
+    with pytest.raises(AuthenticationError):
+        auth_service.authenticate(
+            db_session, LoginRequest(email="nobody@example.com", password="whatever1")
+        )
+
+
+def test_authenticate_success_clears_the_failure_count(db_session: Session) -> None:
+    auth_service.register(db_session, make_register())
+
+    for _ in range(auth_service._MAX_FAILED_LOGINS - 1):
+        with pytest.raises(AuthenticationError):
+            auth_service.authenticate(
+                db_session, LoginRequest(email="ada@example.com", password="wrong")
+            )
+
+    user = auth_service.authenticate(
+        db_session, LoginRequest(email="ada@example.com", password="supersecret1")
+    )
+    assert user.email == "ada@example.com"
+
+    # Locked out only after _MAX_FAILED_LOGINS *fresh* failures, not carried
+    # over from before the successful login above.
+    for _ in range(auth_service._MAX_FAILED_LOGINS - 1):
+        with pytest.raises(AuthenticationError):
+            auth_service.authenticate(
+                db_session, LoginRequest(email="ada@example.com", password="wrong")
+            )
+    auth_service.authenticate(
+        db_session, LoginRequest(email="ada@example.com", password="supersecret1")
+    )
 
 
 def test_create_session_then_resolve_the_user_from_the_token(db_session: Session) -> None:
