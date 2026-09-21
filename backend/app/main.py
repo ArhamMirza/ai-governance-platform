@@ -35,6 +35,7 @@ from app.routers import (
     organization_context,
     organization_context_drafts,
     policies,
+    policy_drafts,
     procedures,
     risk_assessments,
     risk_criteria,
@@ -98,6 +99,7 @@ _protected = [Depends(get_current_user)]
 app.include_router(health.router, prefix="/api/v1")
 app.include_router(auth.router, prefix="/api/v1")
 app.include_router(policies.router, prefix="/api/v1", dependencies=_protected)
+app.include_router(policy_drafts.router, prefix="/api/v1", dependencies=_protected)
 app.include_router(procedures.router, prefix="/api/v1", dependencies=_protected)
 app.include_router(organization_context.router, prefix="/api/v1", dependencies=_protected)
 app.include_router(organization_context_drafts.router, prefix="/api/v1", dependencies=_protected)

@@ -13,6 +13,7 @@ import {
   useSubmitForReview,
   useUpdatePolicy,
 } from "../hooks";
+import { PolicyDraftPanel } from "./PolicyDraftPanel";
 
 interface PolicyDetailProps {
   policyId: number;
@@ -88,6 +89,8 @@ export function PolicyDetail({ policyId }: PolicyDetailProps) {
           </button>
         )}
       </div>
+
+      <PolicyDraftPanel policy={policy} />
 
       <h3>Framework Tags</h3>
       <FrameworkTagPicker entityType="Policy" entityId={policyId} />
