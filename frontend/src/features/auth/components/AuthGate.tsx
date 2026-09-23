@@ -4,6 +4,20 @@ import { useCurrentUser, useRegistrationStatus } from "../hooks";
 import { LoginForm } from "./LoginForm";
 import { RegisterForm } from "./RegisterForm";
 
+const BrandMark = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M12 2l8 4v6c0 5-3.5 9-8 10-4.5-1-8-5-8-10V6l8-4z" />
+  </svg>
+);
+
+/**
+ * The sign-in / one-time-setup screen.
+ *
+ * A split panel: the left carries the platform's own voice, the right is
+ * the form on the ordinary page ground. Both sides are sized to fit inside
+ * one viewport with nothing scrolling -- this is a threshold someone passes
+ * through, not a page to read down.
+ */
 export function AuthGate({ children }: { children: ReactNode }) {
   const { data: user, isLoading: userLoading, isSuccess } = useCurrentUser();
   const { data: registrationStatus, isLoading: statusLoading } = useRegistrationStatus();
@@ -11,7 +25,7 @@ export function AuthGate({ children }: { children: ReactNode }) {
   if (userLoading || (!isSuccess && statusLoading)) {
     return (
       <div className="auth-screen">
-        <p>Loading...</p>
+        <p className="auth-loading">Loading...</p>
       </div>
     );
   }
@@ -20,30 +34,47 @@ export function AuthGate({ children }: { children: ReactNode }) {
     return <>{children}</>;
   }
 
+  const isSetup = registrationStatus?.registration_open === true;
+
   return (
     <div className="auth-screen">
-      <div className="auth-card">
-        <div className="auth-brand">
-          <div className="sidebar-brand-mark">
-            <svg
-              width="20"
-              height="20"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="white"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <path d="M12 2l8 4v6c0 5-3.5 9-8 10-4.5-1-8-5-8-10V6l8-4z" />
-            </svg>
+      <aside className="auth-brand-panel">
+        <div className="auth-brand-panel-inner">
+          <div className="auth-brand">
+            <div className="sidebar-brand-mark">
+              <BrandMark />
+            </div>
+            <div>
+              <div className="auth-brand-name">Governance</div>
+              <div className="auth-brand-sub">AI Compliance Platform</div>
+            </div>
           </div>
-          <div>
-            <div className="auth-brand-name">Governance</div>
-            <div className="auth-brand-sub">AI Compliance Platform</div>
-          </div>
+
+          <h1 className="auth-pitch">
+            Every AI system, <em>on the record.</em>
+          </h1>
+          <p className="auth-pitch-sub">
+            What it is, what was assessed, who signed off, and when — one register instead
+            of a folder of documents no one can trust is current.
+          </p>
         </div>
-        {registrationStatus?.registration_open ? <RegisterForm /> : <LoginForm />}
+      </aside>
+
+      <div className="auth-form-panel">
+        <div className="auth-card">
+          <div className="auth-brand auth-brand-compact">
+            <div className="sidebar-brand-mark">
+              <BrandMark />
+            </div>
+            <div>
+              <div className="auth-brand-name">Governance</div>
+              <div className="auth-brand-sub">AI Compliance Platform</div>
+            </div>
+          </div>
+
+          {isSetup && <span className="auth-eyebrow">One-time setup</span>}
+          {isSetup ? <RegisterForm /> : <LoginForm />}
+        </div>
       </div>
     </div>
   );

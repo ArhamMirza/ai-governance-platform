@@ -75,7 +75,15 @@ describe("GovernanceRoleCard CAIGO backup approver", () => {
     const user = userEvent.setup();
 
     render(<GovernanceRoleCard role={caigoRole} allRoles={[caigoRole]} canManage />);
-    expect(screen.getByText(/Backup Bailey covers this role until/)).toBeInTheDocument();
+    // The delegate's name is emphasized, so the sentence spans two nodes --
+    // match on the paragraph's combined text rather than a single node.
+    expect(
+      screen.getByText(
+        (_, element) =>
+          element?.tagName === "P" &&
+          /Backup Bailey covers this role until/.test(element.textContent ?? ""),
+      ),
+    ).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Revoke" }));
 

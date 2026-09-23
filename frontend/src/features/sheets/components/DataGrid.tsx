@@ -32,6 +32,11 @@ interface DataGridProps {
    * underlying column keys or data. Any column not listed in a group gets a
    * blank cell in the group row so headers stay aligned. */
   columnGroups?: { label: string; keys: string[] }[];
+  /** Restricts which columns are rendered, so a wide sheet can be split into
+   * focused views instead of one overstuffed table. Purely a view concern --
+   * adding and removing columns still operates on the whole sheet, and a
+   * hidden column's data is untouched. */
+  visibleColumnKeys?: string[];
   /** Return the confirmation text for deleting a row, to require an explicit
    * confirm first. Omit to delete immediately. */
   confirmDelete?: (row: SheetRow) => string;
@@ -85,6 +90,7 @@ export function DataGrid({
   rowActions,
   longTextColumnKeys = [],
   columnGroups,
+  visibleColumnKeys,
   confirmDelete,
   alsoInvalidate = [],
 }: DataGridProps) {
@@ -153,7 +159,13 @@ export function DataGrid({
     });
   };
 
-  const groupHeaderCells = columnGroups ? buildGroupHeaderCells(sheet.columns, columnGroups) : null;
+  // Filtered in the sheet's own column order, so a view never reshuffles the
+  // columns relative to how they appear in the full sheet.
+  const columns = visibleColumnKeys
+    ? sheet.columns.filter((column) => visibleColumnKeys.includes(column.key))
+    : sheet.columns;
+
+  const groupHeaderCells = columnGroups ? buildGroupHeaderCells(columns, columnGroups) : null;
 
   return (
     <div className="data-grid">
@@ -201,7 +213,7 @@ export function DataGrid({
               </tr>
             )}
             <tr>
-              {sheet.columns.map((column) => (
+              {columns.map((column) => (
                 <th key={column.key}>
                   {column.label}
                   {!readOnlyColumnKeys.includes(column.key) && (
@@ -222,7 +234,7 @@ export function DataGrid({
               const flagged = isRowFlagged?.(row) ?? false;
               return (
                 <tr key={row.id} className={flagged ? "row-flagged" : undefined}>
-                  {sheet.columns.map((column) => {
+                  {columns.map((column) => {
                     const isReadOnly = readOnlyColumnKeys.includes(column.key);
                     const options = selectOptions?.[column.key];
                     const currentValue = cellText(row.data[column.key]);
@@ -308,7 +320,7 @@ export function DataGrid({
               );
             })}
             <tr>
-              {sheet.columns.map((column) => (
+              {columns.map((column) => (
                 <td key={column.key} data-column={column.key} data-type={column.data_type}>
                   {!readOnlyColumnKeys.includes(column.key) && (
                     <input

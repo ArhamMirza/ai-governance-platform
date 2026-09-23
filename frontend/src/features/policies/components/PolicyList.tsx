@@ -28,7 +28,7 @@ export function PolicyList() {
             <td>
               <StatusBadge status={policy.status} />
             </td>
-            <td>{policy.version}</td>
+            <td data-type="number">{policy.version}</td>
           </tr>
         ))}
       </tbody>

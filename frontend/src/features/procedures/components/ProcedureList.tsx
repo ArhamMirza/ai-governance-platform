@@ -28,7 +28,7 @@ export function ProcedureList() {
             <td>
               <StatusBadge status={procedure.status} />
             </td>
-            <td>{procedure.version}</td>
+            <td data-type="number">{procedure.version}</td>
           </tr>
         ))}
       </tbody>

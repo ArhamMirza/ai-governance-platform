@@ -4,6 +4,7 @@ import { NavLink } from "react-router-dom";
 import { AssistantPanel } from "../features/assistant/components/AssistantPanel";
 import { useCurrentUser, useLogout } from "../features/auth/hooks";
 import { hasPermission } from "../features/auth/permissions";
+import { ThemeToggle } from "../shared/components/ThemeToggle";
 
 interface NavItem {
   to: string;
@@ -51,99 +52,103 @@ const governanceRolesNavItem: NavItem = {
   ),
 };
 
-const navItems: NavItem[] = [
-  {
-    to: "/",
-    label: "Dashboard",
-    end: true,
-    icon: (
+const dashboardNavItem: NavItem = {
+  to: "/",
+  label: "Dashboard",
+  end: true,
+  icon: (
       <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <rect x="3" y="3" width="7" height="7" rx="1.5" />
         <rect x="14" y="3" width="7" height="7" rx="1.5" />
         <rect x="3" y="14" width="7" height="7" rx="1.5" />
         <rect x="14" y="14" width="7" height="7" rx="1.5" />
       </svg>
-    ),
-  },
-  {
-    to: "/organization-context",
-    label: "Organization Context",
-    icon: (
+  ),
+};
+
+const orgContextNavItem: NavItem = {
+  to: "/organization-context",
+  label: "Organization Context",
+  icon: (
       <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <path d="M3 21h18" />
         <path d="M5 21V7l7-4 7 4v14" />
         <path d="M9 21v-6h6v6" />
         <path d="M9 9h.01M15 9h.01M9 13h.01M15 13h.01" />
       </svg>
-    ),
-  },
-  {
-    to: "/policies",
-    label: "Policies",
-    icon: (
+  ),
+};
+
+const policiesNavItem: NavItem = {
+  to: "/policies",
+  label: "Policies",
+  icon: (
       <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
         <path d="M14 2v6h6" />
         <path d="M9 13h6M9 17h6" />
       </svg>
-    ),
-  },
-  {
-    to: "/procedures",
-    label: "Procedures",
-    icon: (
+  ),
+};
+
+const proceduresNavItem: NavItem = {
+  to: "/procedures",
+  label: "Procedures",
+  icon: (
       <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <rect x="6" y="4" width="12" height="16" rx="2" />
         <path d="M9 4V3a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v1" />
         <path d="M9 12l2 2 4-4" />
       </svg>
-    ),
-  },
-  {
-    to: "/ai-systems",
-    label: "AI System Inventory",
-    icon: (
+  ),
+};
+
+const aiSystemsNavItem: NavItem = {
+  to: "/ai-systems",
+  label: "AI System Inventory",
+  icon: (
       <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <rect x="6" y="6" width="12" height="12" rx="2" />
         <rect x="10" y="10" width="4" height="4" />
         <path d="M9 2v3M15 2v3M9 19v3M15 19v3M2 9h3M2 15h3M19 9h3M19 15h3" />
       </svg>
-    ),
-  },
-  {
-    to: "/data-inventory",
-    label: "Data Inventory",
-    icon: (
+  ),
+};
+
+const dataInventoryNavItem: NavItem = {
+  to: "/data-inventory",
+  label: "Data Inventory",
+  icon: (
       <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <ellipse cx="12" cy="5" rx="8" ry="3" />
         <path d="M4 5v6c0 1.7 3.6 3 8 3s8-1.3 8-3V5" />
         <path d="M4 11v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6" />
       </svg>
-    ),
-  },
-  {
-    to: "/risk-assessments",
-    label: "Impact & Risk Assessments",
-    icon: (
+  ),
+};
+
+const riskNavItem: NavItem = {
+  to: "/risk-assessments",
+  label: "Impact & Risk Assessments",
+  icon: (
       <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <path d="M12 2l8 3.5v6c0 5-3.4 8.7-8 10-4.6-1.3-8-5-8-10v-6z" />
         <path d="M12 8v5M12 16h.01" />
       </svg>
-    ),
-  },
-  governanceRolesNavItem,
-  {
-    to: "/frameworks",
-    label: "Frameworks",
-    icon: (
+  ),
+};
+
+const frameworksNavItem: NavItem = {
+  to: "/frameworks",
+  label: "Frameworks",
+  icon: (
       <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
         <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
         <path d="M9 7h7M9 11h7" />
       </svg>
-    ),
-  },
-];
+  ),
+};
 
 const settingsNavItem: NavItem = {
   to: "/settings",
@@ -168,19 +173,40 @@ const handbookNavItem: NavItem = {
   ),
 };
 
-export function Layout({ children }: { children: ReactNode }) {
-  const { data: user } = useCurrentUser();
-  const logout = useLogout();
+interface NavGroup {
+  /** null for the first group, which sits above the first heading. */
+  label: string | null;
+  items: NavItem[];
+}
+
+/** The nav is grouped the way the management system itself is structured --
+ * what the organization is, what it has written down, what it runs, and how
+ * that is assured -- rather than as one flat list of twelve destinations. */
+function navGroupsFor(role: string | undefined): NavGroup[] {
   // Each admin-only entry is gated on the permission its own page needs,
   // rather than one blanket admin check -- so the nav stays honest if the
   // permission table ever splits those roles apart.
-  const items = [
-    ...navItems,
-    archiveNavItem,
-    ...(hasPermission(user?.role, "manage_users") ? [usersNavItem] : []),
-    ...(hasPermission(user?.role, "manage_settings") ? [settingsNavItem] : []),
-    handbookNavItem,
+  const administration = [
+    ...(hasPermission(role, "manage_users") ? [usersNavItem] : []),
+    ...(hasPermission(role, "manage_settings") ? [settingsNavItem] : []),
   ];
+
+  return [
+    { label: null, items: [dashboardNavItem] },
+    { label: "Foundation", items: [orgContextNavItem, governanceRolesNavItem] },
+    { label: "Documentation", items: [policiesNavItem, proceduresNavItem, handbookNavItem] },
+    { label: "Inventory", items: [aiSystemsNavItem, dataInventoryNavItem, archiveNavItem] },
+    { label: "Assurance", items: [riskNavItem, frameworksNavItem] },
+    ...(administration.length > 0
+      ? [{ label: "Administration", items: administration }]
+      : []),
+  ];
+}
+
+export function Layout({ children }: { children: ReactNode }) {
+  const { data: user } = useCurrentUser();
+  const logout = useLogout();
+  const groups = navGroupsFor(user?.role);
 
   return (
     <div className="app-shell">
@@ -196,28 +222,36 @@ export function Layout({ children }: { children: ReactNode }) {
             <div className="sidebar-brand-sub">AI Compliance Platform</div>
           </div>
         </div>
-        <nav>
-          {items.map((item) => (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              end={item.end}
-              className={({ isActive }) => `sidebar-link${isActive ? " active" : ""}`}
-            >
-              {item.icon}
-              {item.label}
-            </NavLink>
+        <nav aria-label="Sections">
+          {groups.map((group) => (
+            <div className="sidebar-group" key={group.label ?? "primary"}>
+              {group.label && <div className="sidebar-group-label">{group.label}</div>}
+              {group.items.map((item) => (
+                <NavLink
+                  key={item.to}
+                  to={item.to}
+                  end={item.end}
+                  className={({ isActive }) => `sidebar-link${isActive ? " active" : ""}`}
+                >
+                  {item.icon}
+                  {item.label}
+                </NavLink>
+              ))}
+            </div>
           ))}
         </nav>
-        {user && (
-          <div className="sidebar-account">
-            <div className="sidebar-account-name">{user.name}</div>
-            <div className="sidebar-account-role">{user.role}</div>
-            <button onClick={() => logout.mutate()} disabled={logout.isPending}>
-              {logout.isPending ? "Signing out..." : "Sign out"}
-            </button>
-          </div>
-        )}
+        <div className="sidebar-footer">
+          <ThemeToggle />
+          {user && (
+            <div className="sidebar-account">
+              <div className="sidebar-account-name">{user.name}</div>
+              <div className="sidebar-account-role">{user.role}</div>
+              <button onClick={() => logout.mutate()} disabled={logout.isPending}>
+                {logout.isPending ? "Signing out..." : "Sign out"}
+              </button>
+            </div>
+          )}
+        </div>
       </aside>
       <main className="main-content">{children}</main>
       <AssistantPanel />

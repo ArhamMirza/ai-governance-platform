@@ -31,6 +31,7 @@ export function LoginForm() {
   return (
     <form onSubmit={onSubmit} className="auth-form">
       <h1>Sign in</h1>
+      <p>Continue to your organization's register.</p>
 
       <div>
         <label htmlFor="login-email">Email</label>

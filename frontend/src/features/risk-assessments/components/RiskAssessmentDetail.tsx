@@ -120,7 +120,6 @@ export function RiskAssessmentDetail({ riskAssessmentId }: RiskAssessmentDetailP
       <h3>Impact Assessments</h3>
       <ImpactAssessmentList riskAssessmentId={riskAssessmentId} />
 
-      <h3>Audit Log</h3>
       <AuditLogViewer entityType="RiskAssessment" entityId={riskAssessmentId} />
 
       {confirmingDelete && (

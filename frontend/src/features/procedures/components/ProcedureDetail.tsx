@@ -41,10 +41,14 @@ export function ProcedureDetail({ procedureId }: ProcedureDetailProps) {
 
   return (
     <article>
-      <h2>{procedure.title}</h2>
-      <StatusBadge status={procedure.status} />
-      <p>{procedure.description}</p>
-      <p>Version {procedure.version}</p>
+      <header className="record-header">
+        <div className="record-header-top">
+          <h2>{procedure.title}</h2>
+          <StatusBadge status={procedure.status} />
+        </div>
+        <p className="record-version">Version {procedure.version}</p>
+        {procedure.description && <p className="record-lede">{procedure.description}</p>}
+      </header>
 
       <div>
         <label htmlFor="procedure-owner-edit">Owner</label>
@@ -111,7 +115,6 @@ export function ProcedureDetail({ procedureId }: ProcedureDetailProps) {
         ))}
       </ul>
 
-      <h3>Audit Log</h3>
       <AuditLogViewer entityType="Procedure" entityId={procedureId} />
     </article>
   );

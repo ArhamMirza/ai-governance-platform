@@ -234,7 +234,6 @@ export function ImpactAssessmentForm({
       <h4>Evidence</h4>
       <DocumentBrowser entityType={ENTITY_TYPE} entityId={assessment.id} />
 
-      <h4>Audit Log</h4>
       <AuditLogViewer entityType={ENTITY_TYPE} entityId={assessment.id} />
 
       {allowDelete && (

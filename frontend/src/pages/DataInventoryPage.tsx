@@ -24,12 +24,10 @@ export function DataInventoryPage() {
       {/* Two trails, because they're recorded against different things: the
           sheet itself for row and column changes, and each dataset row for
           its submit/approve/withdraw history. */}
-      <h3>Review History</h3>
-      <AuditLogViewer entityType="DataInventoryApproval" />
+      <AuditLogViewer entityType="DataInventoryApproval" title="Review history" />
 
       {sheet && (
         <>
-          <h3>Audit Log</h3>
           <AuditLogViewer entityType="DataInventory" entityId={sheet.id} />
         </>
       )}

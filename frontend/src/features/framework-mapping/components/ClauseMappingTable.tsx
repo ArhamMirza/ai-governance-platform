@@ -68,7 +68,7 @@ export function ClauseMappingTable({ framework }: ClauseMappingTableProps) {
       <Fragment key={entry.id}>
         {sectionHeader}
         <tr>
-          <td>{entry.code}</td>
+          <td data-type="code">{entry.code}</td>
           <td>{entry.title}</td>
           <td>
             <TaggedItemChips items={entry.tagged_items} />
