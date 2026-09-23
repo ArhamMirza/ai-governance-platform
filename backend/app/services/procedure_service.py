@@ -90,6 +90,7 @@ def submit_for_review(db: Session, procedure_id: int, actor_id: int | None) -> P
             f"Procedure {procedure_id} must be in 'draft' status to submit for review, "
             f"currently '{procedure.status}'"
         )
+    governance_role_service.require_a_possible_approver(db, actor_id)
     _claim(db, procedure, ProcedureStatus.DRAFT, {"status": ProcedureStatus.IN_REVIEW})
     audit_service.log(db, "Procedure", procedure.id, "submitted_for_review", actor_id)
     return procedure

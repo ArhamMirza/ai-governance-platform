@@ -202,6 +202,10 @@ def request_deployment_approval(
     db: Session, ai_system_row_id: int, actor_id: int | None
 ) -> None:
     _require_not_archived(get_or_create(db, ai_system_row_id))
+    # If the requester is the sole possible CAIGO approver, refuse now rather
+    # than leave the release stuck waiting on an approval nobody can give --
+    # see policy_service.submit_for_review for the same guard's origin.
+    governance_role_service.require_a_possible_approver(db, actor_id)
     audit_service.log(
         db, DEPLOYMENT_APPROVAL_ENTITY_TYPE, ai_system_row_id,
         "submitted_for_review", actor_id,
@@ -271,6 +275,7 @@ def request_retirement_approval(
     db: Session, ai_system_row_id: int, actor_id: int | None
 ) -> None:
     _require_not_archived(get_or_create(db, ai_system_row_id))
+    governance_role_service.require_a_possible_approver(db, actor_id)
     audit_service.log(
         db, RETIREMENT_APPROVAL_ENTITY_TYPE, ai_system_row_id,
         "submitted_for_review", actor_id,

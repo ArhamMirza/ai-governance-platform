@@ -10,6 +10,14 @@ def role_id(client: TestClient, name: str) -> int:
     return next(r["id"] for r in roles if r["name"] == name)
 
 
+def holder_ids(client: TestClient, role_id_: int) -> list[int]:
+    # There is no GET /governance-roles/{id} -- the list endpoint is the
+    # only place a role's current holders can be read back from.
+    roles = client.get("/api/v1/governance-roles").json()
+    role = next(r for r in roles if r["id"] == role_id_)
+    return [h["id"] for h in role["holders"]]
+
+
 def test_list_roles_is_open_to_any_logged_in_user(client: TestClient) -> None:
     response = client.get("/api/v1/governance-roles")
 
@@ -264,3 +272,76 @@ def test_revoking_with_no_active_delegation_is_rejected(
     response = client.delete("/api/v1/governance-roles/caigo-delegation")
 
     assert response.status_code == 400
+
+
+def test_removing_the_sole_caigo_holder_with_no_delegate_is_rejected(
+    client: TestClient, make_user, login_as
+) -> None:
+    login_as(make_user(role=UserRole.ADMIN))
+    caigo = role_id(client, "Chief AI Governance Officer")
+    holder = make_user(role=UserRole.ADMIN)
+    client.post(f"/api/v1/governance-roles/{caigo}/assignments", json={"user_id": holder.id})
+
+    response = client.delete(f"/api/v1/governance-roles/{caigo}/assignments/{holder.id}")
+
+    assert response.status_code == 409
+    assert "only person" in response.json()["detail"]
+    # Refused, not just warned about -- the holder is still assigned.
+    assert holder_ids(client, caigo) == [holder.id]
+
+
+def test_removing_a_caigo_holder_is_allowed_once_a_backup_approver_is_set(
+    client: TestClient, make_user, login_as
+) -> None:
+    login_as(make_user(role=UserRole.ADMIN))
+    caigo = role_id(client, "Chief AI Governance Officer")
+    holder = make_user(role=UserRole.ADMIN)
+    delegate = make_user(role=UserRole.ADMIN)
+    client.post(f"/api/v1/governance-roles/{caigo}/assignments", json={"user_id": holder.id})
+    client.post(
+        "/api/v1/governance-roles/caigo-delegation",
+        json={
+            "delegate_user_id": delegate.id,
+            "ends_at": (datetime.now(UTC) + timedelta(days=1)).isoformat(),
+        },
+    )
+
+    response = client.delete(f"/api/v1/governance-roles/{caigo}/assignments/{holder.id}")
+
+    assert response.status_code == 200
+    assert holder_ids(client, caigo) == []
+
+
+def test_removing_one_of_two_caigo_holders_is_allowed(
+    client: TestClient, make_user, login_as
+) -> None:
+    """CAIGO is capped at one holder by the seeded default, but the cap
+    itself is just a governance_roles.max_holders value -- raising it (as an
+    admin legitimately could) has to widen this guard too, not just the
+    seeded case."""
+    login_as(make_user(role=UserRole.ADMIN))
+    caigo = role_id(client, "Chief AI Governance Officer")
+    client.patch(f"/api/v1/governance-roles/{caigo}", json={"max_holders": 2})
+    first = make_user(role=UserRole.ADMIN)
+    second = make_user(role=UserRole.ADMIN)
+    client.post(f"/api/v1/governance-roles/{caigo}/assignments", json={"user_id": first.id})
+    client.post(f"/api/v1/governance-roles/{caigo}/assignments", json={"user_id": second.id})
+
+    response = client.delete(f"/api/v1/governance-roles/{caigo}/assignments/{first.id}")
+
+    assert response.status_code == 200
+    assert holder_ids(client, caigo) == [second.id]
+
+
+def test_removing_a_non_caigo_role_holder_is_unaffected_by_the_guard(
+    client: TestClient, make_user, login_as
+) -> None:
+    login_as(make_user(role=UserRole.ADMIN))
+    risk_owner = role_id(client, "Risk Owner")
+    holder = make_user()
+    client.post(f"/api/v1/governance-roles/{risk_owner}/assignments", json={"user_id": holder.id})
+
+    response = client.delete(f"/api/v1/governance-roles/{risk_owner}/assignments/{holder.id}")
+
+    assert response.status_code == 200
+    assert holder_ids(client, risk_owner) == []

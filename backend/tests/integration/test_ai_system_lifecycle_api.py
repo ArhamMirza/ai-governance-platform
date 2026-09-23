@@ -4,9 +4,13 @@ Each test satisfies exactly the gate it is about, so a failure points at one
 requirement rather than the whole chain.
 """
 
+from datetime import UTC, datetime, timedelta
+
 from fastapi.testclient import TestClient
+from sqlalchemy.orm import Session
 
 from app.models.user import UserRole
+from app.services import governance_role_service
 from tests.helpers import add_approved_dataset, complete_impact_assessment
 
 LIFECYCLE = "/api/v1/ai-systems/{row_id}/lifecycle"
@@ -252,9 +256,16 @@ def test_validation_gate_requires_report_approval_and_deployment_record(
 
 
 def test_the_requester_cannot_approve_their_own_release(
-    client: TestClient, test_user, make_caigo
+    client: TestClient, db_session: Session, test_user, second_user, make_caigo
 ) -> None:
+    # A backup approver exists so the request itself is allowed (see
+    # test_cannot_request_deployment_approval_when_you_are_the_only_possible_approver
+    # for that guard on its own) -- this test is about the separate rule
+    # that the requester still can't approve their own release regardless.
     make_caigo(test_user)
+    governance_role_service.delegate_caigo(
+        db_session, second_user.id, datetime.now(UTC) + timedelta(days=1), actor_id=None
+    )
     row_id = make_system(client)
     reach_validation(client, row_id)
     client.post(LIFECYCLE.format(row_id=row_id) + "/request-deployment-approval")
@@ -264,6 +275,19 @@ def test_the_requester_cannot_approve_their_own_release(
     assert response.status_code == 409
     # Phrased for whoever is looking at the screen, not the internal entity type.
     assert "someone else has to approve it" in response.text
+
+
+def test_cannot_request_deployment_approval_when_you_are_the_only_possible_approver(
+    client: TestClient, test_user, make_caigo
+) -> None:
+    make_caigo(test_user)
+    row_id = make_system(client)
+    reach_validation(client, row_id)
+
+    response = client.post(LIFECYCLE.format(row_id=row_id) + "/request-deployment-approval")
+
+    assert response.status_code == 400
+    assert "backup approver" in response.json()["detail"]
 
 
 def test_non_caigo_admin_cannot_approve_a_release(

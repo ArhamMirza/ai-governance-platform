@@ -344,3 +344,177 @@ def test_role_names_by_user_badges_the_active_delegate(
     badges = governance_role_service.role_names_by_user(db_session)
 
     assert badges[delegate.id] == ["Chief AI Governance Officer"]
+
+
+# ---------- require_a_possible_approver (submission-time stand-in guard) ----------
+
+
+def test_require_a_possible_approver_refuses_the_sole_caigo(
+    db_session: Session, make_user
+) -> None:
+    caigo_id = get_role_id(db_session, "Chief AI Governance Officer")
+    caigo_holder = make_user(role=UserRole.ADMIN)
+    governance_role_service.assign_user(db_session, caigo_id, caigo_holder.id, actor_id=None)
+
+    with pytest.raises(ValidationError):
+        governance_role_service.require_a_possible_approver(db_session, caigo_holder.id)
+
+
+def test_require_a_possible_approver_allows_a_non_caigo_actor(
+    db_session: Session, make_user
+) -> None:
+    admin = make_user(role=UserRole.ADMIN)
+
+    # No error -- someone who isn't CAIGO isn't the one this guard is about;
+    # require_different_approver (checked separately, at approval time) is
+    # what stops a non-CAIGO actor from approving their own work.
+    governance_role_service.require_a_possible_approver(db_session, admin.id)
+
+
+def test_require_a_possible_approver_is_a_noop_with_no_real_actor(db_session: Session) -> None:
+    governance_role_service.require_a_possible_approver(db_session, None)
+
+
+def test_require_a_possible_approver_allows_the_caigo_once_a_delegate_exists(
+    db_session: Session, make_user
+) -> None:
+    caigo_id = get_role_id(db_session, "Chief AI Governance Officer")
+    caigo_holder = make_user(role=UserRole.ADMIN)
+    governance_role_service.assign_user(db_session, caigo_id, caigo_holder.id, actor_id=None)
+    delegate = make_user(role=UserRole.ADMIN)
+    governance_role_service.delegate_caigo(
+        db_session, delegate.id, datetime.now(UTC) + timedelta(days=1), actor_id=None
+    )
+
+    # No error -- the delegate could stand in and approve what the CAIGO submits.
+    governance_role_service.require_a_possible_approver(db_session, caigo_holder.id)
+
+
+def test_require_a_possible_approver_allows_the_caigo_with_a_second_holder(
+    db_session: Session, make_user
+) -> None:
+    """CAIGO is capped at one holder by the seeded default, but the cap
+    itself is just a governance_roles.max_holders value -- raising it (as an
+    admin legitimately could, for a co-CAIGO arrangement) has to widen this
+    guard too, not just the seeded case."""
+    caigo_id = get_role_id(db_session, "Chief AI Governance Officer")
+    governance_role_service.update_role(
+        db_session,
+        caigo_id,
+        name=None,
+        responsibilities=None,
+        parent_role_id=None,
+        parent_role_set=False,
+        max_holders=2,
+        max_holders_set=True,
+        actor_id=None,
+    )
+    first_holder = make_user(role=UserRole.ADMIN)
+    second_holder = make_user(role=UserRole.ADMIN)
+    governance_role_service.assign_user(db_session, caigo_id, first_holder.id, actor_id=None)
+    governance_role_service.assign_user(db_session, caigo_id, second_holder.id, actor_id=None)
+
+    # No error -- the second holder could approve what the first submits.
+    governance_role_service.require_a_possible_approver(db_session, first_holder.id)
+
+
+def test_require_a_possible_approver_refuses_a_delegate_standing_in_alone(
+    db_session: Session, make_user
+) -> None:
+    """The delegate is themselves the only person who could approve while
+    they're standing in -- the actual CAIGO seat has no direct holder here,
+    so the guard has to catch the delegate's own submission too, not just
+    the holder's."""
+    delegate = make_user(role=UserRole.ADMIN)
+    governance_role_service.delegate_caigo(
+        db_session, delegate.id, datetime.now(UTC) + timedelta(days=1), actor_id=None
+    )
+
+    with pytest.raises(ValidationError):
+        governance_role_service.require_a_possible_approver(db_session, delegate.id)
+
+
+def test_has_other_eligible_approver_false_for_the_sole_caigo(
+    db_session: Session, make_user
+) -> None:
+    caigo_id = get_role_id(db_session, "Chief AI Governance Officer")
+    caigo_holder = make_user(role=UserRole.ADMIN)
+    governance_role_service.assign_user(db_session, caigo_id, caigo_holder.id, actor_id=None)
+
+    assert (
+        governance_role_service.has_other_eligible_approver(db_session, caigo_holder.id)
+        is False
+    )
+
+
+# ---------- unassign_user (removing the last possible approver) ----------
+
+
+def test_unassign_user_refuses_to_remove_the_sole_caigo_with_no_delegate(
+    db_session: Session, make_user
+) -> None:
+    caigo_id = get_role_id(db_session, "Chief AI Governance Officer")
+    holder = make_user(role=UserRole.ADMIN)
+    governance_role_service.assign_user(db_session, caigo_id, holder.id, actor_id=None)
+
+    with pytest.raises(ConflictError):
+        governance_role_service.unassign_user(db_session, caigo_id, holder.id, actor_id=None)
+
+    # Refused, not just warned about -- the assignment is still there.
+    assert [h.id for h in governance_role_service.holders_for_role(db_session, caigo_id)] == [
+        holder.id
+    ]
+
+
+def test_unassign_user_allows_removing_a_caigo_holder_once_a_delegate_exists(
+    db_session: Session, make_user
+) -> None:
+    caigo_id = get_role_id(db_session, "Chief AI Governance Officer")
+    holder = make_user(role=UserRole.ADMIN)
+    governance_role_service.assign_user(db_session, caigo_id, holder.id, actor_id=None)
+    delegate = make_user(role=UserRole.ADMIN)
+    governance_role_service.delegate_caigo(
+        db_session, delegate.id, datetime.now(UTC) + timedelta(days=1), actor_id=None
+    )
+
+    governance_role_service.unassign_user(db_session, caigo_id, holder.id, actor_id=None)
+
+    assert governance_role_service.holders_for_role(db_session, caigo_id) == []
+
+
+def test_unassign_user_allows_removing_one_of_two_caigo_holders(
+    db_session: Session, make_user
+) -> None:
+    caigo_id = get_role_id(db_session, "Chief AI Governance Officer")
+    governance_role_service.update_role(
+        db_session,
+        caigo_id,
+        name=None,
+        responsibilities=None,
+        parent_role_id=None,
+        parent_role_set=False,
+        max_holders=2,
+        max_holders_set=True,
+        actor_id=None,
+    )
+    first = make_user(role=UserRole.ADMIN)
+    second = make_user(role=UserRole.ADMIN)
+    governance_role_service.assign_user(db_session, caigo_id, first.id, actor_id=None)
+    governance_role_service.assign_user(db_session, caigo_id, second.id, actor_id=None)
+
+    governance_role_service.unassign_user(db_session, caigo_id, first.id, actor_id=None)
+
+    remaining = governance_role_service.holders_for_role(db_session, caigo_id)
+    assert [u.id for u in remaining] == [second.id]
+
+
+def test_unassign_user_is_unaffected_by_the_guard_for_a_non_caigo_role(
+    db_session: Session, make_user
+) -> None:
+    risk_owner_id = get_role_id(db_session, "Risk Owner")
+    holder = make_user()
+    governance_role_service.assign_user(db_session, risk_owner_id, holder.id, actor_id=None)
+
+    governance_role_service.unassign_user(db_session, risk_owner_id, holder.id, actor_id=None)
+
+    assert governance_role_service.holders_for_role(db_session, risk_owner_id) == []

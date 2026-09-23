@@ -1,9 +1,13 @@
 """The Data Inventory review over the API: the assigned Data Owner submits a
 dataset entry, the Chief AI Governance Officer approves it."""
 
-from fastapi.testclient import TestClient
+from datetime import UTC, datetime, timedelta
 
-from app.models.user import UserRole
+from fastapi.testclient import TestClient
+from sqlalchemy.orm import Session
+
+from app.models.user import User, UserRole
+from app.services import governance_role_service
 
 ROWS = "/api/v1/data-inventory/rows"
 
@@ -100,8 +104,19 @@ def test_a_non_caigo_admin_cannot_approve(
 
 
 def test_the_submitter_cannot_approve_their_own_dataset(
-    client: TestClient, caigo_admin, login_as
+    client: TestClient,
+    db_session: Session,
+    caigo_admin,
+    second_user: User,
+    login_as,
 ) -> None:
+    # A backup approver exists so the submission itself is allowed (see
+    # test_cannot_submit_a_dataset_when_you_are_the_only_possible_approver
+    # for that guard on its own) -- this test is about the separate rule
+    # that the submitter still can't approve their own dataset regardless.
+    governance_role_service.delegate_caigo(
+        db_session, second_user.id, datetime.now(UTC) + timedelta(days=1), actor_id=None
+    )
     login_as(caigo_admin)
     row_id = create_dataset(client, owner_id=caigo_admin.id)
     client.post(f"{ROWS}/{row_id}/submit-for-approval")
@@ -110,6 +125,18 @@ def test_the_submitter_cannot_approve_their_own_dataset(
 
     assert response.status_code == 409
     assert "someone else" in response.json()["detail"]
+
+
+def test_cannot_submit_a_dataset_when_you_are_the_only_possible_approver(
+    client: TestClient, caigo_admin, login_as
+) -> None:
+    login_as(caigo_admin)
+    row_id = create_dataset(client, owner_id=caigo_admin.id)
+
+    response = client.post(f"{ROWS}/{row_id}/submit-for-approval")
+
+    assert response.status_code == 400
+    assert "backup approver" in response.json()["detail"]
 
 
 def test_editing_an_approved_dataset_sends_it_back_to_draft(

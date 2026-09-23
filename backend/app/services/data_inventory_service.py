@@ -292,6 +292,7 @@ def submit_for_approval(db: Session, row_id: int, actor_id: int | None) -> DataI
     if not str(row.data.get(NAME_COLUMN_KEY) or "").strip():
         raise ValidationError("Give the dataset a name before submitting it for approval.")
     _require_data_owner(db, row, actor_id)
+    governance_role_service.require_a_possible_approver(db, actor_id)
 
     _claim(
         db,

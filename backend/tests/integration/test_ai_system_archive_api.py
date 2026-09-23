@@ -7,8 +7,10 @@ a system already in Operation & Monitoring.
 from datetime import UTC, datetime, timedelta
 
 from fastapi.testclient import TestClient
+from sqlalchemy.orm import Session
 
-from app.models.user import UserRole
+from app.models.user import User, UserRole
+from app.services import governance_role_service
 from tests.integration.test_ai_system_lifecycle_api import (
     LIFECYCLE,
     advance,
@@ -71,8 +73,15 @@ def test_retiring_needs_a_reason_and_an_approval(
 
 
 def test_the_requester_cannot_approve_their_own_retirement(
-    client: TestClient, login_as, caigo_admin, test_user
+    client: TestClient, db_session: Session, login_as, caigo_admin, test_user, second_user: User
 ) -> None:
+    # A backup approver exists so the request itself is allowed (see
+    # test_cannot_request_retirement_approval_when_you_are_the_only_possible_approver
+    # for that guard on its own) -- this test is about the separate rule
+    # that the requester still can't approve their own retirement regardless.
+    governance_role_service.delegate_caigo(
+        db_session, second_user.id, datetime.now(UTC) + timedelta(days=1), actor_id=None
+    )
     row_id = reach_operation(client, login_as, caigo_admin)
     # reach_operation leaves the session logged in as caigo_admin (the
     # deployment approver), so the retirement requester here is caigo_admin
@@ -83,6 +92,19 @@ def test_the_requester_cannot_approve_their_own_retirement(
 
     assert response.status_code == 409
     assert "someone else has to approve it" in response.text
+
+
+def test_cannot_request_retirement_approval_when_you_are_the_only_possible_approver(
+    client: TestClient, login_as, caigo_admin
+) -> None:
+    row_id = reach_operation(client, login_as, caigo_admin)
+    # reach_operation leaves the session logged in as caigo_admin, the sole
+    # CAIGO with no backup approver set.
+
+    response = client.post(LIFECYCLE.format(row_id=row_id) + "/request-retirement-approval")
+
+    assert response.status_code == 400
+    assert "backup approver" in response.json()["detail"]
 
 
 def test_approving_a_retirement_requires_the_approve_permission(

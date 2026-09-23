@@ -133,6 +133,12 @@ def submit_for_owner_approval(
         )
 
     owner_is_submitting = actor_id == owner_id
+    if owner_is_submitting:
+        # The owner stage is about to be skipped entirely, so this
+        # submission also lands as the CAIGO stage's own "submitted_for_review"
+        # below -- if the submitter is the only person who could ever approve
+        # that stage, refuse now rather than leave the record stuck there.
+        governance_role_service.require_a_possible_approver(db, actor_id)
     next_status = pending_caigo_status if owner_is_submitting else pending_owner_status
     if not claim_transition(
         db,
@@ -178,6 +184,11 @@ def approve_owner_stage(
     audit_service.require_different_approver(
         db, owner_approval_entity_type, assessment.id, actor_id
     )
+    # Approving here always generates the CAIGO stage's own
+    # "submitted_for_review" entry below, attributed to this same actor --
+    # if they are the only person who could approve that stage, refuse now
+    # rather than leave the record stuck there.
+    governance_role_service.require_a_possible_approver(db, actor_id)
 
     if not claim_transition(
         db,

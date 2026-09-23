@@ -133,8 +133,40 @@ def test_an_active_caigo_delegate_can_approve_the_caigo_stage(
 
 
 def test_the_owner_approver_cannot_also_approve_the_caigo_stage_themselves(
+    client: TestClient, db_session: Session, make_user, login_as, make_caigo
+) -> None:
+    # A backup approver exists so approving the owner stage is allowed (see
+    # test_cannot_approve_owner_stage_when_the_owner_is_the_only_possible_approver
+    # for that guard on its own) -- this test is about the separate rule
+    # that the owner still can't also approve the CAIGO stage themselves.
+    created = create_risk_assessment(client)
+    owner = make_user(role=UserRole.ADMIN)
+    make_caigo(owner)
+    delegate = make_user(role=UserRole.ADMIN)
+    governance_role_service.delegate_caigo(
+        db_session, delegate.id, datetime.now(UTC) + timedelta(days=1), actor_id=None
+    )
+    set_owner(client, created["ai_system_row_id"], owner.id)
+    client.post(f"/api/v1/risk-assessments/{created['id']}/submit-for-owner-approval")
+
+    login_as(owner)
+    approved_owner_stage = client.post(
+        f"/api/v1/risk-assessments/{created['id']}/approve-owner-stage"
+    )
+    assert approved_owner_stage.status_code == 200, approved_owner_stage.text
+    response = client.post(f"/api/v1/risk-assessments/{created['id']}/approve-caigo-stage")
+
+    assert response.status_code == 409
+    assert "same user" in response.json()["detail"]
+
+
+def test_cannot_approve_owner_stage_when_the_owner_is_the_only_possible_approver(
     client: TestClient, make_user, login_as, make_caigo
 ) -> None:
+    """Approving the owner stage always generates the CAIGO stage's own
+    submission, attributed to the owner -- if the owner is also the sole
+    CAIGO with no backup approver, refuse the owner-stage approval itself
+    rather than leave the record stuck in the stage after it."""
     created = create_risk_assessment(client)
     owner = make_user(role=UserRole.ADMIN)
     make_caigo(owner)
@@ -142,10 +174,33 @@ def test_the_owner_approver_cannot_also_approve_the_caigo_stage_themselves(
     client.post(f"/api/v1/risk-assessments/{created['id']}/submit-for-owner-approval")
 
     login_as(owner)
-    client.post(f"/api/v1/risk-assessments/{created['id']}/approve-owner-stage")
-    response = client.post(f"/api/v1/risk-assessments/{created['id']}/approve-caigo-stage")
+    response = client.post(f"/api/v1/risk-assessments/{created['id']}/approve-owner-stage")
 
-    assert response.status_code == 409
+    assert response.status_code == 400
+    assert "backup approver" in response.json()["detail"]
+    assert (
+        client.get(f"/api/v1/risk-assessments/{created['id']}").json()["status"]
+        == "pending_owner_approval"
+    )
+
+
+def test_cannot_submit_when_the_submitter_is_also_owner_and_the_only_possible_approver(
+    client: TestClient, test_user: User, make_caigo
+) -> None:
+    """submit_for_owner_approval skips straight to the CAIGO stage when the
+    owner is the one submitting -- if that owner is also the sole CAIGO with
+    no backup approver, refuse the submission itself."""
+    make_caigo(test_user)
+    created = create_risk_assessment(client)
+    set_owner(client, created["ai_system_row_id"], test_user.id)
+
+    response = client.post(
+        f"/api/v1/risk-assessments/{created['id']}/submit-for-owner-approval"
+    )
+
+    assert response.status_code == 400
+    assert "backup approver" in response.json()["detail"]
+    assert client.get(f"/api/v1/risk-assessments/{created['id']}").json()["status"] == "draft"
 
 
 def test_cannot_approve_owner_stage_out_of_order(client: TestClient) -> None:
