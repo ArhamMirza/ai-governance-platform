@@ -20,7 +20,11 @@ const BrandMark = () => (
  */
 export function AuthGate({ children }: { children: ReactNode }) {
   const { data: user, isLoading: userLoading, isSuccess } = useCurrentUser();
-  const { data: registrationStatus, isLoading: statusLoading } = useRegistrationStatus();
+  const {
+    data: registrationStatus,
+    isLoading: statusLoading,
+    isError: statusError,
+  } = useRegistrationStatus();
 
   if (userLoading || (!isSuccess && statusLoading)) {
     return (
@@ -32,6 +36,18 @@ export function AuthGate({ children }: { children: ReactNode }) {
 
   if (isSuccess && user) {
     return <>{children}</>;
+  }
+
+  // Not logged in, and the one check that decides which form to show
+  // (whether registration is still open) never came back -- showing the
+  // sign-in form here would be a silent guess, and on a fresh install with
+  // no account yet it would strand someone with no way in at all.
+  if (statusError) {
+    return (
+      <div className="auth-screen">
+        <p className="auth-loading">Couldn't reach the server. Check your connection and reload.</p>
+      </div>
+    );
   }
 
   const isSetup = registrationStatus?.registration_open === true;

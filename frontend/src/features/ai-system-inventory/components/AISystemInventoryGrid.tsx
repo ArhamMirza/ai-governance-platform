@@ -71,9 +71,13 @@ const VIEWS: SheetView[] = [
   },
 ];
 
+// The identity column is pinned into every view (see IDENTITY_COLUMN below)
+// rather than belonging to any one of them, so it's excluded here -- left
+// in, "overview"'s group label would be applied to the name column on every
+// other view too, since a group header is looked up by column key alone.
 const COLUMN_GROUPS = VIEWS.map((view) => ({
   label: view.note ? `${view.label} (${view.note})` : view.label,
-  keys: view.keys,
+  keys: view.keys.filter((key) => key !== IDENTITY_COLUMN),
 }));
 
 const ALL_SLUG = "all";

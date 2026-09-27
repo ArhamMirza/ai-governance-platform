@@ -40,7 +40,11 @@ export function AuditLogViewer({
   return (
     <details className="audit-log">
       <summary>
-        <span className="audit-log-heading">{title}</span>
+        {/* A real heading, not a span -- so "Audit log" (or a title like
+           "Review history") still shows up when a screen-reader user
+           navigates a page by its headings, the way every page's own <h3>
+           used to before it moved in here. */}
+        <h3 className="audit-log-heading">{title}</h3>
         <span className="audit-log-count">{count}</span>
       </summary>
       {count === 0 ? (

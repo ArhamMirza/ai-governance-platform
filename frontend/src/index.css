@@ -2676,6 +2676,10 @@ article h3 + ul li,
 }
 
 .audit-log-heading {
+  /* Now an h3 (see AuditLogViewer.tsx), so its default block margin has to
+     be cleared explicitly or it reintroduces the vertical gap the flex
+     summary row was built to avoid. */
+  margin: 0;
   font-family: var(--mono);
   font-size: 10.5px;
   font-weight: 500;
@@ -4899,7 +4903,6 @@ tbody tr:hover {
 .handbook-pagemap-item,
 .impact-factor,
 .stage-step,
-.assistant-suggestion,
 .document-browser-list li,
 .draft-row {
   --rail: 0 0 transparent;

@@ -141,10 +141,22 @@ export function DataGrid({
       "Failed to remove column",
     );
 
+  // A view only hides which new-row inputs render -- newRowDraft itself
+  // isn't scoped to it, so a value typed on one view and still sitting in
+  // state after switching to another must never be submitted from a column
+  // the person can no longer see (and didn't get a chance to reconsider).
   const handleAddRow = () =>
-    runMutation(() => addRow.mutateAsync(newRowDraft), "Failed to add row").then(() =>
-      setNewRowDraft({}),
-    );
+    runMutation(
+      () =>
+        addRow.mutateAsync(
+          visibleColumnKeys
+            ? Object.fromEntries(
+                Object.entries(newRowDraft).filter(([key]) => visibleColumnKeys.includes(key)),
+              )
+            : newRowDraft,
+        ),
+      "Failed to add row",
+    ).then(() => setNewRowDraft({}));
 
   const handleDeleteRow = (rowId: number) =>
     runMutation(() => deleteRow.mutateAsync(rowId), "Failed to delete row");
