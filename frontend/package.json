@@ -30,7 +30,7 @@
     "@vitejs/plugin-react": "^6.1.1",
     "jsdom": "^29.1.1",
     "msw": "^2.15.0",
-    "oxlint": "^1.75.0",
+    "oxlint": "^1.85.0",
     "typescript": "~7.0.2",
     "vite": "^8.2.0",
     "vitest": "^5.0.1"
