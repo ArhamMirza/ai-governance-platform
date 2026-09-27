@@ -14,6 +14,8 @@ import { FrameworksPage } from "../pages/FrameworksPage";
 import { GovernanceRolesPage } from "../pages/GovernanceRolesPage";
 import { HandbookPage } from "../pages/HandbookPage";
 import { ImpactAssessmentDetailPage } from "../pages/ImpactAssessmentDetailPage";
+import { ManagementReviewMeetingDetailPage } from "../pages/ManagementReviewMeetingDetailPage";
+import { ManagementReviewPage } from "../pages/ManagementReviewPage";
 import { OrganizationContextPage } from "../pages/OrganizationContextPage";
 import { PoliciesPage } from "../pages/PoliciesPage";
 import { PolicyDetailPage } from "../pages/PolicyDetailPage";
@@ -58,6 +60,11 @@ export function AppRoutes() {
         <Route
           path="/audit-programs/:programId/audits/:auditId"
           element={<AuditDetailPage />}
+        />
+        <Route path="/management-review" element={<ManagementReviewPage />} />
+        <Route
+          path="/management-review/:meetingId"
+          element={<ManagementReviewMeetingDetailPage />}
         />
         <Route path="/frameworks" element={<FrameworksPage />} />
         <Route path="/governance" element={<GovernanceRolesPage />} />

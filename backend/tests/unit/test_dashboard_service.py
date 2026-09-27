@@ -6,6 +6,7 @@ import pytest
 from app.core import risk_scoring
 from app.models.audit_program import AuditProgram
 from app.models.corrective_action import CorrectiveAction
+from app.models.management_review_settings import ManagementReviewSettings
 from app.models.policy import Policy, PolicyStatus
 from app.models.procedure import Procedure, ProcedureStatus
 from app.models.risk_assessment import RiskAssessment, RiskAssessmentStatus
@@ -66,6 +67,12 @@ def make_audit_program(**overrides) -> AuditProgram:
     return AuditProgram(**defaults)
 
 
+def make_management_review_settings(**overrides) -> ManagementReviewSettings:
+    defaults = dict(id=1, interval_months=12, start_date=FUTURE_DATE)
+    defaults.update(overrides)
+    return ManagementReviewSettings(**defaults)
+
+
 def make_ai_system_row(**overrides) -> SheetRow:
     defaults = dict(id=1, sheet_id=1, row_index=1, data={})
     defaults.update(overrides)
@@ -110,7 +117,9 @@ def db() -> MagicMock:
 @patch("app.services.dashboard_service.ai_system_inventory_service")
 @patch("app.services.dashboard_service.procedure_repository")
 @patch("app.services.dashboard_service.policy_repository")
+@patch("app.services.dashboard_service.management_review_repository")
 def test_get_summary_counts_by_status(
+    mock_mr_repo,
     mock_policy_repo,
     mock_procedure_repo,
     mock_inventory,
@@ -120,6 +129,8 @@ def test_get_summary_counts_by_status(
     db,
 ) -> None:
     mock_criteria.get_bands.return_value = risk_scoring.DEFAULT_BANDS
+    mock_mr_repo.get_settings.return_value = None
+    mock_mr_repo.list_meetings.return_value = []
     mock_policy_repo.list_all.return_value = [
         make_policy(status=PolicyStatus.DRAFT),
         make_policy(id=2, status=PolicyStatus.DRAFT),
@@ -156,7 +167,9 @@ def test_get_summary_counts_by_status(
 @patch("app.services.dashboard_service.ai_system_inventory_service")
 @patch("app.services.dashboard_service.procedure_repository")
 @patch("app.services.dashboard_service.policy_repository")
+@patch("app.services.dashboard_service.management_review_repository")
 def test_get_summary_counts_high_risk_assessments(
+    mock_mr_repo,
     mock_policy_repo,
     mock_procedure_repo,
     mock_inventory,
@@ -166,6 +179,8 @@ def test_get_summary_counts_high_risk_assessments(
     db,
 ) -> None:
     mock_criteria.get_bands.return_value = risk_scoring.DEFAULT_BANDS
+    mock_mr_repo.get_settings.return_value = None
+    mock_mr_repo.list_meetings.return_value = []
     mock_policy_repo.list_all.return_value = []
     mock_procedure_repo.list_all.return_value = []
     mock_inventory.list_rows.return_value = []
@@ -191,7 +206,9 @@ def test_get_summary_counts_high_risk_assessments(
 @patch("app.services.dashboard_service.ai_system_inventory_service")
 @patch("app.services.dashboard_service.procedure_repository")
 @patch("app.services.dashboard_service.policy_repository")
+@patch("app.services.dashboard_service.management_review_repository")
 def test_get_summary_uses_configured_bands(
+    mock_mr_repo,
     mock_policy_repo,
     mock_procedure_repo,
     mock_inventory,
@@ -201,9 +218,9 @@ def test_get_summary_uses_configured_bands(
     db,
 ) -> None:
     """A score of 8 is medium by default but high once the org lowers the band."""
-    mock_criteria.get_bands.return_value = risk_scoring.Bands(
-        medium_min_score=4, high_min_score=8
-    )
+    mock_criteria.get_bands.return_value = risk_scoring.Bands(medium_min_score=4, high_min_score=8)
+    mock_mr_repo.get_settings.return_value = None
+    mock_mr_repo.list_meetings.return_value = []
     mock_policy_repo.list_all.return_value = []
     mock_procedure_repo.list_all.return_value = []
     mock_inventory.list_rows.return_value = []
@@ -224,7 +241,9 @@ def test_get_summary_uses_configured_bands(
 @patch("app.services.dashboard_service.ai_system_inventory_service")
 @patch("app.services.dashboard_service.procedure_repository")
 @patch("app.services.dashboard_service.policy_repository")
+@patch("app.services.dashboard_service.management_review_repository")
 def test_get_summary_reports_risk_items_and_coverage(
+    mock_mr_repo,
     mock_policy_repo,
     mock_procedure_repo,
     mock_inventory,
@@ -234,6 +253,8 @@ def test_get_summary_reports_risk_items_and_coverage(
     db,
 ) -> None:
     mock_criteria.get_bands.return_value = risk_scoring.DEFAULT_BANDS
+    mock_mr_repo.get_settings.return_value = None
+    mock_mr_repo.list_meetings.return_value = []
     mock_policy_repo.list_all.return_value = [make_policy(status=PolicyStatus.APPROVED)]
     mock_procedure_repo.list_all.return_value = []
     mock_inventory.list_rows.return_value = [
@@ -270,7 +291,9 @@ def test_get_summary_reports_risk_items_and_coverage(
 @patch("app.services.dashboard_service.ai_system_inventory_service")
 @patch("app.services.dashboard_service.procedure_repository")
 @patch("app.services.dashboard_service.policy_repository")
+@patch("app.services.dashboard_service.management_review_repository")
 def test_get_summary_attention_lists_only_nonzero_items(
+    mock_mr_repo,
     mock_policy_repo,
     mock_procedure_repo,
     mock_inventory,
@@ -281,6 +304,8 @@ def test_get_summary_attention_lists_only_nonzero_items(
     db,
 ) -> None:
     mock_criteria.get_bands.return_value = risk_scoring.DEFAULT_BANDS
+    mock_mr_repo.get_settings.return_value = None
+    mock_mr_repo.list_meetings.return_value = []
     mock_policy_repo.list_all.return_value = []
     mock_procedure_repo.list_all.return_value = []
     mock_inventory.list_rows.return_value = [make_ai_system_row(id=1)]
@@ -301,7 +326,9 @@ def test_get_summary_attention_lists_only_nonzero_items(
 @patch("app.services.dashboard_service.ai_system_inventory_service")
 @patch("app.services.dashboard_service.procedure_repository")
 @patch("app.services.dashboard_service.policy_repository")
+@patch("app.services.dashboard_service.management_review_repository")
 def test_get_summary_handles_empty_data(
+    mock_mr_repo,
     mock_policy_repo,
     mock_procedure_repo,
     mock_inventory,
@@ -311,6 +338,8 @@ def test_get_summary_handles_empty_data(
     db,
 ) -> None:
     mock_criteria.get_bands.return_value = risk_scoring.DEFAULT_BANDS
+    mock_mr_repo.get_settings.return_value = None
+    mock_mr_repo.list_meetings.return_value = []
     mock_policy_repo.list_all.return_value = []
     mock_procedure_repo.list_all.return_value = []
     mock_inventory.list_rows.return_value = []
@@ -336,7 +365,9 @@ def test_get_summary_handles_empty_data(
 @patch("app.services.dashboard_service.ai_system_inventory_service")
 @patch("app.services.dashboard_service.procedure_repository")
 @patch("app.services.dashboard_service.policy_repository")
+@patch("app.services.dashboard_service.management_review_repository")
 def test_get_summary_my_risk_items_matches_owner_and_excludes_closed(
+    mock_mr_repo,
     mock_policy_repo,
     mock_procedure_repo,
     mock_inventory,
@@ -346,6 +377,8 @@ def test_get_summary_my_risk_items_matches_owner_and_excludes_closed(
     db,
 ) -> None:
     mock_criteria.get_bands.return_value = risk_scoring.DEFAULT_BANDS
+    mock_mr_repo.get_settings.return_value = None
+    mock_mr_repo.list_meetings.return_value = []
     mock_policy_repo.list_all.return_value = []
     mock_procedure_repo.list_all.return_value = []
     mock_inventory.list_rows.return_value = []
@@ -354,8 +387,13 @@ def test_get_summary_my_risk_items_matches_owner_and_excludes_closed(
         1: [
             # Owned by me, overdue and open -- should appear.
             make_risk_row(
-                4, 4, id=1, sheet_id=1, risk_owner="99",
-                treatment_deadline=PAST_DEADLINE, status="open",
+                4,
+                4,
+                id=1,
+                sheet_id=1,
+                risk_owner="99",
+                treatment_deadline=PAST_DEADLINE,
+                status="open",
             ),
             # Owned by me but already closed -- should be excluded.
             make_risk_row(2, 2, id=2, sheet_id=1, risk_owner="99", status="closed"),
@@ -380,7 +418,9 @@ def test_get_summary_my_risk_items_matches_owner_and_excludes_closed(
 @patch("app.services.dashboard_service.procedure_repository")
 @patch("app.services.dashboard_service.policy_repository")
 @patch("app.services.dashboard_service.corrective_action_repository")
+@patch("app.services.dashboard_service.management_review_repository")
 def test_get_summary_my_corrective_actions_matches_assignee_and_flags_overdue(
+    mock_mr_repo,
     mock_ca_repo,
     mock_policy_repo,
     mock_procedure_repo,
@@ -391,6 +431,8 @@ def test_get_summary_my_corrective_actions_matches_assignee_and_flags_overdue(
     db,
 ) -> None:
     mock_criteria.get_bands.return_value = risk_scoring.DEFAULT_BANDS
+    mock_mr_repo.get_settings.return_value = None
+    mock_mr_repo.list_meetings.return_value = []
     mock_policy_repo.list_all.return_value = []
     mock_procedure_repo.list_all.return_value = []
     mock_inventory.list_rows.return_value = []
@@ -422,7 +464,46 @@ def test_get_summary_my_corrective_actions_matches_assignee_and_flags_overdue(
 @patch("app.services.dashboard_service.procedure_repository")
 @patch("app.services.dashboard_service.policy_repository")
 @patch("app.services.dashboard_service.internal_audit_repository")
+@patch("app.services.dashboard_service.management_review_repository")
 def test_get_summary_flags_overdue_internal_audit_programs(
+    mock_mr_repo,
+    mock_ia_repo,
+    mock_policy_repo,
+    mock_procedure_repo,
+    mock_inventory,
+    mock_ra_repo,
+    mock_sheet_repo,
+    mock_criteria,
+    db,
+) -> None:
+    mock_criteria.get_bands.return_value = risk_scoring.DEFAULT_BANDS
+    mock_mr_repo.get_settings.return_value = None
+    mock_mr_repo.list_meetings.return_value = []
+    mock_policy_repo.list_all.return_value = []
+    mock_procedure_repo.list_all.return_value = []
+    mock_inventory.list_rows.return_value = []
+    mock_ra_repo.list_all.return_value = []
+    mock_sheet_repo.list_rows_for_sheets.return_value = {}
+    overdue_program = make_audit_program(id=1, schedule_type="interval", start_date=PAST_DATE)
+    current_program = make_audit_program(id=2, schedule_type="interval", start_date=FUTURE_DATE)
+    mock_ia_repo.list_programs.return_value = [overdue_program, current_program]
+    mock_ia_repo.list_for_program.return_value = []
+
+    result = dashboard_service.get_summary(db, actor_id=99)
+
+    assert any(item.key == "audits_overdue" and item.count == 1 for item in result.attention)
+
+
+@patch("app.services.dashboard_service.risk_criteria_service")
+@patch("app.services.dashboard_service.sheet_repository")
+@patch("app.services.dashboard_service.risk_assessment_repository")
+@patch("app.services.dashboard_service.ai_system_inventory_service")
+@patch("app.services.dashboard_service.procedure_repository")
+@patch("app.services.dashboard_service.policy_repository")
+@patch("app.services.dashboard_service.internal_audit_repository")
+@patch("app.services.dashboard_service.management_review_repository")
+def test_get_summary_flags_an_overdue_management_review(
+    mock_mr_repo,
     mock_ia_repo,
     mock_policy_repo,
     mock_procedure_repo,
@@ -438,13 +519,46 @@ def test_get_summary_flags_overdue_internal_audit_programs(
     mock_inventory.list_rows.return_value = []
     mock_ra_repo.list_all.return_value = []
     mock_sheet_repo.list_rows_for_sheets.return_value = {}
-    overdue_program = make_audit_program(id=1, schedule_type="interval", start_date=PAST_DATE)
-    current_program = make_audit_program(id=2, schedule_type="interval", start_date=FUTURE_DATE)
-    mock_ia_repo.list_programs.return_value = [overdue_program, current_program]
-    mock_ia_repo.list_for_program.return_value = []
+    mock_ia_repo.list_programs.return_value = []
+    mock_mr_repo.get_settings.return_value = make_management_review_settings(start_date=PAST_DATE)
+    mock_mr_repo.list_meetings.return_value = []
 
     result = dashboard_service.get_summary(db, actor_id=99)
 
     assert any(
-        item.key == "audits_overdue" and item.count == 1 for item in result.attention
+        item.key == "management_review_overdue" and item.count == 1 for item in result.attention
     )
+
+
+@patch("app.services.dashboard_service.risk_criteria_service")
+@patch("app.services.dashboard_service.sheet_repository")
+@patch("app.services.dashboard_service.risk_assessment_repository")
+@patch("app.services.dashboard_service.ai_system_inventory_service")
+@patch("app.services.dashboard_service.procedure_repository")
+@patch("app.services.dashboard_service.policy_repository")
+@patch("app.services.dashboard_service.internal_audit_repository")
+@patch("app.services.dashboard_service.management_review_repository")
+def test_get_summary_hides_management_review_when_not_overdue(
+    mock_mr_repo,
+    mock_ia_repo,
+    mock_policy_repo,
+    mock_procedure_repo,
+    mock_inventory,
+    mock_ra_repo,
+    mock_sheet_repo,
+    mock_criteria,
+    db,
+) -> None:
+    mock_criteria.get_bands.return_value = risk_scoring.DEFAULT_BANDS
+    mock_policy_repo.list_all.return_value = []
+    mock_procedure_repo.list_all.return_value = []
+    mock_inventory.list_rows.return_value = []
+    mock_ra_repo.list_all.return_value = []
+    mock_sheet_repo.list_rows_for_sheets.return_value = {}
+    mock_ia_repo.list_programs.return_value = []
+    mock_mr_repo.get_settings.return_value = None
+    mock_mr_repo.list_meetings.return_value = []
+
+    result = dashboard_service.get_summary(db, actor_id=99)
+
+    assert not any(item.key == "management_review_overdue" for item in result.attention)

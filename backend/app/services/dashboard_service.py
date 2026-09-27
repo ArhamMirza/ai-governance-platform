@@ -13,6 +13,7 @@ from app.repositories import (
     corrective_action_repository,
     impact_assessment_repository,
     internal_audit_repository,
+    management_review_repository,
     policy_repository,
     procedure_repository,
     risk_assessment_repository,
@@ -37,6 +38,7 @@ from app.services import (
     data_inventory_service,
     governance_role_service,
     internal_audit_service,
+    management_review_service,
     pending_approvals_service,
     risk_analytics_service,
     risk_criteria_service,
@@ -65,6 +67,7 @@ def _attention(
     stale_control_count: int,
     overdue_corrective_action_count: int,
     overdue_audit_count: int,
+    management_review_overdue: bool,
 ) -> list[AttentionItem]:
     """Actionable items, most urgent first. Zero-count items are dropped so the
     panel only ever shows things that need doing."""
@@ -157,6 +160,14 @@ def _attention(
             key="audits_overdue",
             label="Internal audits overdue",
             count=overdue_audit_count,
+            severity="danger",
+        ),
+        AttentionItem(
+            key="management_review_overdue",
+            label="Management review overdue",
+            # One process, not a count -- 1 when it's overdue, otherwise
+            # dropped like every other zero-count item.
+            count=1 if management_review_overdue else 0,
             severity="danger",
         ),
     ]
@@ -264,9 +275,7 @@ def get_summary(db: Session, actor_id: int) -> DashboardSummary:
         for row in ai_system_rows
     )
 
-    assessed_row_ids = {
-        risk_assessment.ai_system_row_id for risk_assessment in risk_assessments
-    }
+    assessed_row_ids = {risk_assessment.ai_system_row_id for risk_assessment in risk_assessments}
     assessed_count = sum(1 for row in ai_system_rows if row.id in assessed_row_ids)
 
     # Impact assessment coverage: an AI system counts once it has at least one
@@ -277,9 +286,7 @@ def get_summary(db: Session, actor_id: int) -> DashboardSummary:
         for assessment in impact_assessments
         if assessment.status == ImpactAssessmentStatus.COMPLETED
     }
-    impact_assessed_count = sum(
-        1 for row in ai_system_rows if row.id in impact_assessed_row_ids
-    )
+    impact_assessed_count = sum(1 for row in ai_system_rows if row.id in impact_assessed_row_ids)
 
     today = datetime.now(UTC).date()
     lifecycles = ai_system_lifecycle_repository.list_all(db)
@@ -307,9 +314,7 @@ def get_summary(db: Session, actor_id: int) -> DashboardSummary:
 
     risk_items = risk_analytics_service.summarize_rows(all_risk_rows, bands)
     in_review_count = sum(
-        1
-        for record in [*active_policies, *active_procedures]
-        if record.status == IN_REVIEW_STATUS
+        1 for record in [*active_policies, *active_procedures] if record.status == IN_REVIEW_STATUS
     )
 
     vacant_role_count = len(governance_role_service.vacant_roles(db))
@@ -352,6 +357,12 @@ def get_summary(db: Session, actor_id: int) -> DashboardSummary:
         if internal_audit_service.is_overdue(program, audits_by_program[program.id], today)
     )
 
+    management_review_settings = management_review_repository.get_settings(db)
+    management_review_meetings = management_review_repository.list_meetings(db)
+    management_review_overdue = management_review_service.is_overdue(
+        management_review_settings, management_review_meetings, today
+    )
+
     return DashboardSummary(
         policies=StatusCounts(
             total=len(policies), by_status=dict(Counter(p.status for p in policies))
@@ -359,9 +370,7 @@ def get_summary(db: Session, actor_id: int) -> DashboardSummary:
         procedures=StatusCounts(
             total=len(procedures), by_status=dict(Counter(p.status for p in procedures))
         ),
-        ai_systems=AISystemSummary(
-            total=len(ai_system_rows), by_risk_tier=dict(risk_tier_counts)
-        ),
+        ai_systems=AISystemSummary(total=len(ai_system_rows), by_risk_tier=dict(risk_tier_counts)),
         risk_assessments=RiskAssessmentSummary(
             total=len(risk_assessments),
             by_status=dict(Counter(ra.status for ra in risk_assessments)),
@@ -374,13 +383,9 @@ def get_summary(db: Session, actor_id: int) -> DashboardSummary:
             ai_systems_impact_assessed=impact_assessed_count,
             assessments_review_overdue=review_overdue_count,
             policies_total=len(active_policies),
-            policies_approved=sum(
-                1 for p in active_policies if p.status == APPROVED_STATUS
-            ),
+            policies_approved=sum(1 for p in active_policies if p.status == APPROVED_STATUS),
             procedures_total=len(active_procedures),
-            procedures_approved=sum(
-                1 for p in active_procedures if p.status == APPROVED_STATUS
-            ),
+            procedures_approved=sum(1 for p in active_procedures if p.status == APPROVED_STATUS),
         ),
         compliance=compliance,
         attention=_attention(
@@ -399,6 +404,7 @@ def get_summary(db: Session, actor_id: int) -> DashboardSummary:
             stale_control_count=stale_control_count,
             overdue_corrective_action_count=overdue_corrective_action_count,
             overdue_audit_count=overdue_audit_count,
+            management_review_overdue=management_review_overdue,
         ),
         matrix=risk_analytics_service.matrix_cells(all_risk_rows),
         criteria=risk_criteria_service.get_criteria(db),
