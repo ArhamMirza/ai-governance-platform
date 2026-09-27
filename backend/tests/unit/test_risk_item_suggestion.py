@@ -186,6 +186,61 @@ def test_iso_42001_context_of_the_organization_reaches_the_model_unconditionally
     assert "Ranks applicants for human review." in prompt
 
 
+def test_iso_42001_context_survives_a_system_with_many_of_its_own_chunks(
+    configured, model, monkeypatch
+) -> None:
+    """The organization's pinned context (and governance roles) must not be
+    squeezed out by MAX_SOURCES just because the system's own record was
+    indexed into more chunks than that cap allows -- pinned context is
+    exempt from that cap precisely so a heavily-documented system can never
+    push it out (see pinned_context.py and risk_item_suggestion_service's
+    always_included_keys)."""
+    from app.models.document_chunk import DocumentChunk, SourceType
+    from app.services import document_index_service, organization_context_service
+    from app.services.risk_item_suggestion_service import MAX_SOURCES
+
+    # generate_suggestions re-indexes the AI system's own record on every
+    # run, which would overwrite the fake chunks inserted below -- this test
+    # is about _gather's cap, not indexing, so skip that step.
+    monkeypatch.setattr(document_index_service, "drain", lambda *a, **k: None)
+
+    db = configured
+    organization_context_service.get_or_create(db)
+    organization_context_service.update(
+        db,
+        {
+            "organization_description": "A resume-screening vendor.",
+            "ai_usage_overview": "Ranks applicants for human review.",
+        },
+        actor_id=None,
+    )
+    assessment_id = make_risk_assessment(db)
+    risk_assessment = risk_assessment_service.get_risk_assessment(db, assessment_id)
+
+    # More of the system's own document chunks than MAX_SOURCES allows, so
+    # they alone would fill every slot before the loop ever reaches the
+    # pinned organization context appended after them.
+    db.add_all(
+        DocumentChunk(
+            source_type=SourceType.AI_SYSTEM,
+            source_id=risk_assessment.ai_system_row_id,
+            source_title="Resume Screener",
+            entity_type=SourceType.AI_SYSTEM,
+            entity_id=risk_assessment.ai_system_row_id,
+            ordinal=i,
+            text=f"Chunk {i} of the system's own record.",
+        )
+        for i in range(MAX_SOURCES + 5)
+    )
+    db.commit()
+
+    suggesting.generate_suggestions(db, assessment_id, actor_id=None)
+
+    prompt = model.prompt()
+    assert "A resume-screening vendor." in prompt
+    assert "Ranks applicants for human review." in prompt
+
+
 def test_a_score_is_never_asked_of_the_model_nor_stored_on_a_proposal(configured, model) -> None:
     """inherent_risk_score is always likelihood x impact, computed server-side
     on every write -- the model proposes the inputs, never the arithmetic."""

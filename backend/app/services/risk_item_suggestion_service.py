@@ -273,10 +273,21 @@ def _gather(
             if rank < len(found):
                 candidates.append(found[rank])
 
+    # Governance roles and the organization's ISO/IEC 42001 context are
+    # always pinned in, not merely retrieved (see pinned_context.py) -- they
+    # must reach the model on every run regardless of how many of the
+    # record's own document chunks or retrieved passages come before them
+    # in `candidates`. Exempting their keys from the cap below is what makes
+    # that guarantee hold; without it, a system with enough of its own
+    # indexed content can fill MAX_SOURCES before the loop ever reaches them.
+    always_included_keys = {c["key"] for c in (roles, context) if c}
+
     sources: list[dict] = []
     seen: set = set()
     for candidate in candidates:
-        if candidate["key"] in seen or len(sources) >= MAX_SOURCES:
+        if candidate["key"] in seen:
+            continue
+        if candidate["key"] not in always_included_keys and len(sources) >= MAX_SOURCES:
             continue
         seen.add(candidate["key"])
         sources.append({k: v for k, v in candidate.items() if k != "key"})
