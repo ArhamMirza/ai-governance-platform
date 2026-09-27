@@ -5,9 +5,13 @@ owner-then-CAIGO) rather than exhaustively repeating every entity type,
 since pending_approvals_service applies the identical check per type.
 """
 
+from datetime import UTC, datetime, timedelta
+
 from fastapi.testclient import TestClient
+from sqlalchemy.orm import Session
 
 from app.models.user import UserRole
+from app.services import governance_role_service
 from tests.integration.test_ai_system_lifecycle_api import LIFECYCLE, make_system, reach_validation
 from tests.integration.test_risk_assessments_api import create_risk_assessment
 
@@ -45,9 +49,16 @@ def test_caigo_sees_a_policy_awaiting_their_approval(
 
 
 def test_caigo_does_not_see_their_own_submission(
-    client: TestClient, test_user, make_caigo
+    client: TestClient, db_session: Session, test_user, second_user, make_caigo
 ) -> None:
+    # A backup approver is set so the submission itself succeeds (see
+    # governance_role_service.require_a_possible_approver) -- without one,
+    # this test would pass for the wrong reason: the policy would still be
+    # in draft, never reaching a pending list at all.
     make_caigo(test_user)
+    governance_role_service.delegate_caigo(
+        db_session, second_user.id, datetime.now(UTC) + timedelta(days=1), actor_id=None
+    )
     policy = client.post("/api/v1/policies", json={"title": "Vendor Policy"}).json()
     client.post(f"/api/v1/policies/{policy['id']}/submit-for-review")
 

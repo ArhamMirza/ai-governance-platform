@@ -1,8 +1,11 @@
 from collections.abc import Callable
+from datetime import UTC, datetime, timedelta
 
 from fastapi.testclient import TestClient
+from sqlalchemy.orm import Session
 
 from app.models.user import User, UserRole
+from app.services import governance_role_service
 
 
 def create_procedure(client: TestClient, **overrides) -> dict:
@@ -135,9 +138,19 @@ def test_cannot_approve_a_draft_procedure(
 
 
 def test_cannot_approve_your_own_submission(
-    client: TestClient, test_user: User, make_caigo: Callable[[User], None]
+    client: TestClient,
+    db_session: Session,
+    test_user: User,
+    second_user: User,
+    make_caigo: Callable[[User], None],
 ) -> None:
+    # A backup approver exists so the submission itself is allowed -- this
+    # test is about the separate rule that follows: the submitter still
+    # can't approve their own work, backup approver or not.
     make_caigo(test_user)
+    governance_role_service.delegate_caigo(
+        db_session, second_user.id, datetime.now(UTC) + timedelta(days=1), actor_id=None
+    )
     procedure_id = create_procedure(client)["id"]
     client.post(f"/api/v1/procedures/{procedure_id}/submit-for-review")
 
@@ -145,6 +158,38 @@ def test_cannot_approve_your_own_submission(
 
     assert response.status_code == 409
     assert "same user" in response.json()["detail"]
+
+
+def test_cannot_submit_for_review_when_you_are_the_only_possible_approver(
+    client: TestClient, test_user: User, make_caigo: Callable[[User], None]
+) -> None:
+    make_caigo(test_user)
+    procedure_id = create_procedure(client)["id"]
+
+    response = client.post(f"/api/v1/procedures/{procedure_id}/submit-for-review")
+
+    assert response.status_code == 400
+    assert "backup approver" in response.json()["detail"]
+    assert client.get(f"/api/v1/procedures/{procedure_id}").json()["status"] == "draft"
+
+
+def test_can_submit_for_review_as_the_sole_caigo_once_a_backup_approver_is_set(
+    client: TestClient,
+    db_session: Session,
+    test_user: User,
+    second_user: User,
+    make_caigo: Callable[[User], None],
+) -> None:
+    make_caigo(test_user)
+    governance_role_service.delegate_caigo(
+        db_session, second_user.id, datetime.now(UTC) + timedelta(days=1), actor_id=None
+    )
+    procedure_id = create_procedure(client)["id"]
+
+    response = client.post(f"/api/v1/procedures/{procedure_id}/submit-for-review")
+
+    assert response.status_code == 200
+    assert response.json()["status"] == "in_review"
 
 
 def test_non_caigo_admin_cannot_approve(

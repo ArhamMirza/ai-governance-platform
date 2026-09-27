@@ -217,6 +217,22 @@ def unassign_user(db: Session, role_id: int, user_id: int, actor_id: int | None)
     assignment = governance_role_repository.get_assignment(db, role_id, user_id)
     if assignment is None:
         raise NotFoundError("GovernanceRoleAssignment", user_id)
+    # Deactivating this same person is still allowed with only a warning
+    # (see user_service.get_accountabilities) -- access can't wait on
+    # paperwork. But removing them from the role itself is a deliberate,
+    # single-purpose click with nothing else it could be for, and unlike
+    # deactivation it carries no warning today -- so unlike deactivation,
+    # this one is refused outright rather than merely surfaced first.
+    if role.name == CHIEF_AI_GOVERNANCE_OFFICER and not has_other_eligible_approver(
+        db, user_id
+    ):
+        holder = _get_user_or_raise(db, user_id)
+        raise ConflictError(
+            f"{holder.name} is the only person who could approve anything "
+            "CAIGO-gated right now -- removing them would leave nothing in "
+            "the app able to. Set a backup approver, or assign someone else "
+            "to this role first."
+        )
 
     governance_role_repository.delete_assignment(db, assignment)
     audit_service.log(
@@ -295,6 +311,45 @@ def require_caigo(db: Session, user_id: int | None) -> None:
         raise AuthorizationError(
             "Only the Chief AI Governance Officer can approve this."
         )
+
+
+def has_other_eligible_approver(db: Session, excluding_user_id: int) -> bool:
+    """Whether anyone besides excluding_user_id could satisfy require_caigo --
+    another CAIGO role holder, or an active delegate who isn't this same
+    person. Used to catch, before it happens, a submission that would leave
+    a record with no one left who can approve it."""
+    role = governance_role_repository.get_by_name(db, CHIEF_AI_GOVERNANCE_OFFICER)
+    if role is not None and any(
+        user.id != excluding_user_id for user in holders_for_role(db, role.id)
+    ):
+        return True
+    delegate = active_caigo_delegate(db)
+    return delegate is not None and delegate.id != excluding_user_id
+
+
+def require_a_possible_approver(db: Session, actor_id: int | None) -> None:
+    """Refuses a submission that would strand the record: the actor is the
+    CAIGO (or standing in as their delegate), and require_different_approver
+    will later refuse to let this same person approve their own submission --
+    if no one else could stand in either, the record would sit in review
+    with nobody able to move it. The fix is a backup approver, so the error
+    says so; it is not a general ban on the CAIGO authoring documents, only
+    on them being the one who also submits it with no stand-in available.
+
+    No real actor is nothing to enforce, matching require_caigo and
+    audit_service.require_different_approver's own no-op-on-None rule."""
+    if actor_id is None:
+        return
+    if not is_caigo(db, actor_id):
+        return
+    if has_other_eligible_approver(db, actor_id):
+        return
+    raise ValidationError(
+        "You are the only person who can approve this, and the same person "
+        "can't both submit and approve it. Set a backup approver for the "
+        "Chief AI Governance Officer role first, or have someone else "
+        "submit this for review."
+    )
 
 
 def get_caigo_delegation(db: Session) -> GovernanceRoleDelegation | None:

@@ -81,6 +81,7 @@ def submit_for_review(db: Session, policy_id: int, actor_id: int | None) -> Poli
             f"Policy {policy_id} must be in 'draft' status to submit for review, "
             f"currently '{policy.status}'"
         )
+    governance_role_service.require_a_possible_approver(db, actor_id)
     _claim(db, policy, PolicyStatus.DRAFT, {"status": PolicyStatus.IN_REVIEW})
     audit_service.log(db, "Policy", policy.id, "submitted_for_review", actor_id)
     return policy

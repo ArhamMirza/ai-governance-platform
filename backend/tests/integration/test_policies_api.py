@@ -158,9 +158,21 @@ def test_cannot_approve_a_draft_policy(
 
 
 def test_cannot_approve_your_own_submission(
-    client: TestClient, test_user: User, make_caigo: Callable[[User], None]
+    client: TestClient,
+    db_session: Session,
+    test_user: User,
+    second_user: User,
+    make_caigo: Callable[[User], None],
 ) -> None:
+    # A backup approver exists so the submission itself is allowed (see
+    # test_cannot_submit_for_review_when_you_are_the_only_possible_approver
+    # for that guard on its own) -- this test is about the separate rule
+    # that follows: the submitter still can't approve their own work, backup
+    # approver or not, because they never stopped being CAIGO themselves.
     make_caigo(test_user)
+    governance_role_service.delegate_caigo(
+        db_session, second_user.id, datetime.now(UTC) + timedelta(days=1), actor_id=None
+    )
     policy_id = create_policy(client)["id"]
     client.post(f"/api/v1/policies/{policy_id}/submit-for-review")
 
@@ -168,6 +180,38 @@ def test_cannot_approve_your_own_submission(
 
     assert response.status_code == 409
     assert "same user" in response.json()["detail"]
+
+
+def test_cannot_submit_for_review_when_you_are_the_only_possible_approver(
+    client: TestClient, test_user: User, make_caigo: Callable[[User], None]
+) -> None:
+    make_caigo(test_user)
+    policy_id = create_policy(client)["id"]
+
+    response = client.post(f"/api/v1/policies/{policy_id}/submit-for-review")
+
+    assert response.status_code == 400
+    assert "backup approver" in response.json()["detail"]
+    assert client.get(f"/api/v1/policies/{policy_id}").json()["status"] == "draft"
+
+
+def test_can_submit_for_review_as_the_sole_caigo_once_a_backup_approver_is_set(
+    client: TestClient,
+    db_session: Session,
+    test_user: User,
+    second_user: User,
+    make_caigo: Callable[[User], None],
+) -> None:
+    make_caigo(test_user)
+    governance_role_service.delegate_caigo(
+        db_session, second_user.id, datetime.now(UTC) + timedelta(days=1), actor_id=None
+    )
+    policy_id = create_policy(client)["id"]
+
+    response = client.post(f"/api/v1/policies/{policy_id}/submit-for-review")
+
+    assert response.status_code == 200
+    assert response.json()["status"] == "in_review"
 
 
 def test_non_caigo_admin_cannot_approve(

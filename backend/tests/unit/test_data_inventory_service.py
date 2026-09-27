@@ -1,6 +1,8 @@
 """The Data Inventory review: the assigned Data Owner fills a dataset in and
 submits it, the Chief AI Governance Officer approves it."""
 
+from datetime import UTC, datetime, timedelta
+
 import pytest
 from sqlalchemy.orm import Session
 
@@ -161,11 +163,43 @@ def test_approving_requires_caigo(db_session: Session, make_user) -> None:
 
 def test_caigo_cannot_approve_their_own_submission(db_session: Session, make_user) -> None:
     caigo = make_caigo(db_session, make_user)
+    # A backup approver exists so the submission itself is allowed -- this
+    # test is about the separate rule that the submitter still can't approve
+    # their own dataset regardless.
+    delegate = make_user(role=UserRole.ADMIN)
+    governance_role_service.delegate_caigo(
+        db_session, delegate.id, datetime.now(UTC) + timedelta(days=1), actor_id=None
+    )
     row = make_dataset(db_session, owner_id=caigo.id)
     data_inventory_service.submit_for_approval(db_session, row.id, actor_id=caigo.id)
 
     with pytest.raises(ConflictError):
         data_inventory_service.approve(db_session, row.id, actor_id=caigo.id)
+
+
+def test_cannot_submit_when_you_are_the_only_possible_approver(
+    db_session: Session, make_user
+) -> None:
+    caigo = make_caigo(db_session, make_user)
+    row = make_dataset(db_session, owner_id=caigo.id)
+
+    with pytest.raises(ValidationError):
+        data_inventory_service.submit_for_approval(db_session, row.id, actor_id=caigo.id)
+
+
+def test_can_submit_as_the_sole_caigo_once_a_backup_approver_is_set(
+    db_session: Session, make_user
+) -> None:
+    caigo = make_caigo(db_session, make_user)
+    delegate = make_user(role=UserRole.ADMIN)
+    governance_role_service.delegate_caigo(
+        db_session, delegate.id, datetime.now(UTC) + timedelta(days=1), actor_id=None
+    )
+    row = make_dataset(db_session, owner_id=caigo.id)
+
+    record = data_inventory_service.submit_for_approval(db_session, row.id, actor_id=caigo.id)
+
+    assert record.status == DataInventoryStatus.PENDING_APPROVAL
 
 
 def test_caigo_approval_stamps_the_approver(db_session: Session, make_user) -> None:
