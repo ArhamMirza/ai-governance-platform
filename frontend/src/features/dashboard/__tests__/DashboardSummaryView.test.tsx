@@ -42,6 +42,11 @@ const summary: DashboardSummary = {
     procedures_total: 1,
     procedures_approved: 0,
   },
+  compliance: {
+    iso_42001_clauses: { satisfied: 3, partial: 1, no_coverage: 2, not_applicable: 0 },
+    iso_42001_annex_a: { satisfied: 0, partial: 0, no_coverage: 0, not_applicable: 38 },
+    eu_ai_act: { satisfied: 1, partial: 0, no_coverage: 7, not_applicable: 0 },
+  },
   attention: [
     { key: "overdue_treatments", label: "Risk treatments overdue", count: 2, severity: "danger" },
   ],
@@ -91,6 +96,11 @@ const emptySummary: DashboardSummary = {
     policies_approved: 0,
     procedures_total: 0,
     procedures_approved: 0,
+  },
+  compliance: {
+    iso_42001_clauses: { satisfied: 0, partial: 0, no_coverage: 0, not_applicable: 0 },
+    iso_42001_annex_a: { satisfied: 0, partial: 0, no_coverage: 0, not_applicable: 0 },
+    eu_ai_act: { satisfied: 0, partial: 0, no_coverage: 0, not_applicable: 0 },
   },
   attention: [],
   matrix: [],
@@ -280,5 +290,54 @@ describe("DashboardSummaryView", () => {
     await waitFor(() => {
       expect(screen.getByText("Failed to load dashboard.")).toBeInTheDocument();
     });
+  });
+
+  it("shows a compliance ring per framework group, excluding excluded controls from the total", async () => {
+    vi.mocked(dashboardApi.getSummary).mockResolvedValue(summary);
+
+    renderView();
+
+    await waitFor(() => {
+      expect(screen.getByText("Compliance")).toBeInTheDocument();
+    });
+
+    // ISO 42001 clauses: 3 satisfied of 6 applicable (3 + 1 + 2).
+    expect(
+      screen.getByLabelText("ISO 42001 clauses: 3 of 6 (50%)"),
+    ).toBeInTheDocument();
+    // Annex A: every control is excluded via the SoA, so nothing is applicable.
+    expect(
+      screen.getByLabelText("ISO 42001 Annex A: 0 of 0 (0%)"),
+    ).toBeInTheDocument();
+    // EU AI Act: 1 satisfied of 8 applicable (1 + 0 + 7).
+    expect(screen.getByLabelText("EU AI Act: 1 of 8 (13%)")).toBeInTheDocument();
+
+    expect(
+      screen.getByRole("link", { name: /See the full breakdown by clause and control/ }),
+    ).toHaveAttribute("href", "/frameworks");
+  });
+
+  it("links an uncovered-control attention item to the Frameworks page", async () => {
+    vi.mocked(dashboardApi.getSummary).mockResolvedValue({
+      ...summary,
+      attention: [
+        {
+          key: "uncovered_framework_controls",
+          label: "Framework controls with no coverage",
+          count: 12,
+          severity: "danger",
+        },
+      ],
+    });
+
+    renderView();
+
+    await waitFor(() => {
+      expect(screen.getByText("Needs Attention")).toBeInTheDocument();
+    });
+
+    expect(
+      screen.getByRole("link", { name: "Framework controls with no coverage" }),
+    ).toHaveAttribute("href", "/frameworks");
   });
 });

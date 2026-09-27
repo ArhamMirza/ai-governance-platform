@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { ProgressRing } from "../../../shared/components/ProgressRing";
 import { SegmentedBar, type Segment } from "../../../shared/components/SegmentedBar";
 import { StatCard } from "../../../shared/components/StatCard";
+import type { ComplianceStatusCounts } from "../../compliance-status/types";
 import { RiskMatrix } from "../../risk-assessments/components/RiskMatrix";
 import { useDashboardSummary } from "../hooks";
 import type {
@@ -33,6 +34,8 @@ const ATTENTION_LINKS: Record<string, string> = {
   ai_systems_without_owner: "/ai-systems",
   risk_owner_not_a_real_account: "/risk-assessments",
   data_owner_not_a_real_account: "/data-inventory",
+  uncovered_framework_controls: "/frameworks",
+  stale_framework_controls: "/frameworks",
 };
 
 const STATUS_TONES: Record<string, Segment["tone"]> = {
@@ -46,6 +49,13 @@ const STATUS_TONES: Record<string, Segment["tone"]> = {
 
 function humanize(value: string): string {
   return value.replace(/_/g, " ");
+}
+
+// Excludes controls the Statement of Applicability has excluded -- an
+// organization that legitimately doesn't run a given kind of AI system
+// shouldn't see its coverage ring held down by that.
+function applicableControlCount(counts: ComplianceStatusCounts): number {
+  return counts.satisfied + counts.partial + counts.no_coverage;
 }
 
 function statusSegments(counts: Record<string, number>): Segment[] {
@@ -266,6 +276,30 @@ export function DashboardSummaryView() {
             />
           </div>
         </div>
+      </section>
+
+      <section className="dashboard-section">
+        <h2>Compliance</h2>
+        <div className="dashboard-card ring-row">
+          <ProgressRing
+            value={summary.compliance.iso_42001_clauses.satisfied}
+            total={applicableControlCount(summary.compliance.iso_42001_clauses)}
+            label="ISO 42001 clauses"
+          />
+          <ProgressRing
+            value={summary.compliance.iso_42001_annex_a.satisfied}
+            total={applicableControlCount(summary.compliance.iso_42001_annex_a)}
+            label="ISO 42001 Annex A"
+          />
+          <ProgressRing
+            value={summary.compliance.eu_ai_act.satisfied}
+            total={applicableControlCount(summary.compliance.eu_ai_act)}
+            label="EU AI Act"
+          />
+        </div>
+        <p>
+          <Link to="/frameworks">See the full breakdown by clause and control &rarr;</Link>
+        </p>
       </section>
 
       <section className="dashboard-section">
