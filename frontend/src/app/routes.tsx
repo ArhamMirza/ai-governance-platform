@@ -3,6 +3,8 @@ import { Route, Routes } from "react-router-dom";
 import { AISystemDetailPage } from "../pages/AISystemDetailPage";
 import { AISystemInventoryPage } from "../pages/AISystemInventoryPage";
 import { ArchivePage } from "../pages/ArchivePage";
+import { CorrectiveActionDetailPage } from "../pages/CorrectiveActionDetailPage";
+import { CorrectiveActionsPage } from "../pages/CorrectiveActionsPage";
 import { DashboardPage } from "../pages/DashboardPage";
 import { DataInventoryPage } from "../pages/DataInventoryPage";
 import { FrameworksPage } from "../pages/FrameworksPage";
@@ -42,6 +44,11 @@ export function AppRoutes() {
         <Route
           path="/risk-assessments/:riskAssessmentId"
           element={<RiskAssessmentDetailPage />}
+        />
+        <Route path="/corrective-actions" element={<CorrectiveActionsPage />} />
+        <Route
+          path="/corrective-actions/:correctiveActionId"
+          element={<CorrectiveActionDetailPage />}
         />
         <Route path="/frameworks" element={<FrameworksPage />} />
         <Route path="/governance" element={<GovernanceRolesPage />} />

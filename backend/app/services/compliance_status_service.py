@@ -34,6 +34,7 @@ from enum import StrEnum
 from sqlalchemy.orm import Session
 
 from app.core import review_cadence
+from app.models.corrective_action import CorrectiveAction, CorrectiveActionStatus
 from app.models.evidence import Evidence
 from app.models.framework_soa_entry import SoaApplicability
 from app.models.impact_assessment import ImpactAssessment, ImpactAssessmentStatus
@@ -51,6 +52,7 @@ from app.schemas.compliance_status import (
     ControlComplianceStatus,
     TaggedItemStatus,
 )
+from app.services import corrective_action_service
 
 
 class ComplianceStatus(StrEnum):
@@ -175,12 +177,24 @@ def _resolve_evidence(db: Session, entity_id: int, _today: date) -> _Resolved | 
     return _Resolved(record.filename, True, "Document attached")
 
 
+def _resolve_corrective_action(db: Session, entity_id: int, today: date) -> _Resolved | None:
+    record = db.get(CorrectiveAction, entity_id)
+    if record is None:
+        return None
+    if record.status == CorrectiveActionStatus.CLOSED:
+        return _Resolved(record.title, True, "Corrective action verified and closed")
+    if corrective_action_service.is_overdue(record.due_date, record.status, today):
+        return _Resolved(record.title, False, f"Corrective action overdue since {record.due_date}")
+    return _Resolved(record.title, True, f"Corrective action in progress, due {record.due_date}")
+
+
 _RESOLVERS = {
     "Policy": _resolve_policy,
     "Procedure": _resolve_procedure,
     "ImpactAssessment": _resolve_impact_assessment,
     "RiskAssessment": _resolve_risk_assessment,
     "Evidence": _resolve_evidence,
+    "CorrectiveAction": _resolve_corrective_action,
 }
 
 

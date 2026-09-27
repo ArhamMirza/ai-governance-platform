@@ -8,6 +8,7 @@ import { RiskMatrix } from "../../risk-assessments/components/RiskMatrix";
 import { useDashboardSummary } from "../hooks";
 import type {
   AttentionItem,
+  MyCorrectiveActionItem,
   MyRiskItem,
   PendingApprovalEntityType,
   PendingApprovalItem,
@@ -36,6 +37,7 @@ const ATTENTION_LINKS: Record<string, string> = {
   data_owner_not_a_real_account: "/data-inventory",
   uncovered_framework_controls: "/frameworks",
   stale_framework_controls: "/frameworks",
+  overdue_corrective_actions: "/corrective-actions",
 };
 
 const STATUS_TONES: Record<string, Segment["tone"]> = {
@@ -154,6 +156,28 @@ function MyRiskItemsPanel({ items }: { items: MyRiskItem[] }) {
   );
 }
 
+function MyCorrectiveActionsPanel({ items }: { items: MyCorrectiveActionItem[] }) {
+  if (items.length === 0) return null;
+
+  return (
+    <div className="dashboard-card">
+      <h3>My Corrective Actions</h3>
+      <p>Corrective actions assigned to you that are still open.</p>
+      <ul className="my-risk-items-list">
+        {items.map((item) => (
+          <li key={item.id} data-overdue={item.overdue}>
+            <Link to={`/corrective-actions/${item.id}`}>{item.title}</Link>
+            <span className="my-risk-item-meta">
+              {item.overdue && <span className="flag-chip">Overdue</span>}
+              <span>Due {item.due_date}</span>
+            </span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 export function DashboardSummaryView() {
   const { data: summary, isLoading, isError } = useDashboardSummary();
 
@@ -192,6 +216,8 @@ export function DashboardSummaryView() {
       <PendingApprovalsPanel items={summary.pending_approvals} />
 
       <MyRiskItemsPanel items={summary.my_risk_items} />
+
+      <MyCorrectiveActionsPanel items={summary.my_corrective_actions} />
 
       <section className="dashboard-section">
         <h2>Risk Posture</h2>

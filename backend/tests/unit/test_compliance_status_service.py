@@ -7,9 +7,11 @@ from datetime import date, timedelta
 from sqlalchemy.orm import Session
 
 from app.repositories import framework_control_repository
+from app.schemas.corrective_action import CorrectiveActionCreate
 from app.schemas.policy import PolicyCreate
 from app.services import (
     compliance_status_service,
+    corrective_action_service,
     framework_service,
     policy_service,
 )
@@ -237,3 +239,43 @@ def test_get_status_can_be_filtered_by_framework(db_session: Session) -> None:
 
     assert len(rows) > 0
     assert all(row.framework == "eu_ai_act" for row in rows)
+
+
+# ---------- corrective action ----------
+
+
+def make_corrective_action(db: Session, **overrides) -> int:
+    defaults = dict(
+        title="Fix drift",
+        nonconformity_description="x",
+        assignee_id=1,
+        due_date=date.today() + timedelta(days=14),
+    )
+    defaults.update(overrides)
+    corrective_action = corrective_action_service.create_corrective_action(
+        db, CorrectiveActionCreate(**defaults), actor_id=None
+    )
+    return corrective_action.id
+
+
+def test_an_open_corrective_action_not_yet_due_is_current(db_session: Session) -> None:
+    control_id = clause_control_id(db_session)
+    ca_id = make_corrective_action(db_session)
+    framework_service.set_tags(db_session, "CorrectiveAction", ca_id, [control_id], actor_id=None)
+
+    row = status_for(db_session, control_id)
+
+    assert row.status == "satisfied"
+    assert row.tagged_items[0].current is True
+
+
+def test_an_overdue_open_corrective_action_is_partial(db_session: Session) -> None:
+    control_id = clause_control_id(db_session)
+    ca_id = make_corrective_action(db_session, due_date=date.today() - timedelta(days=1))
+    framework_service.set_tags(db_session, "CorrectiveAction", ca_id, [control_id], actor_id=None)
+
+    row = status_for(db_session, control_id)
+
+    assert row.status == "partial"
+    assert row.tagged_items[0].current is False
+    assert "overdue" in row.tagged_items[0].detail.lower()

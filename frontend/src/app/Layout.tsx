@@ -150,6 +150,17 @@ const frameworksNavItem: NavItem = {
   ),
 };
 
+const correctiveActionsNavItem: NavItem = {
+  to: "/corrective-actions",
+  label: "Corrective Actions",
+  icon: (
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M9 11l3 3L22 4" />
+        <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
+      </svg>
+  ),
+};
+
 const settingsNavItem: NavItem = {
   to: "/settings",
   label: "Settings",
@@ -196,7 +207,7 @@ function navGroupsFor(role: string | undefined): NavGroup[] {
     { label: "Foundation", items: [orgContextNavItem, governanceRolesNavItem] },
     { label: "Documentation", items: [policiesNavItem, proceduresNavItem, handbookNavItem] },
     { label: "Inventory", items: [aiSystemsNavItem, dataInventoryNavItem, archiveNavItem] },
-    { label: "Assurance", items: [riskNavItem, frameworksNavItem] },
+    { label: "Assurance", items: [riskNavItem, correctiveActionsNavItem, frameworksNavItem] },
     ...(administration.length > 0
       ? [{ label: "Administration", items: administration }]
       : []),

@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import date, datetime
 
 from pydantic import BaseModel
 
@@ -75,6 +75,17 @@ class MyRiskItem(BaseModel):
     overdue: bool
 
 
+class MyCorrectiveActionItem(BaseModel):
+    """One open corrective action assigned to the requesting user, for the
+    "My Corrective Actions" dashboard panel -- the same shape as MyRiskItem."""
+
+    id: int
+    title: str
+    status: str
+    due_date: date
+    overdue: bool
+
+
 class PendingApprovalItem(BaseModel):
     """One record currently waiting on the requesting user's approval,
     across every entity type that has an approval gate."""
@@ -99,4 +110,5 @@ class DashboardSummary(BaseModel):
     # Bundled so the client shades the matrix with the same bands used to count.
     criteria: RiskCriteriaRead
     my_risk_items: list[MyRiskItem]
+    my_corrective_actions: list[MyCorrectiveActionItem]
     pending_approvals: list[PendingApprovalItem]

@@ -1,14 +1,16 @@
 from collections import Counter
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 
 from sqlalchemy.orm import Session
 
 from app.core import review_cadence, risk_scoring
+from app.models.corrective_action import CorrectiveAction, CorrectiveActionStatus
 from app.models.impact_assessment import ImpactAssessmentStatus
 from app.models.risk_assessment import RiskAssessment
 from app.models.sheet import SheetRow
 from app.repositories import (
     ai_system_lifecycle_repository,
+    corrective_action_repository,
     impact_assessment_repository,
     policy_repository,
     procedure_repository,
@@ -21,6 +23,7 @@ from app.schemas.dashboard import (
     AttentionItem,
     CoverageSummary,
     DashboardSummary,
+    MyCorrectiveActionItem,
     MyRiskItem,
     RiskAssessmentSummary,
     StatusCounts,
@@ -29,6 +32,7 @@ from app.services import (
     ai_system_inventory_service,
     ai_system_lifecycle_service,
     compliance_status_service,
+    corrective_action_service,
     data_inventory_service,
     governance_role_service,
     pending_approvals_service,
@@ -57,6 +61,7 @@ def _attention(
     data_owner_invalid_count: int,
     uncovered_control_count: int,
     stale_control_count: int,
+    overdue_corrective_action_count: int,
 ) -> list[AttentionItem]:
     """Actionable items, most urgent first. Zero-count items are dropped so the
     panel only ever shows things that need doing."""
@@ -139,6 +144,12 @@ def _attention(
             count=stale_control_count,
             severity="warning",
         ),
+        AttentionItem(
+            key="overdue_corrective_actions",
+            label="Corrective actions overdue",
+            count=overdue_corrective_action_count,
+            severity="danger",
+        ),
     ]
     return [item for item in candidates if item.count > 0]
 
@@ -173,6 +184,26 @@ def _my_risk_items(
             )
     # Overdue first, otherwise oldest deadline first (None sorts last).
     items.sort(key=lambda item: (not item.overdue, item.treatment_deadline or "9999-99-99"))
+    return items
+
+
+def _my_corrective_actions(
+    corrective_actions: list[CorrectiveAction], actor_id: int, today: date
+) -> list[MyCorrectiveActionItem]:
+    """Open corrective actions assigned to the requesting user, same shape
+    and sort as _my_risk_items."""
+    items = [
+        MyCorrectiveActionItem(
+            id=ca.id,
+            title=ca.title,
+            status=ca.status,
+            due_date=ca.due_date,
+            overdue=corrective_action_service.is_overdue(ca.due_date, ca.status, today),
+        )
+        for ca in corrective_actions
+        if ca.assignee_id == actor_id and ca.status != CorrectiveActionStatus.CLOSED
+    ]
+    items.sort(key=lambda item: (not item.overdue, item.due_date))
     return items
 
 
@@ -294,6 +325,13 @@ def get_summary(db: Session, actor_id: int) -> DashboardSummary:
     uncovered_control_count = sum(group.no_coverage for group in compliance_groups)
     stale_control_count = sum(group.partial for group in compliance_groups)
 
+    corrective_actions = corrective_action_repository.list_all(db)
+    overdue_corrective_action_count = sum(
+        1
+        for ca in corrective_actions
+        if corrective_action_service.is_overdue(ca.due_date, ca.status, today)
+    )
+
     return DashboardSummary(
         policies=StatusCounts(
             total=len(policies), by_status=dict(Counter(p.status for p in policies))
@@ -339,10 +377,12 @@ def get_summary(db: Session, actor_id: int) -> DashboardSummary:
             data_owner_invalid_count=data_owner_invalid_count,
             uncovered_control_count=uncovered_control_count,
             stale_control_count=stale_control_count,
+            overdue_corrective_action_count=overdue_corrective_action_count,
         ),
         matrix=risk_analytics_service.matrix_cells(all_risk_rows),
         criteria=risk_criteria_service.get_criteria(db),
         my_risk_items=_my_risk_items(risk_assessments, rows_by_sheet, actor_id),
+        my_corrective_actions=_my_corrective_actions(corrective_actions, actor_id, today),
         pending_approvals=pending_approvals_service.get_pending_approvals(
             db,
             actor_id,
