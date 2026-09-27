@@ -3,7 +3,7 @@ import { useState } from "react";
 import { readError } from "../../../shared/api/readError";
 import { useFrameworkControls } from "../../framework-controls/hooks";
 import type { FrameworkControl } from "../../framework-controls/types";
-import { useFrameworkTags, useSetFrameworkTags } from "../hooks";
+import { useFrameworkTags, useSetFrameworkTags, useSuggestFrameworkTags } from "../hooks";
 
 interface FrameworkTagPickerProps {
   entityType: string;
@@ -39,9 +39,19 @@ export function FrameworkTagPicker({
   );
   const { data: controls, isLoading: controlsLoading } = useFrameworkControls();
   const setTags = useSetFrameworkTags(entityType, entityId, extraInvalidateKeys);
+  const suggestTags = useSuggestFrameworkTags(entityType, entityId);
 
   const [isEditing, setIsEditing] = useState(false);
   const [selected, setSelected] = useState<Set<number>>(new Set());
+  // Controls the last "Suggest Tags" click added, so they can be highlighted
+  // distinctly from ones already picked by hand -- cleared whenever editing
+  // starts or stops, never persisted.
+  const [suggested, setSuggested] = useState<Set<number>>(new Set());
+  // Tracked locally rather than read from suggestTags.isSuccess/data: this
+  // needs to say "a suggestion request just came back empty," not "the
+  // last-ever mutation result was empty," which is a different question
+  // once Suggest Tags has been clicked more than once.
+  const [hasSuggested, setHasSuggested] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   if (tagsLoading || controlsLoading) return <p>Loading framework tags...</p>;
@@ -49,8 +59,24 @@ export function FrameworkTagPicker({
 
   const startEditing = () => {
     setSelected(new Set(tags.map((tag) => tag.id)));
+    setSuggested(new Set());
+    setHasSuggested(false);
     setError(null);
     setIsEditing(true);
+  };
+
+  const handleSuggest = async () => {
+    setError(null);
+    try {
+      const results = await suggestTags.mutateAsync();
+      setSuggested(new Set(results.map((control) => control.id)));
+      setHasSuggested(true);
+      // Layers onto whatever is already picked -- a suggestion never
+      // unchecks something a person already chose by hand.
+      setSelected((prev) => new Set([...prev, ...results.map((control) => control.id)]));
+    } catch (err) {
+      setError(readError(err, "Failed to suggest framework tags"));
+    }
   };
 
   const toggle = (controlId: number) => {
@@ -94,13 +120,28 @@ export function FrameworkTagPicker({
   return (
     <div className="framework-tag-picker is-editing">
       {error && <p role="alert">{error}</p>}
+      <div className="framework-tag-picker-actions">
+        <button type="button" onClick={handleSuggest} disabled={suggestTags.isPending}>
+          {suggestTags.isPending ? "Suggesting..." : "Suggest Tags"}
+        </button>
+      </div>
+      {hasSuggested && suggested.size === 0 && (
+        <p className="framework-tags-empty">
+          Nothing in this record's text resembled a control closely enough to suggest.
+        </p>
+      )}
       {groupByFramework(controls).map(([framework, frameworkControls]) => (
         <fieldset key={framework} className="framework-tag-group">
           <legend>{FRAMEWORK_LABELS[framework] ?? framework}</legend>
           {frameworkControls.map((control) => {
             const inputId = `framework-tag-${control.id}`;
             return (
-              <label key={control.id} htmlFor={inputId} className="framework-tag-option">
+              <label
+                key={control.id}
+                htmlFor={inputId}
+                className="framework-tag-option"
+                data-suggested={suggested.has(control.id) || undefined}
+              >
                 <input
                   id={inputId}
                   type="checkbox"
@@ -109,6 +150,9 @@ export function FrameworkTagPicker({
                 />
                 <span>
                   <strong>{control.code}</strong> {control.title}
+                  {suggested.has(control.id) && (
+                    <span className="framework-tag-suggested-label">Suggested</span>
+                  )}
                 </span>
               </label>
             );

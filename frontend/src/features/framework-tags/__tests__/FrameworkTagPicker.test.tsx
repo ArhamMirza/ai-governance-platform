@@ -6,7 +6,7 @@ import { ApiError } from "../../../shared/api/httpClient";
 import { useFrameworkControls } from "../../framework-controls/hooks";
 import type { FrameworkControl } from "../../framework-controls/types";
 import { FrameworkTagPicker } from "../components/FrameworkTagPicker";
-import { useFrameworkTags, useSetFrameworkTags } from "../hooks";
+import { useFrameworkTags, useSetFrameworkTags, useSuggestFrameworkTags } from "../hooks";
 
 vi.mock("../hooks");
 vi.mock("../../framework-controls/hooks");
@@ -20,7 +20,12 @@ const controls: FrameworkControl[] = [
 function mockHooks({
   tags = [],
   mutateAsync = vi.fn(),
-}: { tags?: FrameworkControl[]; mutateAsync?: ReturnType<typeof vi.fn> } = {}) {
+  suggestMutateAsync = vi.fn().mockResolvedValue([]),
+}: {
+  tags?: FrameworkControl[];
+  mutateAsync?: ReturnType<typeof vi.fn>;
+  suggestMutateAsync?: ReturnType<typeof vi.fn>;
+} = {}) {
   vi.mocked(useFrameworkTags).mockReturnValue({
     data: tags,
     isLoading: false,
@@ -32,7 +37,11 @@ function mockHooks({
     isError: false,
   } as never);
   vi.mocked(useSetFrameworkTags).mockReturnValue({ mutateAsync, isPending: false } as never);
-  return { mutateAsync };
+  vi.mocked(useSuggestFrameworkTags).mockReturnValue({
+    mutateAsync: suggestMutateAsync,
+    isPending: false,
+  } as never);
+  return { mutateAsync, suggestMutateAsync };
 }
 
 describe("FrameworkTagPicker", () => {
@@ -100,6 +109,72 @@ describe("FrameworkTagPicker", () => {
 
     expect(screen.getByText("ISO 42001:8.4")).toBeInTheDocument();
     expect(screen.queryByText("EU AI Act")).not.toBeInTheDocument();
+  });
+
+  it("pre-checks and labels the suggested controls", async () => {
+    const { suggestMutateAsync } = mockHooks({
+      tags: [],
+      suggestMutateAsync: vi.fn().mockResolvedValue([controls[2]]),
+    });
+    const user = userEvent.setup();
+
+    render(<FrameworkTagPicker entityType="Policy" entityId={1} />);
+    await user.click(screen.getByRole("button", { name: "Edit Tags" }));
+    await user.click(screen.getByRole("button", { name: "Suggest Tags" }));
+
+    expect(suggestMutateAsync).toHaveBeenCalled();
+    await waitFor(() => {
+      expect(screen.getByLabelText(/Art\.9/)).toBeChecked();
+    });
+    expect(screen.getAllByText("Suggested")).toHaveLength(1);
+  });
+
+  it("layers a suggestion onto what's already picked, without unchecking it", async () => {
+    mockHooks({
+      tags: [controls[0]],
+      suggestMutateAsync: vi.fn().mockResolvedValue([controls[2]]),
+    });
+    const user = userEvent.setup();
+
+    render(<FrameworkTagPicker entityType="Policy" entityId={1} />);
+    await user.click(screen.getByRole("button", { name: "Edit Tags" }));
+    await user.click(screen.getByRole("button", { name: "Suggest Tags" }));
+
+    await waitFor(() => {
+      expect(screen.getByLabelText(/Art\.9/)).toBeChecked();
+    });
+    expect(screen.getByLabelText(/8\.4/)).toBeChecked();
+  });
+
+  it("shows a plain message when nothing was similar enough to suggest", async () => {
+    mockHooks({ tags: [], suggestMutateAsync: vi.fn().mockResolvedValue([]) });
+    const user = userEvent.setup();
+
+    render(<FrameworkTagPicker entityType="Policy" entityId={1} />);
+    await user.click(screen.getByRole("button", { name: "Edit Tags" }));
+    await user.click(screen.getByRole("button", { name: "Suggest Tags" }));
+
+    await waitFor(() => {
+      expect(
+        screen.getByText(/Nothing in this record's text resembled a control/),
+      ).toBeInTheDocument();
+    });
+  });
+
+  it("surfaces an error if suggesting tags fails", async () => {
+    mockHooks({
+      tags: [],
+      suggestMutateAsync: vi.fn().mockRejectedValue(new ApiError(503, "not available")),
+    });
+    const user = userEvent.setup();
+
+    render(<FrameworkTagPicker entityType="Policy" entityId={1} />);
+    await user.click(screen.getByRole("button", { name: "Edit Tags" }));
+    await user.click(screen.getByRole("button", { name: "Suggest Tags" }));
+
+    await waitFor(() => {
+      expect(screen.getByRole("alert")).toBeInTheDocument();
+    });
   });
 
   it("surfaces the server's validation message", async () => {
