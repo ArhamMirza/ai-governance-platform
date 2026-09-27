@@ -278,7 +278,7 @@ def test_an_uncovered_control_is_listed_as_needing_attention(client: TestClient)
     # Nothing is tagged to anything on a fresh database, so every seeded
     # clause, Annex A control (all applicable by default) and EU AI Act
     # article counts as uncovered.
-    assert item["count"] == 24 + 38 + 8
+    assert item["count"] == 24 + 38 + 23
 
 
 def test_tagging_a_control_to_an_approved_policy_removes_it_from_uncovered(
@@ -302,7 +302,7 @@ def test_tagging_a_control_to_an_approved_policy_removes_it_from_uncovered(
 
     body = client.get("/api/v1/dashboard/summary").json()
 
-    assert attention_item(body, "uncovered_framework_controls")["count"] == 24 + 38 + 8 - 1
+    assert attention_item(body, "uncovered_framework_controls")["count"] == 24 + 38 + 23 - 1
     assert body["compliance"]["iso_42001_clauses"]["satisfied"] == 1
 
 
@@ -319,5 +319,5 @@ def test_tagging_a_control_to_a_draft_policy_counts_as_stale_not_uncovered(
 
     body = client.get("/api/v1/dashboard/summary").json()
 
-    assert attention_item(body, "uncovered_framework_controls")["count"] == 24 + 38 + 8 - 1
+    assert attention_item(body, "uncovered_framework_controls")["count"] == 24 + 38 + 23 - 1
     assert attention_item(body, "stale_framework_controls")["count"] == 1
