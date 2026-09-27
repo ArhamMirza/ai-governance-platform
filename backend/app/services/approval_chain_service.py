@@ -19,6 +19,7 @@ each of those checks runs in a transaction of its own: two approvers can
 both find a record pending and both pass every gate, and without the guard
 the record would simply record whichever of them committed last."""
 
+from collections.abc import Callable
 from datetime import UTC, datetime
 from typing import Any, Protocol
 
@@ -113,15 +114,23 @@ def submit_for_owner_approval(
     pre_approval_label: str,
     pending_owner_status: Any,
     pending_caigo_status: Any,
+    require_ready: Callable[[], None] | None = None,
 ) -> None:
     """Implementation Team submits their work. If the AI system's owner is
     the one submitting, they can't meaningfully approve their own work, so
-    this skips straight to the CAIGO stage instead of waiting on them."""
+    this skips straight to the CAIGO stage instead of waiting on them.
+
+    require_ready is the caller's own rule for whether the record has enough
+    in it to be signed off at all -- run after the status check, so a record
+    that's already moved on is refused as a conflict rather than as
+    incomplete."""
     if assessment.status not in pre_approval_statuses:
         raise ConflictError(
             f"{entity_label} {assessment.id} must be {pre_approval_label} to "
             f"submit for approval, currently '{assessment.status}'"
         )
+    if require_ready is not None:
+        require_ready()
 
     lifecycle = ai_system_lifecycle_service.get_or_create(db, assessment.ai_system_row_id)
     owner_id = lifecycle.owner_id
@@ -165,12 +174,15 @@ def approve_owner_stage(
     caigo_approval_entity_type: str,
     pending_owner_status: Any,
     pending_caigo_status: Any,
+    require_ready: Callable[[], None] | None = None,
 ) -> None:
     if assessment.status != pending_owner_status:
         raise ConflictError(
             f"{entity_label} {assessment.id} must be pending owner approval, "
             f"currently '{assessment.status}'"
         )
+    if require_ready is not None:
+        require_ready()
 
     lifecycle = ai_system_lifecycle_service.get_or_create(db, assessment.ai_system_row_id)
     if actor_id is not None and actor_id != lifecycle.owner_id:
@@ -206,12 +218,15 @@ def approve_caigo_stage(
     caigo_approval_entity_type: str,
     pending_caigo_status: Any,
     completed_status: Any,
+    require_ready: Callable[[], None] | None = None,
 ) -> None:
     if assessment.status != pending_caigo_status:
         raise ConflictError(
             f"{entity_label} {assessment.id} must be pending CAIGO approval, "
             f"currently '{assessment.status}'"
         )
+    if require_ready is not None:
+        require_ready()
 
     governance_role_service.require_caigo(db, actor_id)
     audit_service.require_different_approver(

@@ -1,6 +1,8 @@
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
+import { ApiError } from "../../../shared/api/httpClient";
 import { useCanApprove } from "../../audit-log/useCanApprove";
 import { useCanApproveAsOwner } from "../../audit-log/useCanApproveAsOwner";
 import { useUserDirectory } from "../../users/hooks";
@@ -78,15 +80,15 @@ function mockHooks() {
     isPending: false,
   } as never);
   vi.mocked(useSubmitImpactAssessmentForOwnerApproval).mockReturnValue({
-    mutate: vi.fn(),
+    mutateAsync: vi.fn(),
     isPending: false,
   } as never);
   vi.mocked(useApproveImpactAssessmentOwnerStage).mockReturnValue({
-    mutate: vi.fn(),
+    mutateAsync: vi.fn(),
     isPending: false,
   } as never);
   vi.mocked(useApproveImpactAssessmentCaigoStage).mockReturnValue({
-    mutate: vi.fn(),
+    mutateAsync: vi.fn(),
     isPending: false,
   } as never);
   vi.mocked(useUserDirectory).mockReturnValue({ data: [] } as never);
@@ -107,6 +109,49 @@ describe("ImpactAssessmentForm approval workflow", () => {
     );
 
     expect(screen.getByRole("button", { name: "Submit for Approval" })).toBeInTheDocument();
+  });
+
+  it("shows the server's reason when a submission is refused", async () => {
+    mockHooks();
+    const message =
+      "Can't submit: Conclusion is empty and 3 factors are unscored (Fairness, Privacy, Safety).";
+    vi.mocked(useSubmitImpactAssessmentForOwnerApproval).mockReturnValue({
+      mutateAsync: vi.fn().mockRejectedValue(new ApiError(400, JSON.stringify({ detail: message }))),
+      isPending: false,
+    } as never);
+
+    render(
+      <ImpactAssessmentForm
+        riskAssessmentId={null}
+        assessment={makeAssessment({ status: "draft" })}
+        onDeleted={vi.fn()}
+      />,
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Submit for Approval" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(message);
+    expect(screen.getByRole("button", { name: "Submit for Approval" })).toBeInTheDocument();
+  });
+
+  it("shows the server's reason when an approval is refused", async () => {
+    mockHooks();
+    vi.mocked(useCanApprove).mockReturnValue({ canApprove: true, reason: null });
+    const message = "Can't approve: 1 factor has no harms written (Safety).";
+    vi.mocked(useApproveImpactAssessmentCaigoStage).mockReturnValue({
+      mutateAsync: vi.fn().mockRejectedValue(new ApiError(400, JSON.stringify({ detail: message }))),
+      isPending: false,
+    } as never);
+
+    render(
+      <ImpactAssessmentForm
+        riskAssessmentId={null}
+        assessment={makeAssessment({ status: "pending_caigo_approval" })}
+        onDeleted={vi.fn()}
+      />,
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Approve" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(message);
   });
 
   it("shows an Approve button for the owner during the owner-approval stage", () => {

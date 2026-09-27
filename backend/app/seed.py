@@ -54,10 +54,16 @@ def _seed_impact_assessment(
     system_description: str,
     intended_purpose: str,
     foreseeable_misuse: str,
+    data_and_model_info: str,
+    deployment_environment: str,
+    affected_interested_parties: str,
+    human_oversight_role: str,
+    conclusion: str,
     scores: dict[str, int],
 ) -> None:
-    """Creates a completed impact assessment, scoring the named factors and
-    leaving the rest blank -- a realistic part-way-through scorecard."""
+    """Creates a completed impact assessment. Every narrative section and
+    all eight factors have to be written up before it can be submitted (see
+    impact_assessment_service.missing_content), so `scores` covers them all."""
     # submit_for_owner_approval requires a real owner on the AI system, or
     # the owner stage could never be approved -- this demo data doesn't
     # model a real accountable owner, so it stands in a placeholder id
@@ -88,6 +94,11 @@ def _seed_impact_assessment(
             system_description=system_description,
             intended_purpose=intended_purpose,
             foreseeable_misuse=foreseeable_misuse,
+            data_and_model_info=data_and_model_info,
+            deployment_environment=deployment_environment,
+            affected_interested_parties=affected_interested_parties,
+            human_oversight_role=human_oversight_role,
+            conclusion=conclusion,
         ),
         actor_id=None,
     )
@@ -201,7 +212,21 @@ def seed(db: Session) -> None:
         system_description="Ranks incoming job applications for recruiters.",
         intended_purpose="Shortlist applicants for human review, never to reject outright.",
         foreseeable_misuse="Used as the sole decision-maker with no recruiter review.",
-        scores={"Fairness": 2, "Transparency": 2, "Accountability": 3, "Privacy": 3},
+        data_and_model_info="Gradient-boosted ranker trained on five years of hiring outcomes.",
+        deployment_environment="Internal recruiting portal, used by the talent acquisition team.",
+        affected_interested_parties="Job applicants, recruiters and hiring managers.",
+        human_oversight_role="A recruiter reviews every shortlist before anyone is contacted.",
+        conclusion="Acceptable with recruiter review and a quarterly bias audit.",
+        scores={
+            "Accountability": 3,
+            "Explainability": 3,
+            "Transparency": 2,
+            "Fairness": 2,
+            "Environmental Impact": 1,
+            "Reliability": 3,
+            "Privacy": 3,
+            "Safety": 2,
+        },
     )
     _seed_impact_assessment(
         db,
@@ -209,7 +234,21 @@ def seed(db: Session) -> None:
         system_description="Flags potentially fraudulent transactions for manual review.",
         intended_purpose="Surface suspicious transactions to the fraud operations team.",
         foreseeable_misuse="Auto-blocking accounts without an analyst confirming the flag.",
-        scores={"Fairness": 3, "Reliability": 3, "Explainability": 2, "Safety": 4},
+        data_and_model_info="Anomaly model trained on labelled historical transactions.",
+        deployment_environment="Payments pipeline, scoring transactions in near real time.",
+        affected_interested_parties="Account holders, merchants and fraud analysts.",
+        human_oversight_role="An analyst confirms every flag before an account is restricted.",
+        conclusion="Acceptable while analysts confirm flags; revisit false-positive rates.",
+        scores={
+            "Accountability": 3,
+            "Explainability": 2,
+            "Transparency": 3,
+            "Fairness": 3,
+            "Environmental Impact": 1,
+            "Reliability": 3,
+            "Privacy": 3,
+            "Safety": 4,
+        },
     )
 
     print("Seeding risk assessments...")

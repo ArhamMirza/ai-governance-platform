@@ -12,6 +12,7 @@ from app.services import (
     impact_assessment_service,
     risk_assessment_service,
 )
+from tests.helpers import fill_impact_assessment_db
 
 
 def make_ai_system_row(db: Session) -> int:
@@ -32,6 +33,7 @@ def complete(db: Session, impact_assessment_id: int):
     ai_system_lifecycle_service.set_owner(
         db, assessment.ai_system_row_id, owner_id=1, actor_id=None
     )
+    fill_impact_assessment_db(db, impact_assessment_id)
     impact_assessment_service.submit_for_owner_approval(db, impact_assessment_id, actor_id=None)
     impact_assessment_service.approve_owner_stage(db, impact_assessment_id, actor_id=None)
     return impact_assessment_service.approve_caigo_stage(
@@ -173,3 +175,155 @@ def test_delete_removes_assessment_and_factors(db_session: Session) -> None:
     with pytest.raises(NotFoundError):
         impact_assessment_service.get(db_session, created.id)
     assert impact_assessment_service.get_factors(db_session, created.id) == []
+
+
+# ---------- nothing enters the approval pipeline half-written ----------
+
+
+def ready_to_submit(db: Session):
+    """A draft with everything missing_content asks for, and an owner who
+    isn't the (None) submitter, so a submission lands in owner approval."""
+    created = make_impact_assessment(db)
+    ai_system_lifecycle_service.set_owner(
+        db, created.ai_system_row_id, owner_id=1, actor_id=None
+    )
+    fill_impact_assessment_db(db, created.id)
+    return created
+
+
+def factor_row(db: Session, impact_assessment_id: int, factor: str):
+    return next(
+        f
+        for f in impact_assessment_service.get_factors(db, impact_assessment_id)
+        if f.factor == factor
+    )
+
+
+def refusal(db: Session, impact_assessment_id: int) -> str:
+    with pytest.raises(ValidationError) as excinfo:
+        impact_assessment_service.submit_for_owner_approval(
+            db, impact_assessment_id, actor_id=None
+        )
+    assert impact_assessment_service.get(db, impact_assessment_id).status == "draft"
+    return str(excinfo.value)
+
+
+def test_an_empty_assessment_cannot_be_submitted(db_session: Session) -> None:
+    created = make_impact_assessment(db_session)
+    ai_system_lifecycle_service.set_owner(
+        db_session, created.ai_system_row_id, owner_id=1, actor_id=None
+    )
+
+    assert refusal(db_session, created.id) == (
+        "Can't submit: System Description, Intended Purpose, Foreseeable Misuse, "
+        "Data & Model Information, Deployment Environment, Affected Interested Parties, "
+        "Role of Human Oversight and Conclusion are empty, all 8 factors are unscored, "
+        "all 8 factors have no benefits written and all 8 factors have no harms written."
+    )
+
+
+def test_a_complete_assessment_is_submitted(db_session: Session) -> None:
+    created = ready_to_submit(db_session)
+
+    submitted = impact_assessment_service.submit_for_owner_approval(
+        db_session, created.id, actor_id=None
+    )
+
+    assert submitted.status == "pending_owner_approval"
+    # Scoring criteria explain the scale rather than this system's impact,
+    # so they aren't part of what's required.
+    assert all(
+        f.criteria is None for f in impact_assessment_service.get_factors(db_session, created.id)
+    )
+
+
+def test_refusal_names_the_empty_sections_and_unscored_factors(db_session: Session) -> None:
+    created = ready_to_submit(db_session)
+    impact_assessment_service.update(
+        db_session, created.id, ImpactAssessmentUpdate(conclusion=""), actor_id=None
+    )
+    for factor in ("Privacy", "Safety", "Fairness"):
+        row = factor_row(db_session, created.id, factor)
+        impact_assessment_service.update_factor(
+            db_session, created.id, factor, row.benefits, row.harms, row.criteria, None,
+            actor_id=None,
+        )
+
+    assert refusal(db_session, created.id) == (
+        "Can't submit: Conclusion is empty and 3 factors are unscored "
+        "(Fairness, Privacy, Safety)."
+    )
+
+
+def test_a_whitespace_only_section_counts_as_empty(db_session: Session) -> None:
+    created = ready_to_submit(db_session)
+    impact_assessment_service.update(
+        db_session, created.id, ImpactAssessmentUpdate(intended_purpose="   \n"), actor_id=None
+    )
+
+    assert refusal(db_session, created.id) == "Can't submit: Intended Purpose is empty."
+
+
+def test_a_factor_without_benefits_is_refused(db_session: Session) -> None:
+    created = ready_to_submit(db_session)
+    row = factor_row(db_session, created.id, "Privacy")
+    impact_assessment_service.update_factor(
+        db_session, created.id, "Privacy", None, row.harms, row.criteria, row.score,
+        actor_id=None,
+    )
+
+    assert refusal(db_session, created.id) == (
+        "Can't submit: 1 factor has no benefits written (Privacy)."
+    )
+
+
+def test_a_factor_without_harms_is_refused(db_session: Session) -> None:
+    created = ready_to_submit(db_session)
+    row = factor_row(db_session, created.id, "Safety")
+    impact_assessment_service.update_factor(
+        db_session, created.id, "Safety", row.benefits, "  ", row.criteria, row.score,
+        actor_id=None,
+    )
+
+    assert refusal(db_session, created.id) == (
+        "Can't submit: 1 factor has no harms written (Safety)."
+    )
+
+
+def test_a_score_outside_the_scale_counts_as_unscored(db_session: Session) -> None:
+    """update_factor refuses these, but a row written before that check (or
+    straight into the database) mustn't pass as scored."""
+    created = ready_to_submit(db_session)
+    row = factor_row(db_session, created.id, "Reliability")
+    row.score = 0
+    db_session.commit()
+
+    assert refusal(db_session, created.id) == (
+        "Can't submit: 1 factor is unscored (Reliability)."
+    )
+
+
+@pytest.mark.parametrize(
+    ("stage", "approve"),
+    [
+        ("pending_owner_approval", impact_assessment_service.approve_owner_stage),
+        ("pending_caigo_approval", impact_assessment_service.approve_caigo_stage),
+    ],
+)
+def test_an_empty_assessment_already_in_the_pipeline_cannot_be_approved(
+    db_session: Session, stage: str, approve
+) -> None:
+    """One submitted before completeness was checked is already pending --
+    signing it off would complete it empty, so each approval re-checks. Its
+    status is left exactly where it was, not pushed back to draft."""
+    created = make_impact_assessment(db_session)
+    ai_system_lifecycle_service.set_owner(
+        db_session, created.ai_system_row_id, owner_id=1, actor_id=None
+    )
+    created.status = stage
+    db_session.commit()
+
+    with pytest.raises(ValidationError, match=r"^Can't approve: .*are empty"):
+        approve(db_session, created.id, actor_id=None)
+
+    assert impact_assessment_service.get(db_session, created.id).status == stage
