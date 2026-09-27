@@ -2,6 +2,7 @@ from datetime import datetime
 
 from pydantic import BaseModel
 
+from app.schemas.compliance_status import ComplianceStatusSummary
 from app.schemas.risk_criteria import RiskCriteriaRead
 
 
@@ -92,6 +93,7 @@ class DashboardSummary(BaseModel):
     risk_assessments: RiskAssessmentSummary
     risk_items: RiskItemSummary
     coverage: CoverageSummary
+    compliance: ComplianceStatusSummary
     attention: list[AttentionItem]
     matrix: list[MatrixCell]
     # Bundled so the client shades the matrix with the same bands used to count.

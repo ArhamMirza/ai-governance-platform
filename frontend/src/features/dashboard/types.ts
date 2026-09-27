@@ -1,3 +1,4 @@
+import type { ComplianceStatusSummary } from "../compliance-status/types";
 import type { MatrixCell } from "../risk-assessments/components/RiskMatrix";
 import type { RiskCriteria } from "../risk-assessments/riskSeverity";
 
@@ -78,6 +79,7 @@ export interface DashboardSummary {
   risk_assessments: RiskAssessmentSummary;
   risk_items: RiskItemSummary;
   coverage: CoverageSummary;
+  compliance: ComplianceStatusSummary;
   attention: AttentionItem[];
   matrix: MatrixCell[];
   criteria: RiskCriteria;

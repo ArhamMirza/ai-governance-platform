@@ -1279,6 +1279,29 @@ td button {
   color: var(--text-muted);
 }
 
+/* Compliance status (see compliance_status_service) -- a control's computed
+   coverage, not a record's own lifecycle status, so it gets its own values
+   even though it shares the same badge. */
+.status-badge[data-status="satisfied"] {
+  background: var(--success-subtle);
+  color: var(--success-text);
+}
+
+.status-badge[data-status="partial"] {
+  background: var(--warning-subtle);
+  color: var(--warning-text);
+}
+
+.status-badge[data-status="no_coverage"] {
+  background: var(--danger-subtle);
+  color: var(--danger-text);
+}
+
+.status-badge[data-status="not_applicable"] {
+  background: var(--neutral-subtle);
+  color: var(--neutral-text);
+}
+
 /* Editing an approved assessment withdraws the sign-off (see
    approval_chain_service.revert_to_draft) -- said before someone edits,
    not after. */
@@ -2279,6 +2302,14 @@ nav[aria-label="breadcrumb"] button:hover:not(:disabled) {
   background: var(--primary-subtle);
   color: var(--primary);
   white-space: nowrap;
+}
+
+/* Compliance status page: a tagged item that no longer counts toward its
+   control (draft, retired, or past its review date) reads as amber rather
+   than the ordinary tag color -- the reason is in its title tooltip. */
+.framework-tag-chip[data-current="false"] {
+  background: var(--warning-subtle);
+  color: var(--warning-text);
 }
 
 .framework-tag-picker.is-editing {

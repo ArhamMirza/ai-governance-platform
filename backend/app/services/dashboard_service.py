@@ -28,6 +28,7 @@ from app.schemas.dashboard import (
 from app.services import (
     ai_system_inventory_service,
     ai_system_lifecycle_service,
+    compliance_status_service,
     data_inventory_service,
     governance_role_service,
     pending_approvals_service,
@@ -54,6 +55,8 @@ def _attention(
     ai_systems_without_owner_count: int,
     risk_owner_invalid_count: int,
     data_owner_invalid_count: int,
+    uncovered_control_count: int,
+    stale_control_count: int,
 ) -> list[AttentionItem]:
     """Actionable items, most urgent first. Zero-count items are dropped so the
     panel only ever shows things that need doing."""
@@ -122,6 +125,18 @@ def _attention(
             key="data_owner_not_a_real_account",
             label="Datasets whose owner isn't an active account",
             count=data_owner_invalid_count,
+            severity="warning",
+        ),
+        AttentionItem(
+            key="uncovered_framework_controls",
+            label="Framework controls with no coverage",
+            count=uncovered_control_count,
+            severity="danger",
+        ),
+        AttentionItem(
+            key="stale_framework_controls",
+            label="Framework controls tagged but no longer current",
+            count=stale_control_count,
             severity="warning",
         ),
     ]
@@ -270,6 +285,15 @@ def get_summary(db: Session, actor_id: int) -> DashboardSummary:
         data_inventory_rows, "data_owner", valid_user_ids
     )
 
+    compliance = compliance_status_service.get_summary(db)
+    compliance_groups = [
+        compliance.iso_42001_clauses,
+        compliance.iso_42001_annex_a,
+        compliance.eu_ai_act,
+    ]
+    uncovered_control_count = sum(group.no_coverage for group in compliance_groups)
+    stale_control_count = sum(group.partial for group in compliance_groups)
+
     return DashboardSummary(
         policies=StatusCounts(
             total=len(policies), by_status=dict(Counter(p.status for p in policies))
@@ -300,6 +324,7 @@ def get_summary(db: Session, actor_id: int) -> DashboardSummary:
                 1 for p in active_procedures if p.status == APPROVED_STATUS
             ),
         ),
+        compliance=compliance,
         attention=_attention(
             overdue_count=risk_items.overdue_count,
             unassessed_count=len(ai_system_rows) - assessed_count,
@@ -312,6 +337,8 @@ def get_summary(db: Session, actor_id: int) -> DashboardSummary:
             ai_systems_without_owner_count=ai_systems_without_owner_count,
             risk_owner_invalid_count=risk_owner_invalid_count,
             data_owner_invalid_count=data_owner_invalid_count,
+            uncovered_control_count=uncovered_control_count,
+            stale_control_count=stale_control_count,
         ),
         matrix=risk_analytics_service.matrix_cells(all_risk_rows),
         criteria=risk_criteria_service.get_criteria(db),

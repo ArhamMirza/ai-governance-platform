@@ -13,7 +13,7 @@ def test_get_mapping_lists_all_clauses_articles_and_annex_a_controls(
 
     assert response.status_code == 200
     body = response.json()
-    assert len(body) == 70
+    assert len(body) == 85
     assert {"id", "framework", "code", "title", "category", "tagged_items"} <= body[0].keys()
 
 
@@ -21,7 +21,7 @@ def test_get_mapping_filtered_by_framework(client: TestClient) -> None:
     response = client.get("/api/v1/framework-mapping", params={"framework": "eu_ai_act"})
 
     assert response.status_code == 200
-    assert len(response.json()) == 8
+    assert len(response.json()) == 23
 
 
 def test_get_mapping_shows_a_tagged_policy(client: TestClient) -> None:

@@ -1,6 +1,6 @@
 from fastapi.testclient import TestClient
 
-from app.models.user import UserRole
+from app.models.user import User, UserRole
 from tests.helpers import complete_impact_assessment
 
 
@@ -252,3 +252,72 @@ def test_accountabilities_require_manage_users(
     response = client.get(f"/api/v1/users/{target.id}/accountabilities")
 
     assert response.status_code == 403
+
+
+# ---------- compliance rollup ----------
+
+
+def any_clause_control(client: TestClient) -> dict:
+    controls = client.get("/api/v1/framework-controls", params={"framework": "iso_42001"}).json()
+    return next(c for c in controls if c["category"] == "clause")
+
+
+def test_summary_compliance_matches_the_compliance_status_endpoint(client: TestClient) -> None:
+    response = client.get("/api/v1/dashboard/summary")
+    expected = client.get("/api/v1/compliance-status/summary").json()
+
+    assert response.json()["compliance"] == expected
+
+
+def test_an_uncovered_control_is_listed_as_needing_attention(client: TestClient) -> None:
+    body = client.get("/api/v1/dashboard/summary").json()
+
+    item = attention_item(body, "uncovered_framework_controls")
+
+    assert item is not None
+    # Nothing is tagged to anything on a fresh database, so every seeded
+    # clause, Annex A control (all applicable by default) and EU AI Act
+    # article counts as uncovered.
+    assert item["count"] == 24 + 38 + 23
+
+
+def test_tagging_a_control_to_an_approved_policy_removes_it_from_uncovered(
+    client: TestClient,
+    second_user: User,
+    login_as,
+    make_caigo,
+) -> None:
+    control = any_clause_control(client)
+    policy = client.post("/api/v1/policies", json={"title": "Data Retention Policy"}).json()
+    client.put(
+        "/api/v1/framework-tags",
+        params={"entity_type": "Policy", "entity_id": policy["id"]},
+        json={"control_ids": [control["id"]]},
+    )
+    client.post(f"/api/v1/policies/{policy['id']}/submit-for-review")
+    make_caigo(second_user)
+    login_as(second_user)
+    approve_response = client.post(f"/api/v1/policies/{policy['id']}/approve")
+    assert approve_response.status_code == 200
+
+    body = client.get("/api/v1/dashboard/summary").json()
+
+    assert attention_item(body, "uncovered_framework_controls")["count"] == 24 + 38 + 23 - 1
+    assert body["compliance"]["iso_42001_clauses"]["satisfied"] == 1
+
+
+def test_tagging_a_control_to_a_draft_policy_counts_as_stale_not_uncovered(
+    client: TestClient,
+) -> None:
+    control = any_clause_control(client)
+    policy = client.post("/api/v1/policies", json={"title": "Data Retention Policy"}).json()
+    client.put(
+        "/api/v1/framework-tags",
+        params={"entity_type": "Policy", "entity_id": policy["id"]},
+        json={"control_ids": [control["id"]]},
+    )
+
+    body = client.get("/api/v1/dashboard/summary").json()
+
+    assert attention_item(body, "uncovered_framework_controls")["count"] == 24 + 38 + 23 - 1
+    assert attention_item(body, "stale_framework_controls")["count"] == 1
