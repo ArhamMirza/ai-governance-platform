@@ -26,6 +26,14 @@ jobs:
       - name: Lint (ruff)
         run: ruff check .
 
+      - name: Dependency vulnerabilities (pip-audit)
+        # Reads the resolved environment rather than requirements files, so
+        # transitive dependencies (litellm's own deps, etc.) are covered too.
+        # Not --strict: that also fails the build on a package pip-audit
+        # simply couldn't audit (e.g. this project's own editable install),
+        # which isn't a vulnerability finding.
+        run: pipx run pip-audit --skip-editable
+
       - name: Test (pytest)
         run: pytest --cov=app --cov-report=term-missing
 
@@ -48,6 +56,9 @@ jobs:
 
       - name: Lint (oxlint)
         run: npm run lint
+
+      - name: Dependency vulnerabilities (npm audit)
+        run: npm audit --audit-level=high
 
       - name: Test (vitest)
         run: npm test
