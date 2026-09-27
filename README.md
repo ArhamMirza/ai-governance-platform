@@ -92,3 +92,7 @@ cd frontend && npm test
   "release" just marks a known-good, tagged snapshot of the code. A
   Docker-based distribution path is a planned post-MVP extension
   (see DESIGN.md §9).
+
+## License
+
+Apache License 2.0 — see [LICENSE](LICENSE).
