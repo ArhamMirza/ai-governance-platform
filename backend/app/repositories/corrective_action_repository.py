@@ -12,6 +12,21 @@ def list_all(db: Session) -> list[CorrectiveAction]:
     return list(db.scalars(select(CorrectiveAction).order_by(CorrectiveAction.id)))
 
 
+def list_for_source(db: Session, source_type: str, source_id: int) -> list[CorrectiveAction]:
+    """Every corrective action raised from one source record -- e.g. every
+    one raised from a given audit finding."""
+    return list(
+        db.scalars(
+            select(CorrectiveAction)
+            .where(
+                CorrectiveAction.source_type == source_type,
+                CorrectiveAction.source_id == source_id,
+            )
+            .order_by(CorrectiveAction.id)
+        )
+    )
+
+
 def create(db: Session, corrective_action: CorrectiveAction) -> CorrectiveAction:
     db.add(corrective_action)
     db.commit()

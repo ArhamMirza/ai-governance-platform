@@ -3,6 +3,9 @@ import { Route, Routes } from "react-router-dom";
 import { AISystemDetailPage } from "../pages/AISystemDetailPage";
 import { AISystemInventoryPage } from "../pages/AISystemInventoryPage";
 import { ArchivePage } from "../pages/ArchivePage";
+import { AuditDetailPage } from "../pages/AuditDetailPage";
+import { AuditProgramDetailPage } from "../pages/AuditProgramDetailPage";
+import { AuditProgramsPage } from "../pages/AuditProgramsPage";
 import { CorrectiveActionDetailPage } from "../pages/CorrectiveActionDetailPage";
 import { CorrectiveActionsPage } from "../pages/CorrectiveActionsPage";
 import { DashboardPage } from "../pages/DashboardPage";
@@ -49,6 +52,12 @@ export function AppRoutes() {
         <Route
           path="/corrective-actions/:correctiveActionId"
           element={<CorrectiveActionDetailPage />}
+        />
+        <Route path="/audit-programs" element={<AuditProgramsPage />} />
+        <Route path="/audit-programs/:programId" element={<AuditProgramDetailPage />} />
+        <Route
+          path="/audit-programs/:programId/audits/:auditId"
+          element={<AuditDetailPage />}
         />
         <Route path="/frameworks" element={<FrameworksPage />} />
         <Route path="/governance" element={<GovernanceRolesPage />} />

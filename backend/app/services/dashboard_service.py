@@ -12,6 +12,7 @@ from app.repositories import (
     ai_system_lifecycle_repository,
     corrective_action_repository,
     impact_assessment_repository,
+    internal_audit_repository,
     policy_repository,
     procedure_repository,
     risk_assessment_repository,
@@ -35,6 +36,7 @@ from app.services import (
     corrective_action_service,
     data_inventory_service,
     governance_role_service,
+    internal_audit_service,
     pending_approvals_service,
     risk_analytics_service,
     risk_criteria_service,
@@ -62,6 +64,7 @@ def _attention(
     uncovered_control_count: int,
     stale_control_count: int,
     overdue_corrective_action_count: int,
+    overdue_audit_count: int,
 ) -> list[AttentionItem]:
     """Actionable items, most urgent first. Zero-count items are dropped so the
     panel only ever shows things that need doing."""
@@ -148,6 +151,12 @@ def _attention(
             key="overdue_corrective_actions",
             label="Corrective actions overdue",
             count=overdue_corrective_action_count,
+            severity="danger",
+        ),
+        AttentionItem(
+            key="audits_overdue",
+            label="Internal audits overdue",
+            count=overdue_audit_count,
             severity="danger",
         ),
     ]
@@ -332,6 +341,17 @@ def get_summary(db: Session, actor_id: int) -> DashboardSummary:
         if corrective_action_service.is_overdue(ca.due_date, ca.status, today)
     )
 
+    audit_programs = internal_audit_repository.list_programs(db)
+    audits_by_program = {
+        program.id: internal_audit_repository.list_for_program(db, program.id)
+        for program in audit_programs
+    }
+    overdue_audit_count = sum(
+        1
+        for program in audit_programs
+        if internal_audit_service.is_overdue(program, audits_by_program[program.id], today)
+    )
+
     return DashboardSummary(
         policies=StatusCounts(
             total=len(policies), by_status=dict(Counter(p.status for p in policies))
@@ -378,6 +398,7 @@ def get_summary(db: Session, actor_id: int) -> DashboardSummary:
             uncovered_control_count=uncovered_control_count,
             stale_control_count=stale_control_count,
             overdue_corrective_action_count=overdue_corrective_action_count,
+            overdue_audit_count=overdue_audit_count,
         ),
         matrix=risk_analytics_service.matrix_cells(all_risk_rows),
         criteria=risk_criteria_service.get_criteria(db),

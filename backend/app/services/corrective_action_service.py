@@ -65,6 +65,13 @@ def get_corrective_action(db: Session, corrective_action_id: int) -> CorrectiveA
     return _get_or_raise(db, corrective_action_id)
 
 
+def list_for_source(db: Session, source_type: str, source_id: int) -> list[CorrectiveAction]:
+    """Every corrective action raised from one source record -- e.g. an
+    internal_audit_service.AuditFinding checking whether it already has
+    one."""
+    return corrective_action_repository.list_for_source(db, source_type, source_id)
+
+
 def create_corrective_action(
     db: Session, data: CorrectiveActionCreate, actor_id: int | None
 ) -> CorrectiveAction:

@@ -4,6 +4,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from app.core import risk_scoring
+from app.models.audit_program import AuditProgram
 from app.models.corrective_action import CorrectiveAction
 from app.models.policy import Policy, PolicyStatus
 from app.models.procedure import Procedure, ProcedureStatus
@@ -48,6 +49,21 @@ def make_corrective_action(**overrides) -> CorrectiveAction:
     )
     defaults.update(overrides)
     return CorrectiveAction(**defaults)
+
+
+def make_audit_program(**overrides) -> AuditProgram:
+    defaults = dict(
+        id=1,
+        title="Audit Program",
+        description=None,
+        schedule_type="interval",
+        interval_months=6,
+        start_date=FUTURE_DATE,
+        owner_id=None,
+        status="active",
+    )
+    defaults.update(overrides)
+    return AuditProgram(**defaults)
 
 
 def make_ai_system_row(**overrides) -> SheetRow:
@@ -397,3 +413,38 @@ def test_get_summary_my_corrective_actions_matches_assignee_and_flags_overdue(
     assert result.my_corrective_actions[0].overdue is True
     assert result.my_corrective_actions[1].overdue is False
     assert any(item.key == "overdue_corrective_actions" for item in result.attention)
+
+
+@patch("app.services.dashboard_service.risk_criteria_service")
+@patch("app.services.dashboard_service.sheet_repository")
+@patch("app.services.dashboard_service.risk_assessment_repository")
+@patch("app.services.dashboard_service.ai_system_inventory_service")
+@patch("app.services.dashboard_service.procedure_repository")
+@patch("app.services.dashboard_service.policy_repository")
+@patch("app.services.dashboard_service.internal_audit_repository")
+def test_get_summary_flags_overdue_internal_audit_programs(
+    mock_ia_repo,
+    mock_policy_repo,
+    mock_procedure_repo,
+    mock_inventory,
+    mock_ra_repo,
+    mock_sheet_repo,
+    mock_criteria,
+    db,
+) -> None:
+    mock_criteria.get_bands.return_value = risk_scoring.DEFAULT_BANDS
+    mock_policy_repo.list_all.return_value = []
+    mock_procedure_repo.list_all.return_value = []
+    mock_inventory.list_rows.return_value = []
+    mock_ra_repo.list_all.return_value = []
+    mock_sheet_repo.list_rows_for_sheets.return_value = {}
+    overdue_program = make_audit_program(id=1, schedule_type="interval", start_date=PAST_DATE)
+    current_program = make_audit_program(id=2, schedule_type="interval", start_date=FUTURE_DATE)
+    mock_ia_repo.list_programs.return_value = [overdue_program, current_program]
+    mock_ia_repo.list_for_program.return_value = []
+
+    result = dashboard_service.get_summary(db, actor_id=99)
+
+    assert any(
+        item.key == "audits_overdue" and item.count == 1 for item in result.attention
+    )

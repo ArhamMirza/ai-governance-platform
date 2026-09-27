@@ -17,9 +17,23 @@ type CorrectiveActionFormValues = z.infer<typeof correctiveActionFormSchema>;
 
 interface CorrectiveActionFormProps {
   onCreated?: (correctiveActionId: number) => void;
+  /** Pre-fills the form when raised from somewhere with its own context to
+   * offer -- e.g. an audit finding. The source link travels through to the
+   * created record; everything else (who's responsible, when it's due)
+   * stays a deliberate choice the person filling the form makes. */
+  initialTitle?: string;
+  initialNonconformityDescription?: string;
+  sourceType?: string;
+  sourceId?: number;
 }
 
-export function CorrectiveActionForm({ onCreated }: CorrectiveActionFormProps) {
+export function CorrectiveActionForm({
+  onCreated,
+  initialTitle,
+  initialNonconformityDescription,
+  sourceType,
+  sourceId,
+}: CorrectiveActionFormProps) {
   const createCorrectiveAction = useCreateCorrectiveAction();
   const { data: directory } = useUserDirectory();
   const {
@@ -27,7 +41,13 @@ export function CorrectiveActionForm({ onCreated }: CorrectiveActionFormProps) {
     handleSubmit,
     reset,
     formState: { errors },
-  } = useForm<CorrectiveActionFormValues>({ resolver: zodResolver(correctiveActionFormSchema) });
+  } = useForm<CorrectiveActionFormValues>({
+    resolver: zodResolver(correctiveActionFormSchema),
+    defaultValues: {
+      title: initialTitle,
+      nonconformity_description: initialNonconformityDescription,
+    },
+  });
 
   const onSubmit = handleSubmit(async (values) => {
     const correctiveAction = await createCorrectiveAction.mutateAsync({
@@ -35,6 +55,8 @@ export function CorrectiveActionForm({ onCreated }: CorrectiveActionFormProps) {
       nonconformity_description: values.nonconformity_description,
       assignee_id: Number(values.assignee_id),
       due_date: values.due_date,
+      source_type: sourceType,
+      source_id: sourceId,
     });
     reset();
     onCreated?.(correctiveAction.id);

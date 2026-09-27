@@ -2,7 +2,9 @@ from app.models.ai_assist import AiAssistSettings, AiUsage
 from app.models.ai_conversation import AiConversation, AiMessage, MessageRole
 from app.models.ai_draft import AiDraft, DraftStatus
 from app.models.ai_system_lifecycle import AISystemLifecycle
+from app.models.audit_finding import AuditFinding, AuditFindingType
 from app.models.audit_log import AuditLogEntry
+from app.models.audit_program import AuditProgram, AuditProgramStatus, AuditScheduleType
 from app.models.corrective_action import CorrectiveAction, CorrectiveActionStatus
 from app.models.data_inventory_record import DataInventoryRecord
 from app.models.document_chunk import ChunkSource, DocumentChunk, IndexStatus, SourceType
@@ -17,6 +19,7 @@ from app.models.governance_role_delegation import GovernanceRoleDelegation
 from app.models.impact_assessment import ImpactAssessment
 from app.models.impact_factor_assessment import ImpactFactorAssessment
 from app.models.index_queue import IndexQueueEntry
+from app.models.internal_audit import InternalAudit, InternalAuditStatus
 from app.models.organization_context import OrganizationContext, OrganizationContextStatus
 from app.models.policy import Policy
 from app.models.procedure import Procedure
@@ -33,7 +36,12 @@ __all__ = [
     "AiDraft",
     "AiMessage",
     "AiUsage",
+    "AuditFinding",
+    "AuditFindingType",
     "AuditLogEntry",
+    "AuditProgram",
+    "AuditProgramStatus",
+    "AuditScheduleType",
     "ChunkSource",
     "CorrectiveAction",
     "CorrectiveActionStatus",
@@ -52,6 +60,8 @@ __all__ = [
     "ImpactFactorAssessment",
     "IndexQueueEntry",
     "IndexStatus",
+    "InternalAudit",
+    "InternalAuditStatus",
     "MessageRole",
     "OrganizationContext",
     "OrganizationContextStatus",
