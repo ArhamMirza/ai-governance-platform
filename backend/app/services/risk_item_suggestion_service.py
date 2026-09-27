@@ -211,7 +211,18 @@ def _gather(
         db, risk_assessment.ai_system_row_id
     )
 
+    # Governance roles and the organization's context go first, ahead of the
+    # system's own document chunks -- they're unconditional (see
+    # pinned_context.py) and must not be squeezed out of MAX_SOURCES by a
+    # large completed impact assessment, unlike the chunks below, which are
+    # merely this system's own and can be truncated like any other source.
     pinned: list[dict] = []
+    roles = pinned_context.governance_roles(db)
+    if roles:
+        pinned.append(roles)
+    context = pinned_context.organization_context(db)
+    if context:
+        pinned.append(context)
     for source_type, source_id in [
         (SourceType.AI_SYSTEM, risk_assessment.ai_system_row_id),
         *([(SourceType.IMPACT_ASSESSMENT, impact_assessment.id)] if impact_assessment else []),
@@ -225,12 +236,6 @@ def _gather(
             .order_by(DocumentChunk.ordinal)
         )
         pinned.extend(_from_chunk(db, chunk) for chunk in chunks)
-    roles = pinned_context.governance_roles(db)
-    if roles:
-        pinned.append(roles)
-    context = pinned_context.organization_context(db)
-    if context:
-        pinned.append(context)
 
     queries = [
         f"{system_name} {factor}: harms, safeguards and residual exposure"
