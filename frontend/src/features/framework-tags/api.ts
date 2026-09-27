@@ -11,4 +11,8 @@ export const frameworkTagsApi = {
       `/framework-tags?entity_type=${encodeURIComponent(entityType)}&entity_id=${entityId}`,
       { control_ids: controlIds },
     ),
+  suggest: (entityType: string, entityId: number) =>
+    httpClient.get<FrameworkControl[]>(
+      `/framework-tags/suggestions?entity_type=${encodeURIComponent(entityType)}&entity_id=${entityId}`,
+    ),
 };

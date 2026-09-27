@@ -99,3 +99,45 @@ def test_deleting_a_policy_clears_its_tags(client: TestClient) -> None:
         "/api/v1/framework-tags", params={"entity_type": "Policy", "entity_id": policy["id"]}
     ).json()
     assert tags == []
+
+
+# ---------- AI-suggested tags ----------
+
+
+def test_suggests_controls_from_a_policys_own_text(client: TestClient) -> None:
+    policy = client.post(
+        "/api/v1/policies",
+        json={
+            "title": "AI risk management system",
+            "description": "Establish, implement, document and maintain a risk "
+            "management system for high-risk AI systems.",
+        },
+    ).json()
+
+    response = client.get(
+        "/api/v1/framework-tags/suggestions",
+        params={"entity_type": "Policy", "entity_id": policy["id"]},
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert len(body) > 0
+    assert body[0]["code"] == "Art.9"
+
+
+def test_suggestions_for_an_unsupported_entity_type_is_a_client_error(client: TestClient) -> None:
+    response = client.get(
+        "/api/v1/framework-tags/suggestions",
+        params={"entity_type": "Evidence", "entity_id": 1},
+    )
+
+    assert response.status_code == 400
+
+
+def test_suggestions_for_a_missing_record_is_404(client: TestClient) -> None:
+    response = client.get(
+        "/api/v1/framework-tags/suggestions",
+        params={"entity_type": "Policy", "entity_id": 999_999},
+    )
+
+    assert response.status_code == 404

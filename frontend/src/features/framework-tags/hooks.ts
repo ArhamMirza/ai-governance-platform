@@ -17,6 +17,18 @@ export function useFrameworkTags(entityType: string, entityId: number) {
  * `extraInvalidateKeys` covers entities (like RiskAssessment) that embed
  * their tags in their own read response, so that view also refetches.
  */
+/**
+ * Controls the record's own text most resembles, via the local embedding
+ * index -- never an LLM. A mutation, not a query: it's triggered by an
+ * explicit "Suggest Tags" click, not fetched automatically, and its result
+ * is never cached -- a person reviews it once and either keeps it or not.
+ */
+export function useSuggestFrameworkTags(entityType: string, entityId: number) {
+  return useMutation({
+    mutationFn: () => frameworkTagsApi.suggest(entityType, entityId),
+  });
+}
+
 export function useSetFrameworkTags(
   entityType: string,
   entityId: number,

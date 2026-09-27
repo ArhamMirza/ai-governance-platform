@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.dependencies import get_current_actor_id
 from app.schemas.framework_control import FrameworkControlRead, FrameworkTagsUpdate
-from app.services import framework_service
+from app.services import framework_service, framework_tag_suggestion_service
 
 router = APIRouter(prefix="/framework-tags", tags=["framework-tags"])
 
@@ -14,6 +14,15 @@ def get_tags(
     entity_type: str, entity_id: int, db: Session = Depends(get_db)
 ) -> list[FrameworkControlRead]:
     return framework_service.get_tags(db, entity_type, entity_id)
+
+
+@router.get("/suggestions", response_model=list[FrameworkControlRead])
+def suggest_tags(
+    entity_type: str, entity_id: int, db: Session = Depends(get_db)
+) -> list[FrameworkControlRead]:
+    """Controls this record's own text most resembles -- a starting point to
+    review, never applied on its own."""
+    return framework_tag_suggestion_service.suggest_controls(db, entity_type, entity_id)
 
 
 @router.put("", response_model=list[FrameworkControlRead])

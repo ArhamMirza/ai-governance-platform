@@ -2363,6 +2363,25 @@ nav[aria-label="breadcrumb"] button:hover:not(:disabled) {
   margin-top: 3px;
 }
 
+/* AI-suggested (see framework_tag_suggestion_service) -- a light highlight
+   so a suggestion reads as distinct from a control someone picked by hand,
+   without competing with the checked/unchecked state itself. */
+.framework-tag-option[data-suggested] {
+  background: var(--primary-subtle);
+  border-radius: var(--radius-sm);
+  padding-left: 6px;
+  margin-left: -6px;
+}
+
+.framework-tag-suggested-label {
+  margin-left: 6px;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--primary);
+}
+
 .framework-tag-option strong {
   font-family: var(--mono);
   color: var(--text);
