@@ -55,6 +55,14 @@ export interface MyRiskItem {
   overdue: boolean;
 }
 
+export interface MyCorrectiveActionItem {
+  id: number;
+  title: string;
+  status: string;
+  due_date: string;
+  overdue: boolean;
+}
+
 export type PendingApprovalEntityType =
   | "Policy"
   | "Procedure"
@@ -84,5 +92,6 @@ export interface DashboardSummary {
   matrix: MatrixCell[];
   criteria: RiskCriteria;
   my_risk_items: MyRiskItem[];
+  my_corrective_actions: MyCorrectiveActionItem[];
   pending_approvals: PendingApprovalItem[];
 }

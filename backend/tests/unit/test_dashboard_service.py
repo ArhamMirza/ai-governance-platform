@@ -1,8 +1,10 @@
+from datetime import date
 from unittest.mock import MagicMock, patch
 
 import pytest
 
 from app.core import risk_scoring
+from app.models.corrective_action import CorrectiveAction
 from app.models.policy import Policy, PolicyStatus
 from app.models.procedure import Procedure, ProcedureStatus
 from app.models.risk_assessment import RiskAssessment, RiskAssessmentStatus
@@ -11,6 +13,8 @@ from app.services import dashboard_service
 
 PAST_DEADLINE = "2020-01-01"
 FUTURE_DEADLINE = "2099-01-01"
+PAST_DATE = date(2020, 1, 1)
+FUTURE_DATE = date(2099, 1, 1)
 
 
 def make_policy(**overrides) -> Policy:
@@ -25,6 +29,25 @@ def make_procedure(**overrides) -> Procedure:
     )
     defaults.update(overrides)
     return Procedure(**defaults)
+
+
+def make_corrective_action(**overrides) -> CorrectiveAction:
+    defaults = dict(
+        id=1,
+        title="Fix drift",
+        nonconformity_description="x",
+        root_cause=None,
+        action_description=None,
+        source_type=None,
+        source_id=None,
+        assignee_id=None,
+        due_date=FUTURE_DATE,
+        status="open",
+        closed_by=None,
+        closed_at=None,
+    )
+    defaults.update(overrides)
+    return CorrectiveAction(**defaults)
 
 
 def make_ai_system_row(**overrides) -> SheetRow:
@@ -332,3 +355,45 @@ def test_get_summary_my_risk_items_matches_owner_and_excludes_closed(
     assert [item.row_id for item in result.my_risk_items] == [1]
     assert result.my_risk_items[0].risk_assessment_id == 1
     assert result.my_risk_items[0].overdue is True
+
+
+@patch("app.services.dashboard_service.risk_criteria_service")
+@patch("app.services.dashboard_service.sheet_repository")
+@patch("app.services.dashboard_service.risk_assessment_repository")
+@patch("app.services.dashboard_service.ai_system_inventory_service")
+@patch("app.services.dashboard_service.procedure_repository")
+@patch("app.services.dashboard_service.policy_repository")
+@patch("app.services.dashboard_service.corrective_action_repository")
+def test_get_summary_my_corrective_actions_matches_assignee_and_flags_overdue(
+    mock_ca_repo,
+    mock_policy_repo,
+    mock_procedure_repo,
+    mock_inventory,
+    mock_ra_repo,
+    mock_sheet_repo,
+    mock_criteria,
+    db,
+) -> None:
+    mock_criteria.get_bands.return_value = risk_scoring.DEFAULT_BANDS
+    mock_policy_repo.list_all.return_value = []
+    mock_procedure_repo.list_all.return_value = []
+    mock_inventory.list_rows.return_value = []
+    mock_ra_repo.list_all.return_value = []
+    mock_sheet_repo.list_rows_for_sheets.return_value = {}
+    mock_ca_repo.list_all.return_value = [
+        # Assigned to me, overdue and still open -- should appear, flagged.
+        make_corrective_action(id=1, assignee_id=99, due_date=PAST_DATE, status="open"),
+        # Assigned to me but already closed -- should be excluded.
+        make_corrective_action(id=2, assignee_id=99, due_date=PAST_DATE, status="closed"),
+        # Assigned to someone else -- should be excluded.
+        make_corrective_action(id=3, assignee_id=1, due_date=PAST_DATE, status="open"),
+        # Assigned to me, not yet due -- should appear, not flagged.
+        make_corrective_action(id=4, assignee_id=99, due_date=FUTURE_DATE, status="in_progress"),
+    ]
+
+    result = dashboard_service.get_summary(db, actor_id=99)
+
+    assert [item.id for item in result.my_corrective_actions] == [1, 4]
+    assert result.my_corrective_actions[0].overdue is True
+    assert result.my_corrective_actions[1].overdue is False
+    assert any(item.key == "overdue_corrective_actions" for item in result.attention)

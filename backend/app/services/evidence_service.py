@@ -23,9 +23,10 @@ _DOCUMENT_VERSION_BUMP_HOOKS = {
     "Procedure": procedure_service.bump_version_if_draft,
 }
 
-# Risk items are the one entity whose evidence is load-bearing: a closed
-# item is reopened if its last proof is deleted (see delete_evidence).
+# Entities whose evidence is load-bearing: a closed/verified record is
+# reopened if its last proof is deleted (see delete_evidence).
 RISK_ITEM_ENTITY_TYPE = "RiskItem"
+CORRECTIVE_ACTION_ENTITY_TYPE = "CorrectiveAction"
 
 ALLOWED_EXTENSIONS = {
     ".pdf",
@@ -199,3 +200,11 @@ def delete_evidence(db: Session, evidence_id: int, actor_id: int | None) -> None
         from app.services import risk_assessment_service
 
         risk_assessment_service.reopen_if_evidence_gone(db, entity_id, actor_id)
+    if entity_type == CORRECTIVE_ACTION_ENTITY_TYPE:
+        # Same rule as a risk item: submit_for_verification won't move a
+        # corrective action forward without proof, so a closure must not
+        # outlive it either. Imported here rather than at module scope:
+        # corrective_action_service imports this module.
+        from app.services import corrective_action_service
+
+        corrective_action_service.reopen_if_evidence_gone(db, entity_id, actor_id)

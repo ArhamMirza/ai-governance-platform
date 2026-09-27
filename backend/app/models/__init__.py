@@ -3,6 +3,7 @@ from app.models.ai_conversation import AiConversation, AiMessage, MessageRole
 from app.models.ai_draft import AiDraft, DraftStatus
 from app.models.ai_system_lifecycle import AISystemLifecycle
 from app.models.audit_log import AuditLogEntry
+from app.models.corrective_action import CorrectiveAction, CorrectiveActionStatus
 from app.models.data_inventory_record import DataInventoryRecord
 from app.models.document_chunk import ChunkSource, DocumentChunk, IndexStatus, SourceType
 from app.models.evidence import Evidence
@@ -34,6 +35,8 @@ __all__ = [
     "AiUsage",
     "AuditLogEntry",
     "ChunkSource",
+    "CorrectiveAction",
+    "CorrectiveActionStatus",
     "DataInventoryRecord",
     "DocumentChunk",
     "DraftStatus",
