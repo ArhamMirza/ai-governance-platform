@@ -17,6 +17,11 @@ jobs:
     permissions:
       security-events: write
       contents: read
+      # The analyze step calls the workflow-runs API to correlate its results
+      # with this run; without read access to Actions, that call is refused
+      # and the whole job reports "configuration error" even though the scan
+      # itself completed.
+      actions: read
     strategy:
       fail-fast: false
       matrix:
