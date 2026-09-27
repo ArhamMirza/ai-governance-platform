@@ -49,7 +49,7 @@ function SoaRow({ entry }: { entry: FrameworkSoaEntry }) {
 
   return (
     <tr>
-      <td>{entry.code}</td>
+      <td data-type="code">{entry.code}</td>
       <td>{entry.title}</td>
       <td data-column="applicability" data-type="text">
         <select

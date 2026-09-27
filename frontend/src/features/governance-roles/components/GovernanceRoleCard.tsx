@@ -46,15 +46,20 @@ function CaigoDelegationSection({ canManage }: { canManage: boolean }) {
   const eligibleAdmins = (admins ?? []).filter((u) => u.role === "admin" && u.is_active);
 
   return (
-    <div className="governance-role-field">
+    // A nested concern inside the card, so it reads as an inset panel rather
+    // than as three more loose controls in the same stack.
+    <section className="role-delegation">
       <h4>Backup approver</h4>
       {error && <p role="alert">{error}</p>}
       {delegation ? (
-        <p>
-          {delegation.delegate_name} covers this role until{" "}
-          {new Date(delegation.ends_at).toLocaleString()}.
+        <div className="role-delegation-active">
+          <p>
+            <strong>{delegation.delegate_name}</strong> covers this role until{" "}
+            {new Date(delegation.ends_at).toLocaleString()}.
+          </p>
           {canManage && (
             <button
+              className="is-quiet-danger"
               onClick={() =>
                 run(() => revokeDelegation.mutateAsync(), "Failed to revoke this delegation")
               }
@@ -63,31 +68,41 @@ function CaigoDelegationSection({ canManage }: { canManage: boolean }) {
               Revoke
             </button>
           )}
-        </p>
+        </div>
       ) : (
         <p className="framework-tags-empty">No backup approver is currently active.</p>
       )}
 
+      {/* Three controls will never sit side by side in a 300px card, so they
+          stack -- each labelled, rather than squeezed and clipped. */}
       {canManage && (
-        <div className="governance-role-field-row">
-          <select
-            aria-label="Backup approver"
-            value={delegateUserId}
-            onChange={(e) => setDelegateUserId(e.target.value)}
-          >
-            <option value="">Select an admin</option>
-            {eligibleAdmins.map((user) => (
-              <option key={user.id} value={user.id}>
-                {user.name}
-              </option>
-            ))}
-          </select>
-          <input
-            aria-label="Backup approver expires at"
-            type="datetime-local"
-            value={endsAt}
-            onChange={(e) => setEndsAt(e.target.value)}
-          />
+        <div className="role-delegation-form">
+          <div className="governance-role-field">
+            <label htmlFor="caigo-delegate">Admin covering the role</label>
+            <select
+              id="caigo-delegate"
+              aria-label="Backup approver"
+              value={delegateUserId}
+              onChange={(e) => setDelegateUserId(e.target.value)}
+            >
+              <option value="">Select an admin</option>
+              {eligibleAdmins.map((user) => (
+                <option key={user.id} value={user.id}>
+                  {user.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="governance-role-field">
+            <label htmlFor="caigo-delegate-ends">Cover ends</label>
+            <input
+              id="caigo-delegate-ends"
+              aria-label="Backup approver expires at"
+              type="datetime-local"
+              value={endsAt}
+              onChange={(e) => setEndsAt(e.target.value)}
+            />
+          </div>
           <button
             disabled={!delegateUserId || !endsAt || setDelegation.isPending}
             onClick={() =>
@@ -105,7 +120,7 @@ function CaigoDelegationSection({ canManage }: { canManage: boolean }) {
           </button>
         </div>
       )}
-    </div>
+    </section>
   );
 }
 
@@ -155,6 +170,10 @@ export function GovernanceRoleCard({ role, allRoles, canManage }: GovernanceRole
 
       {error && <p role="alert">{error}</p>}
 
+      {/* Everything above the footer grows to fill the card, so the footer --
+          and the destructive action in it -- sits on the same line in every
+          card of the row however much responsibility text a role carries. */}
+      <div className="governance-role-body">
       {canManage ? (
         <textarea
           aria-label={`Responsibilities for ${role.name}`}
@@ -254,14 +273,18 @@ export function GovernanceRoleCard({ role, allRoles, canManage }: GovernanceRole
           </button>
         </div>
       )}
+      </div>
 
       {canManage && (
-        <button
-          onClick={() => run(() => deleteRole.mutateAsync(role.id), "Failed to delete this role")}
-          disabled={deleteRole.isPending}
-        >
-          Delete Role
-        </button>
+        <footer className="governance-role-actions">
+          <button
+            className="is-quiet-danger"
+            onClick={() => run(() => deleteRole.mutateAsync(role.id), "Failed to delete this role")}
+            disabled={deleteRole.isPending}
+          >
+            Delete Role
+          </button>
+        </footer>
       )}
     </div>
   );

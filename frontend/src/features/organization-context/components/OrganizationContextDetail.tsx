@@ -158,7 +158,6 @@ export function OrganizationContextDetail() {
       />
       {partiesQuery.isError && <p>Failed to load interested parties.</p>}
 
-      <h3>Audit Log</h3>
       <AuditLogViewer entityType="OrganizationContext" entityId={context.id} />
     </article>
   );

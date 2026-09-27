@@ -1,42 +1,87 @@
-@import url("https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700;800&display=swap");
+/* ============================================================================
+   REGISTER — the design system for the AI Governance Platform.
+
+   The subject is a controlled register: clause numbers, Annex A controls,
+   versions, sign-offs, audit trails. So the page reads like a technical
+   document of record rather than a SaaS dashboard -- warm paper neutrals
+   instead of blue-grey, hairline rules instead of floating shadowed cards,
+   tight radii, and every identifier (clause ref, version, date, score, ID)
+   set in mono so it reads as data rather than prose.
+
+   Three type roles, one superfamily, so the voice stays coherent:
+     Serif  -- page titles only. The document-of-record voice.
+     Sans   -- everything structural.
+     Mono   -- identifiers, numerals, column labels, status codes, eyebrows.
+   ========================================================================= */
+
+@import url("https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;450;500;600;700&family=IBM+Plex+Serif:wght@500;600&display=swap");
 
 :root {
-  --bg-page: oklch(97.5% 0.006 255);
+  /* -- Neutrals. Biased warm (hue ~85) so they read as paper and ink, not
+        as the blue-grey every admin template ships with. -------------- */
+  /* Light needs its contrast from LIGHTNESS STEPS, not from colour: at only
+     2.4% between the ground and a card, with hairline borders, every surface
+     dissolved into the next. The ground drops, the cards stay pure white, and
+     the chroma comes down so warm neutrals read as paper rather than beige. */
+  --bg-page: oklch(95.8% 0.0025 95);
   --bg-surface: oklch(100% 0 0);
-  --bg-sidebar: oklch(22% 0.045 258);
-  --bg-sidebar-active: oklch(30% 0.07 258);
-  --border: oklch(91% 0.008 255);
-  --border-strong: oklch(85% 0.012 255);
-  --text: oklch(24% 0.02 260);
-  --text-muted: oklch(52% 0.02 258);
-  --text-faint: oklch(65% 0.015 258);
-  --text-inverse: oklch(97% 0.01 255);
-  --text-inverse-muted: oklch(72% 0.03 258);
+  --bg-sunken: oklch(97.4% 0.003 95);
+  --bg-raised: oklch(100% 0 0);
 
-  --primary: oklch(53% 0.19 256);
-  --primary-hover: oklch(47% 0.19 256);
-  --primary-subtle: oklch(94% 0.035 256);
+  --border: oklch(88% 0.004 95);
+  --border-strong: oklch(78% 0.007 95);
+  --rule: oklch(92% 0.003 95);
 
-  --success: oklch(62% 0.14 152);
-  --success-text: oklch(38% 0.13 152);
-  --success-subtle: oklch(94% 0.05 152);
-  --warning: oklch(72% 0.14 70);
-  --warning-text: oklch(42% 0.13 70);
-  --warning-subtle: oklch(94% 0.06 70);
-  --danger: oklch(58% 0.19 25);
-  --danger-text: oklch(42% 0.16 25);
-  --danger-subtle: oklch(94% 0.05 25);
-  --neutral: oklch(55% 0.01 258);
-  --neutral-text: oklch(40% 0.01 258);
-  --neutral-subtle: oklch(94% 0.006 258);
+  --text: oklch(21% 0.009 80);
+  --text-muted: oklch(44% 0.008 82);
+  --text-faint: oklch(56% 0.008 85);
+  --text-inverse: oklch(97% 0.004 85);
+  --text-inverse-muted: oklch(71% 0.008 85);
 
-  --shadow-sm: 0 1px 2px oklch(20% 0.02 258 / 0.06);
-  --shadow-md: 0 8px 24px oklch(20% 0.02 258 / 0.08), 0 2px 6px oklch(20% 0.02 258 / 0.05);
+  /* -- Chrome. A warm near-black, not navy. ------------------------- */
+  --bg-sidebar: oklch(20.5% 0.009 75);
+  --bg-sidebar-active: oklch(27.5% 0.011 75);
+  --bg-sidebar-rule: oklch(30% 0.01 75);
 
-  --sans: "Public Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
-  --radius-sm: 6px;
-  --radius-md: 10px;
-  --radius-lg: 14px;
+  /* -- Accent. Deep ink-indigo: the severity triad already owns red,
+        amber and green, so the accent has to sit in the blue family --
+        it earns its keep by being dark and desaturated rather than
+        the usual cobalt. ---------------------------------------------- */
+  --primary: oklch(46% 0.145 268);
+  --primary-hover: oklch(39% 0.145 268);
+  --primary-subtle: oklch(95.5% 0.025 268);
+  --primary-line: oklch(80% 0.07 268);
+
+  /* -- Semantic. Only ever used for state, never as decoration. ------ */
+  --success: oklch(57% 0.13 155);
+  --success-text: oklch(41% 0.11 155);
+  --success-subtle: oklch(95.5% 0.035 155);
+  --success-line: oklch(82% 0.07 155);
+  --warning: oklch(70% 0.145 68);
+  --warning-text: oklch(45% 0.12 60);
+  --warning-subtle: oklch(96% 0.04 75);
+  --warning-line: oklch(84% 0.09 70);
+  --danger: oklch(55% 0.19 27);
+  --danger-text: oklch(45% 0.17 27);
+  --danger-subtle: oklch(96% 0.025 27);
+  --danger-line: oklch(84% 0.07 27);
+  --neutral: oklch(58% 0.008 85);
+  --neutral-text: oklch(43% 0.008 85);
+  --neutral-subtle: oklch(95% 0.005 85);
+  --neutral-line: oklch(86% 0.006 85);
+
+  --shadow-sm: none;
+  --card-shadow: 0 1px 2px oklch(25% 0.015 85 / 0.06), 0 1px 1px oklch(25% 0.015 85 / 0.04);
+  --shadow-md: 0 16px 40px oklch(20% 0.01 75 / 0.16), 0 2px 8px oklch(20% 0.01 75 / 0.08);
+
+  --sans: "IBM Plex Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --serif: "IBM Plex Serif", ui-serif, Georgia, "Times New Roman", serif;
+  --mono: "IBM Plex Mono", ui-monospace, "SF Mono", "Cascadia Mono", Menlo, monospace;
+
+  /* Tight, technical. Not a pill in sight unless it's genuinely a chip. */
+  --radius-sm: 3px;
+  --radius-md: 5px;
+  --radius-lg: 8px;
 
   color-scheme: light;
   color: var(--text);
@@ -47,47 +92,185 @@
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* Dark reads as the same room with the lights off: same warm hue bias,
+   same hierarchy, borders lifted rather than inverted. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg-page: oklch(16.5% 0.007 75);
+    --bg-surface: oklch(20.5% 0.008 75);
+    --bg-sunken: oklch(18.5% 0.007 75);
+    --bg-raised: oklch(23.5% 0.008 75);
+
+    --border: oklch(29% 0.008 75);
+    --border-strong: oklch(38% 0.009 75);
+    --rule: oklch(26% 0.008 75);
+
+    --text: oklch(93% 0.005 85);
+    --text-muted: oklch(71% 0.008 82);
+    --text-faint: oklch(62% 0.009 80);
+    --text-inverse: oklch(96% 0.004 85);
+    --text-inverse-muted: oklch(70% 0.008 85);
+
+    --bg-sidebar: oklch(13.5% 0.007 75);
+    --bg-sidebar-active: oklch(24% 0.009 75);
+    --bg-sidebar-rule: oklch(24% 0.009 75);
+
+    --primary: oklch(74% 0.13 268);
+    --primary-hover: oklch(82% 0.11 268);
+    --primary-subtle: oklch(28% 0.07 268);
+    --primary-line: oklch(44% 0.11 268);
+
+    --success: oklch(70% 0.14 155);
+    --success-text: oklch(80% 0.12 155);
+    --success-subtle: oklch(27% 0.06 155);
+    --success-line: oklch(42% 0.09 155);
+    --warning: oklch(78% 0.14 72);
+    --warning-text: oklch(85% 0.11 75);
+    --warning-subtle: oklch(28% 0.055 65);
+    --warning-line: oklch(44% 0.09 68);
+    --danger: oklch(65% 0.18 27);
+    --danger-text: oklch(79% 0.13 27);
+    --danger-subtle: oklch(27% 0.07 27);
+    --danger-line: oklch(43% 0.12 27);
+    --neutral: oklch(60% 0.008 85);
+    --neutral-text: oklch(76% 0.007 85);
+    --neutral-subtle: oklch(26% 0.006 85);
+    --neutral-line: oklch(36% 0.007 85);
+
+    --card-shadow: none;
+    --card-shadow: none;
+  --shadow-md: 0 16px 44px oklch(0% 0 0 / 0.55), 0 2px 8px oklch(0% 0 0 / 0.4);
+
+    color-scheme: dark;
+  }
+}
+
+:root[data-theme="dark"] {
+  --bg-page: oklch(16.5% 0.007 75);
+  --bg-surface: oklch(20.5% 0.008 75);
+  --bg-sunken: oklch(18.5% 0.007 75);
+  --bg-raised: oklch(23.5% 0.008 75);
+
+  --border: oklch(29% 0.008 75);
+  --border-strong: oklch(38% 0.009 75);
+  --rule: oklch(26% 0.008 75);
+
+  --text: oklch(93% 0.005 85);
+  --text-muted: oklch(71% 0.008 82);
+  --text-faint: oklch(62% 0.009 80);
+  --text-inverse: oklch(96% 0.004 85);
+  --text-inverse-muted: oklch(70% 0.008 85);
+
+  --bg-sidebar: oklch(13.5% 0.007 75);
+  --bg-sidebar-active: oklch(24% 0.009 75);
+  --bg-sidebar-rule: oklch(24% 0.009 75);
+
+  --primary: oklch(74% 0.13 268);
+  --primary-hover: oklch(82% 0.11 268);
+  --primary-subtle: oklch(28% 0.07 268);
+  --primary-line: oklch(44% 0.11 268);
+
+  --success: oklch(70% 0.14 155);
+  --success-text: oklch(80% 0.12 155);
+  --success-subtle: oklch(27% 0.06 155);
+  --success-line: oklch(42% 0.09 155);
+  --warning: oklch(78% 0.14 72);
+  --warning-text: oklch(85% 0.11 75);
+  --warning-subtle: oklch(28% 0.055 65);
+  --warning-line: oklch(44% 0.09 68);
+  --danger: oklch(65% 0.18 27);
+  --danger-text: oklch(79% 0.13 27);
+  --danger-subtle: oklch(27% 0.07 27);
+  --danger-line: oklch(43% 0.12 27);
+  --neutral: oklch(60% 0.008 85);
+  --neutral-text: oklch(76% 0.007 85);
+  --neutral-subtle: oklch(26% 0.006 85);
+  --neutral-line: oklch(36% 0.007 85);
+
+  --card-shadow: none;
+  --shadow-md: 0 16px 44px oklch(0% 0 0 / 0.55), 0 2px 8px oklch(0% 0 0 / 0.4);
+
+  color-scheme: dark;
+}
+
 * {
   box-sizing: border-box;
 }
 
+/* A global `zoom` was tried for the overall density dial and reverted: with
+   `height: 100svh` on the sidebar (below), the browser computes the
+   viewport-unit height in UNZOOMED pixels but renders the box at the zoomed
+   size, so the sidebar fell short of the visible viewport by the zoom
+   factor and left a gap at the bottom -- not merely a visual quirk, a real
+   height mismatch between getComputedStyle and the rendered box. Density is
+   achieved instead through the tokens below (a smaller base size, tighter
+   paddings), which reflows properly and has no such interaction with
+   viewport units, sticky or fixed positioning. */
+
 body {
   margin: 0;
   font-family: var(--sans);
-  font-size: 14.5px;
+  font-size: 13.5px;
   line-height: 1.5;
   color: var(--text);
-  background: var(--bg-page);
+  /* Deliberately transparent. :root carries the page ground, and because
+     the root element has a background it is the one propagated to the
+     viewport. If body painted one too it would be an ordinary in-flow block
+     background -- and in the root stacking context that paints ABOVE every
+     negative-z-index layer, burying the ruled ground, the washes and the
+     grid field entirely. */
+  background: transparent;
 }
 
 #root {
   min-height: 100svh;
 }
 
+/* ---------- Type scale ---------- */
+
 h1,
 h2,
 h3,
-h4 {
-  font-family: var(--sans);
-  font-weight: 800;
-  letter-spacing: -0.3px;
+h4,
+h5 {
   color: var(--text);
   margin: 0 0 6px;
+  text-wrap: balance;
 }
 
+/* The page title is the one place the serif speaks -- it names the record,
+   the way a controlled document's title block does. */
 h1 {
-  font-size: 22px;
+  font-family: var(--serif);
+  font-weight: 600;
+  font-size: 25px;
+  line-height: 1.15;
+  letter-spacing: -0.015em;
 }
 
 h2 {
-  font-size: 19px;
+  font-family: var(--sans);
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: -0.012em;
 }
 
 h3 {
-  font-size: 15.5px;
-  font-weight: 700;
-  letter-spacing: 0;
-  margin: 28px 0 12px;
+  font-family: var(--sans);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin: 30px 0 10px;
+}
+
+h4,
+h5 {
+  font-family: var(--sans);
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: -0.005em;
 }
 
 p {
@@ -98,18 +281,30 @@ p {
 a {
   color: var(--primary);
   text-decoration: none;
-  font-weight: 600;
+  font-weight: 500;
 }
 
 a:hover {
   color: var(--primary-hover);
   text-decoration: underline;
+  text-underline-offset: 2px;
 }
 
 ul {
   list-style: none;
   margin: 0;
   padding: 0;
+}
+
+:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+::selection {
+  background: var(--primary-subtle);
+  color: var(--text);
 }
 
 /* ---------- App shell ---------- */
@@ -120,31 +315,36 @@ ul {
 }
 
 .sidebar {
-  width: 240px;
+  width: 232px;
   flex-shrink: 0;
   background: var(--bg-sidebar);
   display: flex;
   flex-direction: column;
-  padding: 20px 12px;
+  padding: 18px 10px 14px;
   /* Pinned: the nav stays put while only the main column scrolls. */
   position: sticky;
   top: 0;
   height: 100svh;
   overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--bg-sidebar-active) transparent;
 }
 
 .sidebar-brand {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 6px 10px 26px;
+  padding: 4px 8px 20px;
+  margin-bottom: 14px;
+  border-bottom: 1px solid var(--bg-sidebar-rule);
 }
 
 .sidebar-brand-mark {
-  width: 34px;
-  height: 34px;
-  border-radius: 9px;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-sm);
   background: var(--primary);
+  color: var(--text-inverse);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -152,98 +352,267 @@ ul {
 }
 
 .sidebar-brand-name {
-  font-weight: 700;
-  font-size: 14.5px;
+  font-weight: 600;
+  font-size: 13.5px;
   color: var(--text-inverse);
-  letter-spacing: -0.1px;
-  line-height: 1.2;
+  letter-spacing: -0.01em;
+  line-height: 1.25;
 }
 
 .sidebar-brand-sub {
-  font-weight: 500;
-  font-size: 11.5px;
+  font-family: var(--mono);
+  font-weight: 400;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
   color: var(--text-inverse-muted);
-  line-height: 1.2;
+  line-height: 1.3;
 }
 
 .sidebar nav {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 16px;
 }
 
+.sidebar-group {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+/* The group headings carry the structure of the management system itself,
+   so they are set as labels in the data face rather than as small headings. */
+.sidebar-group-label {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: oklch(52% 0.008 75);
+  padding: 0 0 6px 13px;
+}
+
+/* A square 2px marker rather than a rounded pill: this is a register, and
+   the active row is indicated the way a ruled document indicates one. */
 .sidebar-link {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 9px 12px;
-  border-radius: 8px;
+  padding: 7px 10px 7px 11px;
+  border-radius: var(--radius-sm);
+  border-left: 2px solid transparent;
   color: var(--text-inverse-muted);
-  font-weight: 500;
-  font-size: 13.5px;
+  font-weight: 450;
+  font-size: 13px;
+  letter-spacing: -0.003em;
+  transition: color 0.1s, background-color 0.1s;
 }
 
 .sidebar-link:hover {
   color: var(--text-inverse);
+  background: var(--bg-sidebar-active);
   text-decoration: none;
 }
 
 .sidebar-link svg {
   flex-shrink: 0;
+  opacity: 0.75;
 }
 
 .sidebar-link.active {
   background: var(--bg-sidebar-active);
+  border-left-color: var(--primary);
   color: var(--text-inverse);
   font-weight: 600;
 }
 
-.sidebar-account {
+.sidebar-link.active svg {
+  opacity: 1;
+  color: var(--primary);
+}
+
+.sidebar-footer {
   margin-top: auto;
-  padding: 14px 12px 4px;
-  border-top: 1px solid var(--bg-sidebar-active);
+  padding-top: 14px;
+  border-top: 1px solid var(--bg-sidebar-rule);
+}
+
+/* A segmented control rather than a single on/off switch: "Auto" has to be
+   reachable, or someone whose machine switches at dusk loses that the moment
+   they touch the control. */
+.theme-toggle {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 2px;
+  padding: 2px;
+  /* No horizontal inset: the sidebar already pads its column, and an extra
+     10px here left the footer hanging off the line every nav item sits on. */
+  margin: 0 0 12px;
+  background: oklch(0% 0 0 / 0.25);
+  border-radius: var(--radius-sm);
+}
+
+.theme-toggle button {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  padding: 5px 0;
+  background: none;
+  background-image: none;
+  border: none;
+  box-shadow: none;
+  border-radius: 2px;
+  color: var(--text-inverse-muted);
+}
+
+.theme-toggle button:hover:not(:disabled) {
+  background: oklch(100% 0 0 / 0.07);
+  border: none;
+  color: var(--text-inverse);
+}
+
+.theme-toggle button.active {
+  background: var(--bg-sidebar-active);
+  color: var(--text-inverse);
+  box-shadow: inset 0 1px 0 oklch(100% 0 0 / 0.08);
+}
+
+.sidebar-account {
+  padding: 0 2px;
 }
 
 .sidebar-account-name {
   font-size: 12.5px;
-  font-weight: 600;
-  color: var(--text-inverse-muted);
+  font-weight: 500;
+  color: var(--text-inverse);
 }
 
 .sidebar-account-role {
-  font-size: 10.5px;
-  font-weight: 700;
-  color: var(--primary);
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--text-inverse-muted);
   text-transform: uppercase;
-  letter-spacing: 0.4px;
-  margin-bottom: 8px;
+  letter-spacing: 0.1em;
+  margin-bottom: 10px;
 }
 
 .sidebar-account button {
   width: 100%;
   background: transparent;
-  border-color: var(--bg-sidebar-active);
+  border-color: var(--bg-sidebar-rule);
   color: var(--text-inverse-muted);
 }
 
-.sidebar-account button:hover {
+.sidebar-account button:hover:not(:disabled) {
   background: var(--bg-sidebar-active);
+  border-color: var(--bg-sidebar-active);
   color: var(--text-inverse);
 }
 
 .main-content {
   flex: 1;
-  padding: 32px 44px 60px;
+  padding: 24px 32px 64px;
   /* A flex item defaults to min-width:auto, so without this a wide
      DataGrid stretches the whole shell and scrolls the sidebar off-screen
      instead of scrolling inside its own container. */
   min-width: 0;
 }
 
-/* ---------- Auth screen ---------- */
+.main-content > * {
+  max-width: 1400px;
+}
+
+@media (max-width: 720px) {
+  .app-shell {
+    flex-direction: column;
+  }
+
+  .sidebar {
+    width: 100%;
+    height: auto;
+    position: static;
+  }
+
+  .main-content {
+    padding: 20px 16px 48px;
+  }
+}
+/* ---------- Auth screen ----------
+   A split panel: the left carries the platform's own voice, the right is
+   the form on the ordinary page ground. Fixed to exactly one viewport and
+   clipped, not just min-height -- this is a threshold someone passes
+   through, never a page that scrolls. The brand panel drops away below the
+   point a phone would ever see it. */
 
 .auth-screen {
-  min-height: 100svh;
+  height: 100svh;
+  overflow: hidden;
+  display: flex;
+}
+
+.auth-brand-panel {
+  flex: 0 0 46%;
+  max-width: 560px;
+  min-width: 360px;
+  position: relative;
+  overflow: hidden;
+  background: var(--bg-sidebar);
+  display: flex;
+  align-items: center;
+}
+
+/* A richer mesh than the ambient wash the rest of the app sits on -- there
+   is no register-page content here to keep quiet for, so the panel can
+   carry the product's full colour. Four blends at different scales instead
+   of two, so it reads as depth rather than a single soft blob. */
+.auth-brand-panel::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image:
+    radial-gradient(52rem 40rem at 112% -14%, oklch(53% 0.18 268 / 0.55), transparent 58%),
+    radial-gradient(30rem 26rem at 100% 60%, oklch(62% 0.15 300 / 0.22), transparent 60%),
+    radial-gradient(40rem 32rem at -14% 118%, oklch(74% 0.145 68 / 0.16), transparent 62%),
+    radial-gradient(60rem 44rem at 50% 50%, oklch(24% 0.012 268), transparent 75%);
+}
+
+.auth-brand-panel-inner {
+  position: relative;
+  padding: 0 52px;
+  max-width: 460px;
+}
+
+.auth-pitch {
+  font-family: var(--serif);
+  font-size: 32px;
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: -0.015em;
+  color: var(--text-inverse);
+  margin: 32px 0 16px;
+  text-wrap: balance;
+}
+
+.auth-pitch em {
+  font-style: italic;
+  color: oklch(80% 0.1 268);
+}
+
+.auth-pitch-sub {
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--text-inverse-muted);
+  max-width: 42ch;
+  margin: 0;
+}
+
+.auth-form-panel {
+  flex: 1;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -254,27 +623,66 @@ ul {
 .auth-card {
   width: 100%;
   max-width: 380px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--card-shadow);
+  padding: 40px 36px;
+}
+
+.auth-loading {
+  margin: auto;
+  color: var(--text-faint);
 }
 
 .auth-brand {
   display: flex;
   align-items: center;
   gap: 10px;
-  margin-bottom: 28px;
+}
+
+.auth-brand-panel .auth-brand {
+  margin-bottom: 0;
+}
+
+/* Shown only inside the card, and only once the brand panel itself has
+   dropped away below the split -- one mark on screen, not two. */
+.auth-brand-compact {
+  display: none;
+  margin-bottom: 22px;
+}
+
+.auth-brand .sidebar-brand-mark {
+  width: 32px;
+  height: 32px;
 }
 
 .auth-brand-name {
-  font-weight: 700;
-  font-size: 15px;
-  color: var(--text);
-  line-height: 1.2;
+  font-weight: 600;
+  font-size: 14.5px;
+  color: var(--text-inverse);
+  line-height: 1.25;
 }
 
 .auth-brand-sub {
+  font-family: var(--mono);
+  font-weight: 400;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-inverse-muted);
+  line-height: 1.3;
+}
+
+.auth-eyebrow {
+  display: block;
+  font-family: var(--mono);
+  font-size: 10.5px;
   font-weight: 500;
-  font-size: 12px;
-  color: var(--text-faint);
-  line-height: 1.2;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--primary);
+  margin-bottom: 8px;
 }
 
 .auth-form {
@@ -283,39 +691,111 @@ ul {
 }
 
 .auth-form h1 {
-  margin-bottom: 4px;
+  font-family: var(--serif);
+  font-size: 24px;
+  margin-bottom: 6px;
 }
 
 .auth-form > p {
-  margin-bottom: 18px;
+  font-size: 13.5px;
+  margin-bottom: 24px;
 }
 
 .auth-form button[type="submit"] {
   width: 100%;
-  margin-top: 4px;
+  margin-top: 8px;
+  padding: 10px 14px;
+}
+
+@media (max-width: 880px) {
+  .auth-brand-panel {
+    display: none;
+  }
+
+  /* The compact mark sits on the light card, not the dark panel, so it
+     needs its own (dark-on-light) colours rather than the panel's. */
+  .auth-brand-compact {
+    display: flex;
+  }
+
+  .auth-brand-compact .auth-brand-name {
+    color: var(--text);
+  }
+
+  .auth-brand-compact .auth-brand-sub {
+    color: var(--text-faint);
+  }
+}
+
+@media (max-width: 460px) {
+  .auth-card {
+    padding: 32px 24px;
+  }
+}
+
+/* Nothing below this should ever need to scroll (see .auth-screen above),
+   but a very short window -- a laptop with browser chrome eating the
+   viewport, a landscape phone -- gets one more step down rather than a
+   layout that quietly clips someone's password field. */
+@media (max-height: 620px) {
+  .auth-pitch {
+    font-size: 24px;
+    margin: 20px 0 10px;
+  }
+
+  .auth-pitch-sub {
+    display: none;
+  }
+
+  .auth-card {
+    padding: 24px 28px;
+  }
+
+  .auth-brand-compact {
+    margin-bottom: 14px;
+  }
 }
 
 /* ---------- Page header ---------- */
 
 .page-header {
   display: flex;
-  align-items: flex-start;
+  align-items: flex-end;
   justify-content: space-between;
-  gap: 16px;
-  margin-bottom: 22px;
+  gap: 20px;
+  padding-bottom: 12px;
+  margin-bottom: 18px;
+  border-bottom: 1px solid var(--border);
+}
+
+.page-header h1 {
+  margin: 0 0 4px;
 }
 
 .page-header p {
   margin: 0;
+  font-size: 13px;
+  max-width: 76ch;
+}
+
+.page-header > button,
+.page-header .page-header-actions {
+  flex-shrink: 0;
+}
+
+.page-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 /* ---------- Tab bar ---------- */
 
 .tab-bar {
   display: flex;
-  gap: 6px;
+  gap: 2px;
   border-bottom: 1px solid var(--border);
-  margin-bottom: 16px;
+  margin-bottom: 18px;
 }
 
 .tab-bar button {
@@ -323,57 +803,117 @@ ul {
   border: none;
   border-bottom: 2px solid transparent;
   border-radius: 0;
-  padding: 8px 4px;
+  padding: 9px 12px;
   margin-bottom: -1px;
-  color: var(--text-muted, var(--text));
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-muted);
 }
 
-.tab-bar button:hover {
+.tab-bar button:hover:not(:disabled) {
   background: transparent;
   color: var(--text);
 }
 
 .tab-bar button.active {
-  color: var(--primary);
+  color: var(--text);
+  font-weight: 600;
   border-bottom-color: var(--primary);
 }
 
 /* ---------- Buttons ---------- */
 
+/* Buttons are raised: a top-lit gradient, a hairline highlight along the top
+   edge, and a shadow underneath. It is the exact inverse of the recessed
+   field, so a form reads as one set of parts. */
 button,
 .btn {
   font-family: inherit;
   cursor: pointer;
-  border: 1px solid var(--border);
-  background: var(--bg-surface);
+  border: 1px solid var(--border-strong);
+  background: linear-gradient(to bottom, var(--btn-top), var(--btn-bottom));
   color: var(--text);
   font-size: 13px;
-  font-weight: 600;
-  padding: 8px 14px;
+  font-weight: 550;
+  letter-spacing: -0.004em;
+  padding: 8px 15px;
   border-radius: var(--radius-sm);
-  transition: background-color 0.12s, border-color 0.12s;
+  box-shadow: inset 0 1px 0 var(--btn-highlight), var(--btn-shadow);
 }
 
-button:hover {
-  background: var(--bg-page);
+button:hover:not(:disabled) {
+  border-color: var(--primary-line);
+  color: var(--primary);
 }
 
 button:disabled {
-  opacity: 0.55;
+  opacity: 0.45;
   cursor: not-allowed;
+  box-shadow: none;
 }
 
+/* The one action that commits something is solid and lit from above. */
 button[type="submit"],
-.page-header > button {
-  background: var(--primary);
+.page-header > button,
+.page-header-actions > button:first-child,
+.draft-apply-button {
+  background: linear-gradient(to bottom, var(--primary-top), var(--primary));
   border-color: var(--primary);
-  color: var(--text-inverse);
+  color: oklch(98% 0.01 268);
+  font-weight: 600;
+  box-shadow: inset 0 1px 0 oklch(100% 0 0 / 0.22), 0 1px 2px oklch(25% 0.05 268 / 0.3);
 }
 
-button[type="submit"]:hover,
-.page-header > button:hover {
-  background: var(--primary-hover);
+button[type="submit"]:hover:not(:disabled),
+.page-header > button:hover:not(:disabled),
+.page-header-actions > button:first-child:hover:not(:disabled),
+.draft-apply-button:hover:not(:disabled) {
+  background: linear-gradient(to bottom, var(--primary), var(--primary-hover));
   border-color: var(--primary-hover);
+  color: oklch(98% 0.01 268);
+}
+
+button.danger {
+  background: linear-gradient(to bottom, var(--danger-top), var(--danger));
+  border-color: var(--danger);
+  box-shadow: inset 0 1px 0 oklch(100% 0 0 / 0.22), 0 1px 2px oklch(30% 0.08 27 / 0.3);
+}
+
+button.danger:hover:not(:disabled) {
+  background: linear-gradient(to bottom, var(--danger), var(--danger-text));
+  border-color: var(--danger-text);
+}
+
+/* Pressing removes the lift rather than only nudging the label down. */
+button:active:not(:disabled) {
+  box-shadow: inset 0 1px 3px oklch(20% 0.02 75 / 0.18);
+}
+
+/* These are links or affordances that merely happen to be buttons, so they
+   take none of the raised treatment above. */
+.tab-bar button,
+nav[aria-label="breadcrumb"] button,
+.modal-header button,
+.document-browser-row-name,
+.assistant-icon-button,
+.assistant-history-item,
+.assistant-history-delete,
+.assistant-suggestion,
+.impact-assessment-card-header,
+.sidebar-account button,
+.draft-guidance-field button {
+  background-image: none;
+  box-shadow: none;
+}
+
+.tab-bar button:hover:not(:disabled),
+nav[aria-label="breadcrumb"] button:hover:not(:disabled),
+.modal-header button:hover:not(:disabled),
+.document-browser-row-name:hover:not(:disabled),
+.assistant-icon-button:hover:not(:disabled),
+.assistant-history-item:hover:not(:disabled),
+.impact-assessment-card-header:hover:not(:disabled) {
+  box-shadow: none;
 }
 
 /* ---------- Forms ---------- */
@@ -382,9 +922,9 @@ form {
   background: var(--bg-surface);
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-sm);
+  box-shadow: var(--card-shadow);
   padding: 20px 22px;
-  margin: 16px 0 24px;
+  margin: 0 0 24px;
   max-width: 560px;
 }
 
@@ -394,12 +934,17 @@ form > div {
 
 label {
   display: block;
-  font-size: 12px;
-  font-weight: 600;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
   color: var(--text-faint);
-  margin-bottom: 6px;
+  margin-bottom: 5px;
 }
 
+/* A field is a recessed slot with a weighted lower edge -- the edge is what
+   a ruled form gives you to write on, and it doubles as the focus signal. */
 input,
 textarea,
 select {
@@ -408,31 +953,105 @@ select {
   color: var(--text);
   width: 100%;
   padding: 8px 11px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  background: var(--bg-surface);
+  border: 1px solid var(--field-border);
+  border-bottom: 2px solid var(--field-underline);
+  border-radius: var(--radius-sm) var(--radius-sm) 2px 2px;
+  background: var(--field-bg);
+  box-shadow: var(--field-inset);
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: var(--text-faint);
+  font-style: italic;
+}
+
+input:hover:not(:disabled):not(:focus),
+textarea:hover:not(:disabled):not(:focus),
+select:hover:not(:disabled):not(:focus) {
+  border-bottom-color: var(--text-faint);
+}
+
+input:disabled,
+textarea:disabled,
+select:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* The native arrow is the single most OS-default thing on the page. */
+select {
+  appearance: none;
+  padding-right: 30px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='7' viewBox='0 0 10 7'%3E%3Cpath d='M1 1.5 5 5.5 9 1.5' fill='none' stroke='%23888' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 11px center;
+  background-size: 10px 7px;
+}
+
+/* The file picker's own button is unstyleable by default and looks it. */
+input[type="file"] {
+  padding: 6px 10px 6px 6px;
+}
+
+input[type="file"]::file-selector-button {
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--text-muted);
+  background: linear-gradient(to bottom, var(--btn-top), var(--btn-bottom));
+  border: 1px solid var(--border-strong);
+  border-radius: 2px;
+  padding: 5px 11px;
+  margin-right: 11px;
+  cursor: pointer;
+  transition: color 0.12s, border-color 0.12s;
+}
+
+input[type="file"]::file-selector-button:hover {
+  color: var(--primary);
+  border-color: var(--primary-line);
 }
 
 input:focus,
 textarea:focus,
 select:focus {
   outline: none;
-  border-color: var(--primary);
+  background-color: var(--bg-surface);
+  border-color: var(--primary-line);
+  border-bottom-color: var(--primary);
   box-shadow: 0 0 0 3px var(--primary-subtle);
 }
 
+input[type="checkbox"],
+input[type="radio"] {
+  width: auto;
+  accent-color: var(--primary);
+}
+
+input[type="number"],
+input[type="date"] {
+  font-family: var(--mono);
+  font-size: 12.5px;
+  font-variant-numeric: tabular-nums;
+}
+
 textarea {
-  min-height: 80px;
+  min-height: 78px;
   resize: vertical;
+  line-height: 1.5;
 }
 
 [role="alert"] {
   color: var(--danger-text);
   background: var(--danger-subtle);
+  border: 1px solid var(--danger-line);
   border-radius: var(--radius-sm);
-  padding: 6px 10px;
+  padding: 7px 10px;
   font-size: 12.5px;
-  font-weight: 600;
+  font-weight: 500;
 }
 
 /* ---------- Cards / sections ---------- */
@@ -442,69 +1061,143 @@ article {
   background: var(--bg-surface);
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-sm);
+  box-shadow: var(--card-shadow);
 }
 
 article {
-  padding: 24px 26px;
+  padding: 26px 28px;
 }
 
-/* ---------- Tables ---------- */
+/* ---------- Tables ----------
+   Tables are the primary interface here, not an afterthought: hairline
+   rules, mono column labels, tabular numerals, and a hovered row marked
+   by an accent edge rather than a wash of colour. */
 
 table {
   border-collapse: collapse;
   width: 100%;
   overflow: hidden;
+  font-variant-numeric: tabular-nums;
 }
 
 section > table {
-  margin-top: 8px;
+  margin-top: 0;
 }
 
+/* The header is the register's masthead: tinted toward the accent, with the
+   only rule in the whole table under it. */
 thead th {
   text-align: left;
-  padding: 10px 16px;
-  font-size: 10.5px;
-  font-weight: 700;
-  color: var(--text-faint);
+  padding: 13px 20px;
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--th-label, var(--text-muted));
   text-transform: uppercase;
-  letter-spacing: 0.4px;
-  border-bottom: 1px solid var(--border);
-  background: var(--bg-page);
+  letter-spacing: 0.11em;
+  border-bottom: 1px solid var(--primary-line);
+  background: var(--th-fill, var(--bg-sunken));
   white-space: nowrap;
 }
 
+/* Rows are separated by alternating tone rather than by ruled lines --
+   banding groups a row's cells together across the full width, which a
+   hairline never does, and it reads as far less mechanical. */
 tbody td,
 tbody th {
-  padding: 10px 16px;
+  padding: 13px 20px;
   font-size: 13px;
-  border-bottom: 1px solid var(--border);
+  border-bottom: none;
   vertical-align: middle;
 }
 
-tbody tr:last-child td {
-  border-bottom: none;
+tbody th {
+  text-align: left;
+  font-weight: 600;
+}
+
+tbody tr {
+  transition: background-color 0.12s var(--ease-out, ease), box-shadow 0.14s;
+}
+
+tbody tr:nth-child(even) {
+  background: var(--row-band, var(--bg-sunken));
 }
 
 tbody tr:hover {
-  background: var(--bg-page);
+  background: var(--row-hover, var(--primary-subtle));
 }
 
+/* Numbers read as data: mono, tabular, and ranged right so digits line up
+   down the column. */
+td[data-type="number"],
+th[data-type="number"] {
+  font-family: var(--mono);
+  font-size: 12.5px;
+  text-align: right;
+}
+
+/* A clause or control reference is an identifier, so it is set in the data
+   face and kept out of the sentence flow of the title beside it. */
+td[data-type="code"] {
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--primary);
+  white-space: nowrap;
+  width: 1%;
+}
+
+/* An editable cell shows its field. Invisible controls made a register of
+   mostly-editable cells read as a page of empty space -- and with no rules
+   in the table, the fields are what give a row its structure.
+
+   Crucially the fill is a TRANSLUCENT TINT, not an opaque colour: a cell sits
+   on a banded row, a blue hovered row or a red flagged row, and an opaque
+   fill that happens to be darker than the surface turns every control into a
+   black rectangle the moment the row lights up. A tint always reads as the
+   same small step away from whatever is behind it. */
 td input,
-td select {
-  border-color: transparent;
-  background: transparent;
-  padding: 6px 7px;
+td select,
+td textarea {
+  background-color: var(--cell-fill);
+  border: 1px solid var(--cell-border);
+  border-radius: 2px;
+  box-shadow: none;
+  padding: 4px 8px;
+  font-size: 12.5px;
 }
 
-td input:hover,
-td select:hover {
-  border-color: var(--border);
-  background: var(--bg-page);
+td select {
+  padding-right: 24px;
+  background-position: right 7px center;
+  background-size: 9px 6px;
+}
+
+td textarea {
+  min-height: 34px;
+  line-height: 1.4;
+}
+
+td input:hover:not(:focus),
+td select:hover:not(:focus),
+td textarea:hover:not(:focus) {
+  background-color: var(--cell-fill-strong);
+  border-color: var(--cell-border-strong);
+}
+
+/* Only the focused cell goes opaque -- it is the one the reader is working
+   in, so it should lift clear of the row behind it. */
+td input:focus,
+td select:focus,
+td textarea:focus {
+  background-color: var(--bg-surface);
+  border-color: var(--primary);
+  box-shadow: 0 0 0 2px var(--primary-subtle);
 }
 
 td button {
-  padding: 5px 10px;
+  padding: 4px 9px;
   font-size: 12px;
 }
 
@@ -512,6 +1205,7 @@ td button {
 
 .row-flagged {
   background: var(--danger-subtle);
+  box-shadow: inset 2px 0 0 var(--danger);
 }
 
 .row-flagged:hover {
@@ -520,45 +1214,69 @@ td button {
 
 .flag-chip {
   display: inline-block;
-  font-size: 10.5px;
-  font-weight: 700;
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
   color: var(--danger-text);
   margin-right: 6px;
 }
 
-/* ---------- Status badge ---------- */
+/* ---------- Status ----------
+   A dot plus a mono code, not a pastel blob. State reads at a glance from
+   the dot's colour and stays legible when colour alone can't be trusted. */
 
 .status-badge {
-  display: inline-block;
-  font-size: 11px;
-  font-weight: 700;
-  padding: 4px 11px;
-  border-radius: 999px;
-  text-transform: capitalize;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  padding: 2.5px 9px 2.5px 8px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--neutral-line);
   background: var(--neutral-subtle);
   color: var(--neutral-text);
+  white-space: nowrap;
+}
+
+.status-badge::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  flex-shrink: 0;
 }
 
 .status-badge[data-status="approved"],
 .status-badge[data-status="completed"] {
   background: var(--success-subtle);
+  border-color: var(--success-line);
   color: var(--success-text);
 }
 
 .status-badge[data-status="in_review"],
 .status-badge[data-status="in_progress"] {
   background: var(--warning-subtle);
+  border-color: var(--warning-line);
   color: var(--warning-text);
 }
 
 .status-badge[data-status="retired"] {
   background: var(--danger-subtle);
+  border-color: var(--danger-line);
   color: var(--danger-text);
 }
 
 .status-badge[data-status="draft"] {
-  background: var(--neutral-subtle);
-  color: var(--neutral-text);
+  background: var(--bg-sunken);
+  border-color: var(--border-strong);
+  color: var(--text-muted);
 }
 
 /* Editing an approved assessment withdraws the sign-off (see
@@ -566,19 +1284,20 @@ td button {
    not after. */
 .approval-withdrawal-notice {
   display: flex;
-  gap: 8px;
+  gap: 10px;
   align-items: baseline;
-  margin: 0 0 12px;
+  margin: 0 0 14px;
   padding: 10px 14px;
-  border: 1px solid oklch(87% 0.07 70);
-  border-radius: var(--radius-md);
+  border: 1px solid var(--warning-line);
+  border-left: 3px solid var(--warning);
+  border-radius: var(--radius-sm);
   background: var(--warning-subtle);
   color: var(--warning-text);
-  font-size: 13.5px;
+  font-size: 13px;
 }
 
 .approval-withdrawal-notice strong {
-  font-weight: 700;
+  font-weight: 600;
   color: var(--warning-text);
 }
 
@@ -589,6 +1308,7 @@ td button {
   --tone-bg: var(--danger-subtle);
   --tone-fg: var(--danger-text);
   --tone-solid: var(--danger);
+  --tone-line: var(--danger-line);
 }
 
 [data-tone="medium"],
@@ -597,6 +1317,7 @@ td button {
   --tone-bg: var(--warning-subtle);
   --tone-fg: var(--warning-text);
   --tone-solid: var(--warning);
+  --tone-line: var(--warning-line);
 }
 
 [data-tone="low"],
@@ -605,18 +1326,21 @@ td button {
   --tone-bg: var(--success-subtle);
   --tone-fg: var(--success-text);
   --tone-solid: var(--success);
+  --tone-line: var(--success-line);
 }
 
 [data-tone="neutral"] {
   --tone-bg: var(--neutral-subtle);
   --tone-fg: var(--neutral-text);
   --tone-solid: var(--neutral);
+  --tone-line: var(--neutral-line);
 }
 
 [data-tone="primary"] {
   --tone-bg: var(--primary-subtle);
   --tone-fg: var(--primary);
   --tone-solid: var(--primary);
+  --tone-line: var(--primary-line);
 }
 
 /* ---------- Dashboard layout ---------- */
@@ -624,28 +1348,31 @@ td button {
 .dashboard {
   display: flex;
   flex-direction: column;
-  gap: 28px;
+  gap: 30px;
 }
 
 .dashboard-section > h2 {
-  font-size: 12px;
-  font-weight: 700;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  font-weight: 500;
   color: var(--text-faint);
   text-transform: uppercase;
-  letter-spacing: 0.5px;
-  margin-bottom: 12px;
+  letter-spacing: 0.12em;
+  padding-bottom: 8px;
+  margin-bottom: 14px;
+  border-bottom: 1px solid var(--rule);
 }
 
 .dashboard-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-  gap: 16px;
+  grid-template-columns: repeat(auto-fit, minmax(212px, 1fr));
+  gap: 12px;
 }
 
 .dashboard-split {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 16px;
+  gap: 14px;
   align-items: start;
 }
 
@@ -659,12 +1386,11 @@ td button {
   background: var(--bg-surface);
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-sm);
   padding: 18px 20px;
 }
 
 .dashboard-card h3 {
-  margin: 0 0 12px;
+  margin: 0 0 14px;
 }
 
 .ring-row {
@@ -674,41 +1400,49 @@ td button {
   flex-wrap: wrap;
 }
 
-/* ---------- Stat card ---------- */
+/* ---------- Stat card ----------
+   Not every tile is a card: the figure is the point, so the surround is a
+   hairline box and the number carries the weight, in mono so a column of
+   them lines up. */
 
 .stat-card {
   background: var(--bg-surface);
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-sm);
-  padding: 16px 18px;
+  padding: 14px 16px 15px;
 }
 
 .stat-card[data-tone="danger"] {
-  border-color: oklch(85% 0.07 25);
-  background: linear-gradient(var(--danger-subtle), var(--bg-surface) 55%);
+  border-color: var(--danger-line);
+  box-shadow: inset 3px 0 0 var(--danger);
 }
 
 .stat-card[data-tone="warning"] {
-  border-color: oklch(87% 0.07 70);
-  background: linear-gradient(var(--warning-subtle), var(--bg-surface) 55%);
+  border-color: var(--warning-line);
+  box-shadow: inset 3px 0 0 var(--warning);
 }
 
 .stat-card-label {
-  font-size: 11.5px;
-  font-weight: 700;
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 500;
   color: var(--text-faint);
   text-transform: uppercase;
-  letter-spacing: 0.4px;
-  margin-bottom: 6px;
+  letter-spacing: 0.1em;
+  margin-bottom: 8px;
 }
 
+/* Display figures stay in the sans: Plex Mono's slashed zero is right on a
+   version string but reads as a theta at 27px, and a headline number has to
+   be unmistakable. Mono keeps the small identifiers. */
 .stat-card-value {
-  font-size: 30px;
-  font-weight: 800;
+  font-family: var(--sans);
+  font-size: 28px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
   color: var(--text);
-  letter-spacing: -0.8px;
-  line-height: 1.1;
+  letter-spacing: -0.035em;
+  line-height: 1.05;
 }
 
 .stat-card-value a {
@@ -738,15 +1472,16 @@ td button {
 /* ---------- Segmented bar ---------- */
 
 .segmented-bar {
-  margin-top: 12px;
+  margin-top: 14px;
 }
 
 .segmented-bar-track {
   display: flex;
-  height: 8px;
-  border-radius: 999px;
+  height: 6px;
+  border-radius: 2px;
   overflow: hidden;
-  background: var(--neutral-subtle);
+  background: var(--bg-sunken);
+  gap: 1px;
 }
 
 .segmented-bar-fill {
@@ -756,7 +1491,7 @@ td button {
 .segmented-bar-legend {
   display: flex;
   flex-wrap: wrap;
-  gap: 4px 14px;
+  gap: 4px 16px;
   margin-top: 10px;
 }
 
@@ -764,15 +1499,15 @@ td button {
 .criteria-bands li {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 7px;
   font-size: 12px;
   color: var(--text-muted);
 }
 
 .legend-dot {
-  width: 9px;
-  height: 9px;
-  border-radius: 3px;
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
   background: var(--tone-solid, var(--primary));
   flex-shrink: 0;
 }
@@ -782,7 +1517,10 @@ td button {
 }
 
 .legend-value {
-  font-weight: 700;
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
   color: var(--text);
 }
 
@@ -803,7 +1541,7 @@ td button {
 }
 
 .progress-ring-track {
-  stroke: var(--neutral-subtle);
+  stroke: var(--bg-sunken);
 }
 
 .progress-ring-value {
@@ -811,14 +1549,17 @@ td button {
 }
 
 .progress-ring-text {
-  font-size: 19px;
-  font-weight: 800;
+  font-family: var(--sans);
+  font-size: 17px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
   fill: var(--text);
 }
 
 .progress-ring-label {
   font-size: 12.5px;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--text);
 }
 
@@ -832,9 +1573,9 @@ td button {
 .attention-panel {
   background: var(--bg-surface);
   border: 1px solid var(--border);
-  border-left: 4px solid var(--danger);
+  border-left: 3px solid var(--danger);
   border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-sm);
+  box-shadow: var(--card-shadow);
   padding: 18px 22px;
 }
 
@@ -846,9 +1587,8 @@ td button {
 }
 
 .attention-panel h2 {
-  font-size: 15.5px;
-  font-weight: 700;
-  letter-spacing: 0;
+  font-size: 15px;
+  font-weight: 600;
   margin: 0 0 10px;
 }
 
@@ -862,10 +1602,11 @@ td button {
 }
 
 .attention-clear-mark {
-  width: 34px;
-  height: 34px;
+  width: 32px;
+  height: 32px;
   border-radius: 50%;
   background: var(--success-subtle);
+  border: 1px solid var(--success-line);
   color: var(--success-text);
   display: flex;
   align-items: center;
@@ -876,7 +1617,6 @@ td button {
 .attention-panel ul {
   display: flex;
   flex-direction: column;
-  gap: 2px;
 }
 
 .attention-panel li {
@@ -884,7 +1624,7 @@ td button {
   align-items: center;
   gap: 12px;
   padding: 8px 0;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--rule);
 }
 
 .attention-panel li:last-child {
@@ -894,27 +1634,32 @@ td button {
 .attention-count {
   min-width: 30px;
   text-align: center;
-  font-size: 13px;
-  font-weight: 800;
-  padding: 3px 8px;
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  padding: 2px 8px;
   border-radius: var(--radius-sm);
+  border: 1px solid var(--neutral-line);
   background: var(--neutral-subtle);
   color: var(--neutral-text);
 }
 
 .attention-panel li[data-severity="danger"] .attention-count {
   background: var(--danger-subtle);
+  border-color: var(--danger-line);
   color: var(--danger-text);
 }
 
 .attention-panel li[data-severity="warning"] .attention-count {
   background: var(--warning-subtle);
+  border-color: var(--warning-line);
   color: var(--warning-text);
 }
 
 .attention-panel li a {
-  font-size: 13.5px;
-  font-weight: 600;
+  font-size: 13px;
+  font-weight: 500;
   color: var(--text);
 }
 
@@ -928,7 +1673,6 @@ td button {
   background: var(--bg-surface);
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-sm);
   padding: 18px 20px;
   margin-top: 24px;
 }
@@ -941,13 +1685,13 @@ td button {
 }
 
 .criteria-editor-header h3 {
-  margin: 0 0 4px;
+  margin: 0 0 6px;
 }
 
 .criteria-editor-header p {
   margin: 0;
   font-size: 12.5px;
-  max-width: 62ch;
+  max-width: 66ch;
 }
 
 .criteria-editor-actions {
@@ -958,10 +1702,14 @@ td button {
 }
 
 .criteria-default-badge {
-  font-size: 11px;
-  font-weight: 700;
-  padding: 4px 10px;
-  border-radius: 999px;
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  padding: 3px 9px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--primary-line);
   background: var(--primary-subtle);
   color: var(--primary);
   white-space: nowrap;
@@ -978,12 +1726,12 @@ td button {
   display: flex;
   align-items: flex-end;
   gap: 14px;
-  margin-top: 14px;
+  margin-top: 16px;
   flex-wrap: wrap;
 }
 
 .criteria-editor-form input {
-  width: 110px;
+  width: 108px;
 }
 
 .criteria-editor-buttons {
@@ -997,6 +1745,11 @@ td button {
   display: flex;
   flex-direction: column;
   gap: 16px;
+  /* Whatever comes before this (here, the coverage table) is its own block
+     with no trailing margin of its own -- unlike a heading, which already
+     carries the page's rhythm via its own top margin -- so this has to
+     supply the gap itself or the two sit flush against each other. */
+  margin-top: 28px;
   margin-bottom: 8px;
 }
 
@@ -1006,10 +1759,13 @@ td button {
 
 .score-pill {
   display: inline-block;
-  font-size: 12px;
-  font-weight: 800;
-  padding: 3px 10px;
+  font-family: var(--mono);
+  font-size: 11.5px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  padding: 2px 8px;
   border-radius: var(--radius-sm);
+  border: 1px solid var(--tone-line, var(--neutral-line));
   background: var(--tone-bg, var(--neutral-subtle));
   color: var(--tone-fg, var(--neutral-text));
 }
@@ -1021,32 +1777,38 @@ td button {
 }
 
 .item-high {
-  font-size: 11px;
-  font-weight: 700;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
   color: var(--danger-text);
 }
 
-/* ---------- Document browser ---------- */
+/* ---------- Breadcrumb ---------- */
 
 nav[aria-label="breadcrumb"] {
   display: flex;
   align-items: center;
   gap: 2px;
   margin-bottom: 14px;
-  font-size: 12.5px;
+  font-family: var(--mono);
+  font-size: 11.5px;
 }
 
 nav[aria-label="breadcrumb"] button {
   border: none;
   background: none;
-  padding: 4px 6px;
+  padding: 3px 6px;
+  font-family: inherit;
+  font-size: inherit;
   color: var(--text-muted);
-  font-weight: 600;
+  font-weight: 400;
 }
 
-nav[aria-label="breadcrumb"] button:hover {
+nav[aria-label="breadcrumb"] button:hover:not(:disabled) {
   color: var(--primary);
   background: none;
+  border-color: transparent;
 }
 
 /* ---------- Risk assessment header ---------- */
@@ -1055,7 +1817,7 @@ nav[aria-label="breadcrumb"] button:hover {
   display: flex;
   align-items: center;
   gap: 10px;
-  margin-bottom: 8px;
+  margin-bottom: 10px;
 }
 
 .risk-header-row label {
@@ -1067,29 +1829,43 @@ nav[aria-label="breadcrumb"] button:hover {
 }
 
 .risk-rating {
-  font-size: 15.5px;
-  font-weight: 700;
+  font-family: var(--mono);
+  font-size: 14px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
   color: var(--text);
 }
 
-/* ---------- Risk matrix ---------- */
+/* ---------- Risk matrix ----------
+   Read as a grid of cells, so each cell is a discrete tile separated by the
+   surface behind it rather than a table rule. */
 
 .risk-matrix {
-  max-width: 480px;
+  max-width: 470px;
 }
 
 .risk-matrix caption {
   text-align: left;
-  font-size: 12px;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
   color: var(--text-faint);
-  font-weight: 600;
-  margin-bottom: 8px;
+  margin-bottom: 10px;
 }
 
 .risk-matrix th {
-  font-size: 10.5px;
+  font-family: var(--mono);
+  font-size: 10px;
   color: var(--text-faint);
-  font-weight: 700;
+  font-weight: 500;
+  background: transparent;
+  border-bottom: none;
+}
+
+.risk-matrix thead th {
+  background: transparent;
+  border-bottom: none;
 }
 
 .risk-matrix tbody th {
@@ -1100,20 +1876,26 @@ nav[aria-label="breadcrumb"] button:hover {
 
 .risk-matrix td {
   text-align: center;
-  font-weight: 800;
+  font-family: var(--mono);
+  font-weight: 500;
   font-size: 13px;
-  padding: 8px 6px;
-  border-bottom: 2px solid var(--bg-surface);
-  border-right: 2px solid var(--bg-surface);
+  padding: 9px 6px;
+  border-bottom: 3px solid var(--bg-surface);
+  border-right: 3px solid var(--bg-surface);
   border-radius: var(--radius-sm);
   background: var(--tone-bg);
   color: var(--tone-fg);
+  box-shadow: inset 0 0 0 1px var(--tone-line, transparent);
 }
 
 .risk-matrix td[data-empty="true"] {
-  opacity: 0.45;
+  opacity: 0.4;
 }
 
+/* The matrix is a grid of discrete tiles, not a register of rows, so it
+   takes neither the banding nor the row hover. */
+.risk-matrix tbody tr,
+.risk-matrix tbody tr:nth-child(even),
 .risk-matrix tbody tr:hover {
   background: none;
 }
@@ -1149,8 +1931,8 @@ nav[aria-label="breadcrumb"] button:hover {
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-  padding: 9px 14px;
-  border-bottom: 1px solid var(--border);
+  padding: 8px 14px;
+  border-bottom: 1px solid var(--rule);
   font-size: 13px;
 }
 
@@ -1158,26 +1940,50 @@ nav[aria-label="breadcrumb"] button:hover {
   border-bottom: none;
 }
 
+.document-browser-list li:hover {
+  background: var(--bg-sunken);
+}
+
 .document-browser-row-name {
   border: none;
   background: none;
   padding: 0;
-  font-weight: 600;
+  font-weight: 500;
   color: var(--text);
 }
 
-.document-browser-row-name:hover {
+.document-browser-row-name:hover:not(:disabled) {
   background: none;
+  border-color: transparent;
   color: var(--primary);
 }
 
 /* ---------- DataGrid toolbar ---------- */
 
+/* The two control rows read as one bar attached to the sheet below them,
+   rather than as loose controls floating above it. */
 .grid-toolbar {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 8px;
-  margin-bottom: 10px;
+  padding: 9px 12px;
+  background: var(--bg-sunken);
+  border: 1px solid var(--border);
+  margin: 0;
+}
+
+.grid-toolbar:first-of-type {
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+}
+
+.grid-toolbar + .grid-toolbar {
+  border-top: none;
+}
+
+.grid-toolbar:last-of-type {
+  border-bottom: none;
+  margin-bottom: 0;
 }
 
 .grid-toolbar label {
@@ -1187,10 +1993,39 @@ nav[aria-label="breadcrumb"] button:hover {
 
 .grid-toolbar input {
   width: auto;
+  min-width: 190px;
 }
 
+.grid-toolbar input[type="file"] {
+  min-width: 0;
+}
+
+/* Export is a real action, so it looks like one instead of a bare link. */
 .grid-toolbar a {
   margin-left: auto;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  background: linear-gradient(to bottom, var(--btn-top), var(--btn-bottom));
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  padding: 6px 12px;
+  box-shadow: inset 0 1px 0 var(--btn-highlight), var(--btn-shadow);
+}
+
+.grid-toolbar a:hover {
+  color: var(--primary);
+  border-color: var(--primary-line);
+  text-decoration: none;
+}
+
+/* The bar and the sheet are one object, so the sheet loses its top corners. */
+.data-grid .grid-toolbar + .table-scroll,
+.data-grid .grid-toolbar ~ .table-scroll {
+  border-radius: 0 0 var(--radius-lg) var(--radius-lg);
 }
 
 /* A wide sheet scrolls inside this box rather than widening the page.
@@ -1200,19 +2035,41 @@ nav[aria-label="breadcrumb"] button:hover {
   background: var(--bg-surface);
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-sm);
+  box-shadow: var(--card-shadow);
 }
 
 .table-scroll > table {
   border-radius: 0;
 }
 
+/* The header stays put while a long register scrolls under it. */
+.table-scroll thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
 /* Groups a clause table's rows under their top-level clause number (4, 5, 6...),
    matching the standard's own section structure instead of reading as a flat list. */
-.table-section-row td {
-  background: var(--bg-page);
-  font-weight: 600;
-  color: var(--text-muted, var(--text));
+.table-section-row td,
+.table-section-row:hover td {
+  background: var(--section-fill, var(--primary-subtle));
+  box-shadow: inset 3px 0 0 var(--primary);
+  font-family: var(--mono);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  font-weight: 500;
+  color: var(--primary);
+  padding-top: 10px;
+  padding-bottom: 10px;
+}
+
+.data-grid-group-row th,
+.data-grid-group-row:hover th {
+  background: var(--section-fill, var(--primary-subtle));
+  box-shadow: inset 3px 0 0 var(--primary);
+  color: var(--primary);
 }
 
 /* The sheet scrolls horizontally, so size each column for its content
@@ -1224,12 +2081,11 @@ nav[aria-label="breadcrumb"] button:hover {
 }
 
 .data-grid-group-row th {
-  background: var(--bg-page);
   text-align: left;
-  font-size: 11px;
+  font-family: var(--mono);
+  font-size: 10.5px;
   text-transform: uppercase;
-  letter-spacing: 0.03em;
-  color: var(--text-muted, var(--text));
+  letter-spacing: 0.09em;
 }
 
 .data-grid td input,
@@ -1243,20 +2099,20 @@ nav[aria-label="breadcrumb"] button:hover {
   white-space: normal;
 }
 
+/* A prose cell gets the same visible field as every other editable cell --
+   left transparent, a whole column of justifications read as blank space
+   with only the resize grabber hinting anything was there. */
 .data-grid td[data-long-text="true"] textarea {
-  min-width: 300px;
-  width: 300px;
-  min-height: 0;
+  min-width: 240px;
+  width: 100%;
+  min-height: 34px;
   resize: vertical;
-  line-height: 1.4;
-  border-color: transparent;
-  background: transparent;
-  padding: 6px 7px;
+  line-height: 1.45;
+  padding: 5px 8px;
 }
 
-.data-grid td[data-long-text="true"] textarea:hover {
-  border-color: var(--border);
-  background: var(--bg-page);
+.data-grid td[data-long-text="true"] {
+  min-width: 240px;
 }
 
 .data-grid td[data-type="number"] input,
@@ -1266,6 +2122,126 @@ nav[aria-label="breadcrumb"] button:hover {
 
 .data-grid td[data-type="date"] input {
   min-width: 140px;
+}
+
+/* ---------- Sheet views ----------
+   Which slice of a wide sheet is on screen. Pills rather than a tab bar:
+   these switch the columns within one register, they do not switch between
+   different registers the way the page-level tabs do. */
+
+.sheet-views {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+
+.sheet-views button {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 7px;
+  font-size: 12.5px;
+  font-weight: 500;
+  padding: 6px 13px;
+  border-radius: 999px;
+}
+
+.sheet-views-note {
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  color: var(--text-faint);
+}
+
+.sheet-views button.active {
+  background: var(--primary-subtle);
+  background-image: none;
+  border-color: var(--primary-line);
+  color: var(--primary);
+  font-weight: 600;
+  box-shadow: none;
+}
+
+.sheet-views button.active .sheet-views-note {
+  color: var(--primary);
+  opacity: 0.75;
+}
+
+/* ---------- Register sheets ----------
+   A sheet is denser than a list: the rows carry controls rather than prose,
+   so they lose the reading padding a list of titles wants. */
+
+.data-grid tbody td,
+.data-grid tbody th {
+  padding: 5px 10px;
+}
+
+.data-grid thead th {
+  padding: 9px 10px;
+}
+
+/* The first column names the row, so it stays put while the rest scrolls --
+   otherwise a wide sheet is a wall of values with nothing to anchor them.
+   The band is painted as a gradient over an opaque colour so the sticky cell
+   never lets the scrolling content show through it. */
+.data-grid table > * > tr > :first-child {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  background-color: var(--bg-surface);
+  border-right: 1px solid var(--border);
+}
+
+.data-grid tbody tr:nth-child(even) > :first-child {
+  background-image: linear-gradient(var(--row-band), var(--row-band));
+}
+
+.data-grid tbody tr:hover > :first-child {
+  background-image: linear-gradient(var(--row-hover), var(--row-hover));
+}
+
+.data-grid thead th:first-child {
+  z-index: 3;
+  background-color: var(--bg-sunken);
+  background-image: var(--th-fill);
+}
+
+.data-grid .table-section-row > :first-child,
+.data-grid .data-grid-group-row > :first-child {
+  background-image: linear-gradient(var(--section-fill), var(--section-fill));
+}
+
+/* Removing a column is a minor action on a label, not a button in its own
+   right -- at full button size it broke the header band's rhythm. */
+.data-grid thead th button {
+  background: none;
+  border: none;
+  box-shadow: none;
+  padding: 0;
+  margin-left: 6px;
+  width: 15px;
+  height: 15px;
+  line-height: 1;
+  font-size: 13px;
+  border-radius: 2px;
+  color: var(--text-faint);
+  vertical-align: middle;
+}
+
+.data-grid thead th button:hover:not(:disabled) {
+  background: var(--danger-subtle);
+  color: var(--danger-text);
+  border: none;
+}
+
+/* Says plainly that there is more sheet to the right. */
+.data-grid .table-scroll {
+  background-image: linear-gradient(to left, oklch(50% 0.02 75 / 0.13), transparent 14px);
+  background-position: right center;
+  background-repeat: no-repeat;
+  background-size: 14px 100%;
+  background-attachment: scroll;
 }
 
 /* ---------- Framework tag picker ---------- */
@@ -1280,7 +2256,7 @@ nav[aria-label="breadcrumb"] button:hover {
 .framework-tag-chips {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: 5px;
   align-items: center;
   flex: 1;
 }
@@ -1290,12 +2266,16 @@ nav[aria-label="breadcrumb"] button:hover {
   color: var(--text-faint);
 }
 
+/* A control reference is an identifier -- it gets the mono treatment
+   everywhere it appears. */
 .framework-tag-chip {
   display: inline-block;
-  font-size: 11.5px;
-  font-weight: 700;
-  padding: 4px 11px;
-  border-radius: 999px;
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 500;
+  padding: 2.5px 8px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--primary-line);
   background: var(--primary-subtle);
   color: var(--primary);
   white-space: nowrap;
@@ -1303,7 +2283,7 @@ nav[aria-label="breadcrumb"] button:hover {
 
 .framework-tag-picker.is-editing {
   flex-direction: column;
-  background: var(--bg-page);
+  background: var(--bg-sunken);
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
   padding: 14px 16px;
@@ -1323,11 +2303,12 @@ nav[aria-label="breadcrumb"] button:hover {
 }
 
 .framework-tag-group legend {
-  font-size: 11px;
-  font-weight: 700;
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 500;
   color: var(--text-faint);
   text-transform: uppercase;
-  letter-spacing: 0.4px;
+  letter-spacing: 0.09em;
   padding: 0 0 8px;
 }
 
@@ -1335,22 +2316,33 @@ nav[aria-label="breadcrumb"] button:hover {
   display: flex;
   align-items: flex-start;
   gap: 8px;
-  padding: 5px 0;
+  padding: 4px 0;
   font-size: 12.5px;
   color: var(--text-muted);
-  font-weight: 500;
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: 0;
+  font-family: var(--sans);
   cursor: pointer;
+  margin-bottom: 0;
 }
 
 .framework-tag-option input {
   width: auto;
-  margin-top: 2px;
+  margin-top: 3px;
 }
 
 .framework-tag-option strong {
+  font-family: var(--mono);
   color: var(--text);
-  font-weight: 700;
-  margin-right: 4px;
+  font-weight: 500;
+  margin-right: 5px;
+}
+
+.framework-tag-picker-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
 }
 
 /* ---------- Impact assessments ---------- */
@@ -1358,8 +2350,8 @@ nav[aria-label="breadcrumb"] button:hover {
 .impact-assessment-card {
   background: var(--bg-surface);
   border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-  margin-bottom: 12px;
+  border-radius: var(--radius-md);
+  margin-bottom: 10px;
   overflow: hidden;
 }
 
@@ -1368,12 +2360,19 @@ nav[aria-label="breadcrumb"] button:hover {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 12px;
   background: transparent;
   border: none;
   border-radius: 0;
   padding: 12px 16px;
+  font-size: 13.5px;
   font-weight: 600;
   text-align: left;
+}
+
+.impact-assessment-card-header:hover:not(:disabled) {
+  background: var(--bg-sunken);
+  border-color: transparent;
 }
 
 .impact-assessment-form {
@@ -1381,17 +2380,7 @@ nav[aria-label="breadcrumb"] button:hover {
 }
 
 .impact-assessment-field {
-  margin-bottom: 12px;
-}
-
-.impact-assessment-field label {
-  display: block;
-  font-size: 11px;
-  font-weight: 700;
-  color: var(--text-faint);
-  text-transform: uppercase;
-  letter-spacing: 0.4px;
-  margin-bottom: 4px;
+  margin-bottom: 14px;
 }
 
 .impact-assessment-field textarea,
@@ -1404,7 +2393,7 @@ nav[aria-label="breadcrumb"] button:hover {
 .impact-factor-grid {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
   margin-bottom: 20px;
 }
 
@@ -1420,32 +2409,33 @@ nav[aria-label="breadcrumb"] button:hover {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 10px 14px;
-  background: var(--bg-page);
+  padding: 9px 14px;
+  background: var(--bg-sunken);
   border-bottom: 1px solid var(--border);
 }
 
 .impact-factor-header h5 {
   margin: 0;
-  font-size: 13.5px;
-  font-weight: 650;
+  font-size: 13px;
+  font-weight: 600;
 }
 
 .impact-score-badge {
   min-width: 26px;
   padding: 2px 8px;
-  border-radius: 999px;
-  font-size: 12px;
-  font-weight: 700;
+  border-radius: var(--radius-sm);
+  font-family: var(--mono);
+  font-size: 11.5px;
+  font-weight: 500;
   text-align: center;
-  color: #fff;
+  color: oklch(99% 0 0);
 }
 
 .impact-score-badge.is-empty {
   background: transparent;
   color: var(--text-faint);
-  font-weight: 500;
-  border: 1px dashed var(--border);
+  font-weight: 400;
+  border: 1px dashed var(--border-strong);
 }
 
 .impact-score-badge.score-low {
@@ -1454,6 +2444,7 @@ nav[aria-label="breadcrumb"] button:hover {
 
 .impact-score-badge.score-medium {
   background: var(--warning);
+  color: oklch(22% 0.05 60);
 }
 
 .impact-score-badge.score-high {
@@ -1461,7 +2452,7 @@ nav[aria-label="breadcrumb"] button:hover {
 }
 
 .impact-factor-body {
-  padding: 12px 14px 14px;
+  padding: 14px;
 }
 
 /* Benefits and harms sit side by side -- they're read as a pair, and it
@@ -1479,49 +2470,51 @@ nav[aria-label="breadcrumb"] button:hover {
 }
 
 .impact-factor-field {
-  margin-bottom: 10px;
+  margin-bottom: 12px;
 }
 
-.impact-factor-field label,
 .impact-factor-score-label {
   display: block;
-  font-size: 11px;
-  font-weight: 700;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  font-weight: 500;
   color: var(--text-faint);
   text-transform: uppercase;
-  letter-spacing: 0.4px;
-  margin-bottom: 4px;
+  letter-spacing: 0.07em;
+  margin-bottom: 5px;
 }
 
 .impact-factor-field textarea {
   width: 100%;
   resize: vertical;
-  line-height: 1.45;
+  line-height: 1.5;
 }
 
 /* A row of 1-5 buttons instead of a dropdown: the whole scale is visible,
    scoring is one click, and the selection carries its severity colour. */
 .impact-score-picker {
   display: flex;
-  gap: 6px;
+  gap: 5px;
 }
 
 .impact-score-option {
-  width: 38px;
-  padding: 6px 0;
-  background: var(--bg-page);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  font-weight: 650;
+  width: 36px;
+  padding: 5px 0;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  font-family: var(--mono);
+  font-weight: 500;
   color: var(--text-muted);
 }
 
-.impact-score-option:hover {
+.impact-score-option:hover:not(:disabled) {
   border-color: var(--text-faint);
+  background: var(--bg-sunken);
 }
 
 .impact-score-option.is-selected {
-  color: #fff;
+  color: oklch(99% 0 0);
   border-color: transparent;
 }
 
@@ -1531,6 +2524,7 @@ nav[aria-label="breadcrumb"] button:hover {
 
 .impact-score-option.is-selected.score-medium {
   background: var(--warning);
+  color: oklch(22% 0.05 60);
 }
 
 .impact-score-option.is-selected.score-high {
@@ -1538,59 +2532,217 @@ nav[aria-label="breadcrumb"] button:hover {
 }
 
 .impact-assessment-progress {
-  font-size: 12px;
+  font-family: var(--mono);
+  font-size: 11.5px;
   color: var(--text-muted);
-  margin: 0 0 12px;
+  margin: 0 0 14px;
 }
 
 .impact-review-chip {
   display: inline-block;
   padding: 2px 8px;
-  border-radius: 999px;
-  font-size: 11px;
-  font-weight: 600;
-  background: var(--bg-page);
+  border-radius: var(--radius-sm);
+  font-family: var(--mono);
+  font-size: 10.5px;
+  font-weight: 500;
+  background: var(--bg-sunken);
   color: var(--text-muted);
-  border: 1px solid var(--border);
+  border: 1px solid var(--border-strong);
+  white-space: nowrap;
 }
 
 .impact-review-chip.is-overdue {
-  background: var(--danger);
-  border-color: transparent;
-  color: #fff;
-}
-
-.framework-tag-picker-actions {
-  display: flex;
-  gap: 8px;
-  margin-top: 4px;
+  background: var(--danger-subtle);
+  border-color: var(--danger-line);
+  color: var(--danger-text);
 }
 
 .risk-header-tags {
-  margin: 10px 0;
+  margin: 12px 0;
 }
 
 .risk-header-tags-label {
   display: block;
-  font-size: 12px;
-  font-weight: 600;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
   color: var(--text-faint);
   margin-bottom: 6px;
 }
 
-/* ---------- Detail pages ---------- */
+/* ---------- Detail pages ----------
+   A record's own title block: the title carries the serif the way a page
+   title does, the state sits beside it, and the version -- an identifier --
+   sits under both in the data face. */
+
+.record-header {
+  padding-bottom: 18px;
+  margin-bottom: 20px;
+  border-bottom: 1px solid var(--border);
+}
+
+.record-header-top {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 6px;
+}
+
+.record-header-top h2 {
+  font-family: var(--serif);
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+  margin: 0;
+}
+
+.record-version {
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  color: var(--text-faint);
+  margin: 0;
+}
+
+.record-lede {
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--text-muted);
+  max-width: 76ch;
+  margin: 12px 0 0;
+}
+
+/* The version and audit trails are timestamped records -- tabular, so the
+   dates line up down the list and a run of them can be scanned. */
+article h3 + ul li,
+.audit-log-list li {
+  font-variant-numeric: tabular-nums;
+}
+
+/* The trail ships closed. It matters for an audit and almost never while
+   someone is working, and left open it was the longest thing on the page. */
+.audit-log {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--bg-surface);
+  margin: 24px 0 0;
+  overflow: hidden;
+}
+
+.audit-log > summary {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  cursor: pointer;
+  list-style: none;
+  background: var(--bg-sunken);
+  user-select: none;
+}
+
+.audit-log > summary::-webkit-details-marker {
+  display: none;
+}
+
+/* A disclosure triangle drawn rather than inherited, so it matches the
+   chevron on every select on the page and turns when the trail opens. */
+.audit-log > summary::before {
+  content: "";
+  width: 9px;
+  height: 6px;
+  flex-shrink: 0;
+  background: currentColor;
+  color: var(--text-faint);
+  clip-path: polygon(0 0, 100% 0, 50% 100%);
+  transform: rotate(-90deg);
+  transition: transform 0.18s var(--ease-out, ease);
+}
+
+.audit-log[open] > summary::before {
+  transform: rotate(0deg);
+}
+
+.audit-log[open] > summary {
+  border-bottom: 1px solid var(--border);
+}
+
+.audit-log > summary:hover .audit-log-heading {
+  color: var(--primary);
+}
+
+.audit-log-heading {
+  /* Now an h3 (see AuditLogViewer.tsx), so its default block margin has to
+     be cleared explicitly or it reintroduces the vertical gap the flex
+     summary row was built to avoid. */
+  margin: 0;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  color: var(--text-muted);
+}
+
+.audit-log-count {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-faint);
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 1px 8px;
+}
+
+.audit-log-status {
+  font-size: 12.5px;
+  color: var(--text-faint);
+  margin: 0;
+  padding: 12px 14px;
+}
+
+/* An audit entry is machine output -- an action name, a timestamp and a row
+   id -- so the whole line takes the data face. Banded, it reads as a trail
+   rather than as a paragraph of loose sentences. */
+.audit-log-list {
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+.audit-log-list li {
+  font-family: var(--mono);
+  font-size: 11.5px;
+  line-height: 1.45;
+  color: var(--text-muted);
+  padding: 6px 12px;
+  border-bottom: none;
+}
+
+.audit-log-list li:nth-child(even) {
+  background: var(--row-band, var(--bg-sunken));
+}
+
+.audit-log-list li:hover {
+  background: var(--row-hover);
+  color: var(--text);
+}
 
 .detail-actions {
   display: flex;
   align-items: center;
   gap: 8px;
-  margin: 14px 0 4px;
+  margin: 18px 0 4px;
 }
 
 .approval-note {
   font-size: 12.5px;
   color: var(--text-faint);
-  font-style: italic;
   margin: 0;
 }
 
@@ -1601,10 +2753,10 @@ article h3 + ul {
 }
 
 article h3 + ul li {
-  padding: 10px 14px;
+  padding: 9px 14px;
   font-size: 12.5px;
   color: var(--text-muted);
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--rule);
 }
 
 article h3 + ul li:last-child {
@@ -1622,8 +2774,8 @@ article h3 + p {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 9px 0;
-  border-bottom: 1px solid var(--border);
+  padding: 8px 0;
+  border-bottom: 1px solid var(--rule);
   font-size: 13px;
 }
 
@@ -1644,15 +2796,17 @@ article h3 + p {
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 11.5px;
+  font-family: var(--mono);
+  font-size: 11px;
   color: var(--text-faint);
   white-space: nowrap;
 }
 
 .my-risk-items-list li[data-overdue="true"] {
   background: var(--danger-subtle);
+  box-shadow: inset 2px 0 0 var(--danger);
   margin: 0 -20px;
-  padding: 9px 20px;
+  padding: 8px 20px;
 }
 
 /* ---------- Pending approvals ---------- */
@@ -1662,8 +2816,8 @@ article h3 + p {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 9px 0;
-  border-bottom: 1px solid var(--border);
+  padding: 8px 0;
+  border-bottom: 1px solid var(--rule);
   font-size: 13px;
 }
 
@@ -1672,32 +2826,33 @@ article h3 + p {
 }
 
 .pending-approval-stage {
+  font-family: var(--mono);
   color: var(--text-faint);
-  font-size: 11.5px;
+  font-size: 11px;
   white-space: nowrap;
 }
 
-/* ---------- Modal ---------- */
-
-/* ---------- Life cycle stage tracker ---------- */
+/* ---------- Life cycle stage tracker ----------
+   A lifecycle genuinely is a sequence, so the steps are numbered and the
+   markers connect -- the numbering carries real information here. */
 
 .stage-tracker {
   display: flex;
   flex-wrap: wrap;
-  gap: 4px;
+  gap: 3px;
   margin: 0 0 24px;
   padding: 0;
   list-style: none;
 }
 
 .stage-step {
-  flex: 1 1 130px;
+  flex: 1 1 128px;
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 10px 12px;
+  gap: 9px;
+  padding: 9px 12px;
   border: 1px solid var(--border);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-sm);
   background: var(--bg-surface);
   font-size: 12.5px;
   color: var(--text-muted);
@@ -1705,27 +2860,28 @@ article h3 + p {
 
 .stage-step-marker {
   flex-shrink: 0;
-  width: 22px;
-  height: 22px;
+  width: 20px;
+  height: 20px;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 11px;
-  font-weight: 700;
-  background: var(--bg-page);
+  font-family: var(--mono);
+  font-size: 10.5px;
+  font-weight: 500;
+  background: var(--bg-sunken);
   color: var(--text-faint);
-  border: 1px solid var(--border);
+  border: 1px solid var(--border-strong);
 }
 
 .stage-step.is-done {
-  border-color: var(--success);
+  border-color: var(--success-line);
 }
 
 .stage-step.is-done .stage-step-marker {
   background: var(--success);
   border-color: transparent;
-  color: #fff;
+  color: oklch(99% 0 0);
 }
 
 .stage-step.is-current {
@@ -1737,11 +2893,11 @@ article h3 + p {
 .stage-step.is-current .stage-step-marker {
   background: var(--primary);
   border-color: transparent;
-  color: #fff;
+  color: oklch(98% 0.01 268);
 }
 
 .stage-step-label {
-  font-weight: 600;
+  font-weight: 500;
   line-height: 1.25;
 }
 
@@ -1770,7 +2926,7 @@ article h3 + p {
   align-items: flex-start;
   gap: 10px;
   padding: 10px 0;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--rule);
 }
 
 .gate-requirements li:last-child {
@@ -1779,7 +2935,7 @@ article h3 + p {
 
 .gate-marker {
   flex-shrink: 0;
-  font-weight: 700;
+  font-weight: 600;
   width: 18px;
   text-align: center;
 }
@@ -1796,21 +2952,11 @@ article h3 + p {
   display: block;
   font-size: 12.5px;
   color: var(--text-muted);
-  margin-top: 2px;
+  margin-top: 3px;
 }
 
 .gate-upload {
-  margin-top: 8px;
-}
-
-.gate-upload label {
-  display: block;
-  font-size: 11px;
-  font-weight: 700;
-  color: var(--text-faint);
-  text-transform: uppercase;
-  letter-spacing: 0.4px;
-  margin-bottom: 4px;
+  margin-top: 10px;
 }
 
 .stage-gate-actions,
@@ -1822,7 +2968,7 @@ article h3 + p {
 }
 
 .stage-revert {
-  margin-top: 12px;
+  margin-top: 14px;
   flex-direction: column;
   align-items: stretch;
   max-width: 420px;
@@ -1840,16 +2986,6 @@ article h3 + p {
   margin-top: 0;
 }
 
-.stage-fields label {
-  display: block;
-  font-size: 11px;
-  font-weight: 700;
-  color: var(--text-faint);
-  text-transform: uppercase;
-  letter-spacing: 0.4px;
-  margin-bottom: 4px;
-}
-
 .stage-fields textarea,
 .stage-fields select,
 .stage-fields input {
@@ -1864,74 +3000,150 @@ article h3 + p {
 }
 
 .assessment-links li {
-  padding: 6px 0;
+  padding: 5px 0;
 }
 
 /* ---------- Governance roles ---------- */
 
-.governance-role-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: 14px;
-}
-
-.governance-role-card {
-  background: var(--bg-surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-  padding: 16px 18px;
+/* A toolbar for one action above a grid -- not a page header, which would
+   draw a second title rule under the one the page already has. */
+.section-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
   margin-bottom: 14px;
 }
 
+.governance-role-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(310px, 1fr));
+  gap: 14px;
+  align-items: stretch;
+}
+
+.governance-role-card {
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 0;
+  margin: 0;
+  overflow: hidden;
+}
+
+/* Full height only in the grid, so every card in a row shares an edge.
+   The standalone new-role form sizes to its own content. */
+.governance-role-grid > .governance-role-card {
+  height: 100%;
+}
+
+.governance-role-card.is-new-role {
+  max-width: 560px;
+  margin-bottom: 20px;
+}
+
+/* The name band reads as the card's masthead, matching a table header. */
 .governance-role-card-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
-  margin-bottom: 8px;
+  gap: 10px;
+  padding: 12px 16px;
+  margin: 0;
+  background: var(--th-fill, var(--bg-sunken));
+  border-bottom: 1px solid var(--border);
 }
 
 .governance-role-card-header h3 {
   margin: 0;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--th-label, var(--text));
 }
 
+/* Tabular and right-aligned so the counts line up card to card. */
+.governance-role-card-header .impact-review-chip {
+  flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.governance-role-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 16px;
+  min-width: 0;
+}
+
+.governance-role-card > [role="alert"] {
+  margin: 14px 16px 0;
+}
+
+/* A fixed minimum keeps the responsibility boxes on a shared baseline
+   instead of every card starting its next field at a different height. */
 .governance-role-card textarea {
   width: 100%;
-  margin-bottom: 10px;
+  min-height: 72px;
+  margin-bottom: 14px;
+}
+
+.governance-role-card > .governance-role-body > p {
+  font-size: 13px;
+  line-height: 1.55;
+  margin: 0 0 14px;
 }
 
 .governance-role-field {
-  margin-bottom: 10px;
+  margin-bottom: 14px;
 }
 
-.governance-role-field label {
-  display: block;
-  font-size: 11px;
-  font-weight: 700;
-  color: var(--text-faint);
-  text-transform: uppercase;
-  letter-spacing: 0.4px;
-  margin-bottom: 4px;
+.governance-role-field:last-child {
+  margin-bottom: 0;
 }
 
-.governance-role-field select {
+.governance-role-field select,
+.governance-role-field input {
   width: 100%;
 }
 
+/* A select plus its action. The select takes the slack and may shrink to
+   nothing; the button keeps its intrinsic width and never wraps. */
 .governance-role-field-row {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
   gap: 8px;
-  margin-bottom: 10px;
+  margin-bottom: 0;
 }
 
 .governance-role-field-row select {
-  flex: 1;
+  min-width: 0;
+}
+
+.governance-role-field-row button {
+  white-space: nowrap;
+}
+
+.governance-role-body > h4 {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  color: var(--text-faint);
+  margin: 0 0 8px;
 }
 
 .governance-role-holders {
-  margin: 0 0 12px;
+  margin: 0 0 14px;
   padding: 0;
   list-style: none;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
 }
 
 .governance-role-holders li {
@@ -1939,8 +3151,116 @@ article h3 + p {
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  padding: 5px 0;
+  padding: 7px 10px;
   font-size: 13px;
+  border-bottom: 1px solid var(--rule);
+}
+
+.governance-role-holders li:nth-child(even) {
+  background: var(--row-band, var(--bg-sunken));
+}
+
+.governance-role-holders li:last-child {
+  border-bottom: none;
+}
+
+.governance-role-holders button {
+  padding: 3px 9px;
+  font-size: 11.5px;
+}
+
+/* The card's footer: pushed to the bottom by the body's flex-grow, so the
+   destructive action sits on one line across the whole row. */
+.governance-role-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: auto;
+  padding: 12px 16px;
+  border-top: 1px solid var(--border);
+  background: var(--bg-sunken);
+}
+
+/* Destructive, but not the loudest thing in the card -- it only commits to
+   red once the pointer is on it. */
+button.is-quiet-danger {
+  background-image: none;
+  box-shadow: none;
+  border-color: var(--border-strong);
+  color: var(--text-muted);
+}
+
+button.is-quiet-danger:hover:not(:disabled) {
+  border-color: var(--danger-line);
+  background: var(--danger-subtle);
+  color: var(--danger-text);
+}
+
+button.is-primary {
+  background: linear-gradient(to bottom, var(--primary-top), var(--primary));
+  border-color: var(--primary);
+  color: oklch(98% 0.01 268);
+  font-weight: 600;
+  box-shadow: inset 0 1px 0 oklch(100% 0 0 / 0.22), 0 1px 2px oklch(25% 0.05 268 / 0.3);
+}
+
+button.is-primary:hover:not(:disabled) {
+  background: linear-gradient(to bottom, var(--primary), var(--primary-hover));
+  border-color: var(--primary-hover);
+  color: oklch(98% 0.01 268);
+}
+
+/* ---------- Backup approver ---------- */
+
+.role-delegation {
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--primary-line);
+  border-radius: var(--radius-sm);
+  background: var(--bg-sunken);
+  padding: 12px 14px;
+  margin-bottom: 14px;
+}
+
+.role-delegation h4 {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  color: var(--text-faint);
+  margin: 0 0 8px;
+}
+
+.role-delegation p {
+  font-size: 12.5px;
+  line-height: 1.5;
+  margin: 0;
+}
+
+.role-delegation-active {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.role-delegation-active button {
+  flex-shrink: 0;
+  padding: 3px 9px;
+  font-size: 11.5px;
+}
+
+.role-delegation-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  margin-top: 12px;
+}
+
+.role-delegation-form button {
+  width: 100%;
+  margin-top: 2px;
 }
 
 /* ---------- Org chart ---------- */
@@ -1950,13 +3270,13 @@ article h3 + p {
   background: var(--bg-surface);
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
-  padding: 16px;
+  padding: 18px;
 }
 
 .org-chart-edge {
   fill: none;
   stroke: var(--border-strong);
-  stroke-width: 2;
+  stroke-width: 1.5;
 }
 
 .org-chart-box {
@@ -1966,25 +3286,49 @@ article h3 + p {
   display: flex;
   flex-direction: column;
   gap: 3px;
-  background: var(--bg-page);
+  background: var(--bg-sunken);
   border: 1px solid var(--border);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-sm);
   padding: 8px 10px;
   font-size: 12.5px;
   overflow: hidden;
 }
 
 .org-chart-box strong {
-  font-size: 13px;
+  font-size: 12.5px;
+  font-weight: 600;
+  line-height: 1.25;
 }
 
+/* The role name may run to two lines and the holder sits under it; both
+   ellipsize rather than pushing the control out of the box. */
+.org-chart-box-name {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.org-chart-box-holder {
+  font-size: 11.5px;
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Room for the chevron, or the longest role name runs underneath it. */
 .org-chart-box select {
   margin-top: auto;
-  font-size: 11px;
-  padding: 3px 4px;
+  font-size: 10.5px;
+  padding: 4px 22px 4px 6px;
+  background-position: right 5px center;
+  background-size: 8px 6px;
+  border-bottom-width: 1px;
+  text-overflow: ellipsis;
 }
 
-/* ---------- Confirm dialog ---------- */
+/* ---------- Confirm dialog / modal ---------- */
 
 .confirm-dialog {
   max-width: 440px;
@@ -1994,24 +3338,14 @@ article h3 + p {
   display: flex;
   justify-content: flex-end;
   gap: 8px;
-  margin-top: 18px;
-}
-
-button.danger {
-  background: var(--danger);
-  border-color: var(--danger);
-  color: #fff;
-}
-
-button.danger:hover:not(:disabled) {
-  background: var(--danger-text);
-  border-color: var(--danger-text);
+  margin-top: 20px;
 }
 
 .modal-backdrop {
   position: fixed;
   inset: 0;
-  background: oklch(20% 0.02 258 / 0.45);
+  background: oklch(18% 0.01 75 / 0.5);
+  backdrop-filter: blur(2px);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -2021,6 +3355,7 @@ button.danger:hover:not(:disabled) {
 
 .modal-panel {
   background: var(--bg-surface);
+  border: 1px solid var(--border);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-md);
   padding: 22px 24px;
@@ -2035,11 +3370,15 @@ button.danger:hover:not(:disabled) {
   align-items: flex-start;
   justify-content: space-between;
   gap: 16px;
-  margin-bottom: 14px;
+  margin-bottom: 16px;
 }
 
 .modal-header h3 {
-  margin: 0 0 4px;
+  margin: 0 0 6px;
+  font-size: 15px;
+  text-transform: none;
+  letter-spacing: -0.01em;
+  color: var(--text);
 }
 
 .modal-header p {
@@ -2050,24 +3389,26 @@ button.danger:hover:not(:disabled) {
 .modal-header button {
   border: none;
   background: none;
-  font-size: 20px;
+  font-size: 18px;
   line-height: 1;
-  padding: 2px 6px;
+  padding: 3px 7px;
   color: var(--text-faint);
   flex-shrink: 0;
 }
 
-.modal-header button:hover {
+.modal-header button:hover:not(:disabled) {
   color: var(--text);
-  background: var(--bg-page);
+  background: var(--bg-sunken);
+  border-color: transparent;
 }
 
 .modal-panel h4 {
-  font-size: 12px;
-  font-weight: 700;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  font-weight: 500;
   color: var(--text-faint);
   text-transform: uppercase;
-  letter-spacing: 0.4px;
+  letter-spacing: 0.09em;
   margin: 0 0 10px;
 }
 
@@ -2082,7 +3423,9 @@ h2 + .status-badge {
   margin-top: 8px;
 }
 
-/* ---------- Handbook ---------- */
+/* ---------- Handbook ----------
+   The one place in the app that is genuinely read rather than operated, so
+   it gets a measure and a reading rhythm the register pages don't need. */
 
 .handbook section {
   margin-bottom: 44px;
@@ -2095,40 +3438,51 @@ h2 + .status-badge {
 
 .handbook h2 {
   margin-top: 0;
+  font-family: var(--serif);
+  font-size: 19px;
+  font-weight: 600;
+}
+
+.handbook p {
+  max-width: 68ch;
+  line-height: 1.6;
 }
 
 .handbook-lede {
   font-size: 15px;
+  line-height: 1.6;
   color: var(--text);
-  max-width: 62ch;
+  max-width: 64ch;
 }
 
 .handbook-toc {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
-  margin: 18px 0 4px;
+  gap: 6px;
+  margin: 20px 0 4px;
 }
 
 .handbook-toc a.framework-tag-chip {
-  font-weight: 600;
+  font-weight: 500;
 }
 
 .handbook-toc a.framework-tag-chip:hover {
   background: var(--primary);
-  color: var(--text-inverse);
+  border-color: var(--primary);
+  color: oklch(98% 0.01 268);
   text-decoration: none;
 }
 
 .handbook-callout {
   display: flex;
   gap: 12px;
-  padding: 14px 16px;
+  padding: 13px 16px;
   border-radius: var(--radius-md);
-  margin: 16px 0;
+  margin: 18px 0;
   font-size: 13.5px;
   border: 1px solid var(--border);
-  background: var(--bg-page);
+  border-left: 3px solid var(--border-strong);
+  background: var(--bg-sunken);
 }
 
 .handbook-callout p {
@@ -2142,19 +3496,20 @@ h2 + .status-badge {
 
 .handbook-callout-icon {
   flex-shrink: 0;
-  font-size: 16px;
-  line-height: 1.4;
+  font-size: 15px;
+  line-height: 1.5;
 }
 
 .handbook-callout-title {
-  font-weight: 700;
+  font-weight: 600;
   color: var(--text);
-  margin-bottom: 2px;
+  margin-bottom: 3px;
 }
 
 .handbook-callout.rule {
   background: var(--primary-subtle);
-  border-color: transparent;
+  border-color: var(--primary-line);
+  border-left-color: var(--primary);
 }
 
 .handbook-callout.rule .handbook-callout-title {
@@ -2163,7 +3518,8 @@ h2 + .status-badge {
 
 .handbook-callout.danger {
   background: var(--danger-subtle);
-  border-color: transparent;
+  border-color: var(--danger-line);
+  border-left-color: var(--danger);
 }
 
 .handbook-callout.danger .handbook-callout-title {
@@ -2172,7 +3528,7 @@ h2 + .status-badge {
 
 .handbook-workflow {
   counter-reset: step;
-  margin: 16px 0;
+  margin: 18px 0;
   padding: 0;
   list-style: none;
 }
@@ -2181,8 +3537,8 @@ h2 + .status-badge {
   counter-increment: step;
   position: relative;
   padding: 0 0 20px 34px;
-  border-left: 2px solid var(--border);
-  margin-left: 13px;
+  border-left: 1px solid var(--border-strong);
+  margin-left: 12px;
 }
 
 .handbook-workflow > li:last-child {
@@ -2193,15 +3549,16 @@ h2 + .status-badge {
 .handbook-workflow > li::before {
   content: counter(step);
   position: absolute;
-  left: -14px;
+  left: -12px;
   top: 0;
-  width: 26px;
-  height: 26px;
+  width: 23px;
+  height: 23px;
   border-radius: 50%;
   background: var(--primary);
-  color: var(--text-inverse);
-  font-weight: 700;
-  font-size: 12px;
+  color: oklch(98% 0.01 268);
+  font-family: var(--mono);
+  font-weight: 500;
+  font-size: 11px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -2210,10 +3567,10 @@ h2 + .status-badge {
 .handbook-workflow h4 {
   font-size: 14px;
   text-transform: none;
-  letter-spacing: 0;
-  font-weight: 700;
+  letter-spacing: -0.005em;
+  font-weight: 600;
   color: var(--text);
-  margin-bottom: 3px;
+  margin-bottom: 4px;
 }
 
 .handbook-workflow p {
@@ -2222,19 +3579,20 @@ h2 + .status-badge {
 }
 
 .handbook-workflow .actor {
+  font-family: var(--mono);
+  font-size: 12.5px;
   color: var(--primary);
-  font-weight: 700;
+  font-weight: 500;
 }
 
 .handbook-deflist {
   display: flex;
   flex-direction: column;
-  margin: 16px 0;
+  margin: 18px 0;
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
   overflow: hidden;
   background: var(--bg-surface);
-  box-shadow: var(--shadow-sm);
 }
 
 .handbook-deflist > div {
@@ -2242,7 +3600,7 @@ h2 + .status-badge {
   grid-template-columns: minmax(150px, 220px) 1fr;
   gap: 16px;
   padding: 12px 18px;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--rule);
 }
 
 .handbook-deflist > div:last-child {
@@ -2250,7 +3608,7 @@ h2 + .status-badge {
 }
 
 .handbook-deflist dt {
-  font-weight: 700;
+  font-weight: 600;
   font-size: 13px;
   color: var(--text);
   display: flex;
@@ -2263,6 +3621,7 @@ h2 + .status-badge {
   margin: 0;
   font-size: 13px;
   color: var(--text-muted);
+  max-width: none;
 }
 
 .handbook-attn-dot {
@@ -2283,8 +3642,8 @@ h2 + .status-badge {
 .handbook-pagemap {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-  gap: 10px;
-  margin: 16px 0;
+  gap: 8px;
+  margin: 18px 0;
 }
 
 .handbook-pagemap-item {
@@ -2321,9 +3680,9 @@ h2 + .status-badge {
 }
 
 .handbook-matrix-swatch {
-  width: 12px;
-  height: 12px;
-  border-radius: 3px;
+  width: 11px;
+  height: 11px;
+  border-radius: 2px;
   flex-shrink: 0;
 }
 
@@ -2334,7 +3693,7 @@ h2 + .status-badge {
 .handbook-role-dot {
   width: 9px;
   height: 9px;
-  border-radius: 3px;
+  border-radius: 2px;
   flex-shrink: 0;
   display: inline-block;
 }
@@ -2353,22 +3712,25 @@ h2 + .status-badge {
 }
 
 .ai-draft-button {
-  padding: 4px 10px;
-  font-size: 11.5px;
-  font-weight: 600;
+  padding: 3px 9px;
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
   color: var(--primary);
   background: var(--primary-subtle);
-  border-color: transparent;
+  border-color: var(--primary-line);
 }
 
 .ai-draft-button:hover:not(:disabled) {
   background: var(--primary);
-  color: var(--text-inverse);
+  border-color: var(--primary);
+  color: oklch(98% 0.01 268);
 }
 
 .ai-draft-error {
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 500;
   color: var(--danger-text);
 }
 
@@ -2379,6 +3741,7 @@ h2 + .status-badge {
   font-size: 12px;
   color: var(--warning-text);
   background: var(--warning-subtle);
+  border: 1px solid var(--warning-line);
   border-radius: var(--radius-sm);
   padding: 5px 9px;
 }
@@ -2386,11 +3749,12 @@ h2 + .status-badge {
 .ai-settings-egress {
   font-size: 12.5px;
   color: var(--text-muted);
-  background: var(--bg-page);
+  background: var(--bg-sunken);
+  border: 1px solid var(--border);
   border-left: 3px solid var(--primary);
   border-radius: var(--radius-sm);
-  padding: 8px 12px;
-  margin: 8px 0 0;
+  padding: 9px 12px;
+  margin: 10px 0 0;
 }
 
 .ai-settings-hint {
@@ -2401,9 +3765,10 @@ h2 + .status-badge {
 
 .ai-settings-saved {
   font-size: 12.5px;
-  font-weight: 600;
+  font-weight: 500;
   color: var(--success-text);
   background: var(--success-subtle);
+  border: 1px solid var(--success-line);
   border-radius: var(--radius-sm);
   padding: 6px 10px;
 }
@@ -2413,23 +3778,23 @@ h2 + .status-badge {
 .document-index-note {
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
-  margin: 0.25rem 0 0 0.25rem;
+  gap: 4px;
+  margin: 4px 0 0 4px;
   flex-basis: 100%;
 }
 
 .document-index-warning {
-  font-size: 0.8125rem;
-  line-height: 1.4;
+  font-size: 12.5px;
+  line-height: 1.45;
   color: var(--warning-text);
   background: var(--warning-subtle);
   border-left: 3px solid var(--warning);
-  padding: 0.3rem 0.5rem;
-  border-radius: 0 3px 3px 0;
+  padding: 5px 8px;
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
 }
 
 .document-index-hint {
-  font-size: 0.8125rem;
+  font-size: 12.5px;
   color: var(--text-muted);
 }
 
@@ -2444,27 +3809,21 @@ h2 + .status-badge {
   align-items: center;
   gap: 8px;
   font-family: inherit;
-  font-size: 13px;
-  font-weight: 700;
+  font-size: 12.5px;
+  font-weight: 600;
   color: var(--text-inverse);
   background: var(--bg-sidebar);
-  border: 1px solid var(--bg-sidebar-active);
-  border-radius: 999px;
-  padding: 10px 16px 10px 14px;
+  border: 1px solid var(--bg-sidebar-rule);
+  border-radius: var(--radius-md);
+  padding: 9px 15px 9px 13px;
   box-shadow: var(--shadow-md);
   cursor: pointer;
 }
 
-.assistant-launcher:hover {
+.assistant-launcher:hover:not(:disabled) {
   background: var(--bg-sidebar-active);
-}
-
-.assistant-launcher:focus-visible,
-.assistant-icon-button:focus-visible,
-.assistant-suggestion:focus-visible,
-.assistant-history-item:focus-visible {
-  outline: 2px solid var(--primary);
-  outline-offset: 2px;
+  border-color: var(--bg-sidebar-active);
+  color: var(--text-inverse);
 }
 
 .assistant-panel {
@@ -2473,12 +3832,12 @@ h2 + .status-badge {
   right: 0;
   bottom: 0;
   z-index: 50;
-  width: min(440px, 100vw);
+  width: min(450px, 100vw);
   display: flex;
   flex-direction: column;
   background: var(--bg-surface);
-  border-left: 1px solid var(--border);
-  box-shadow: -12px 0 32px oklch(20% 0.02 258 / 0.1);
+  border-left: 1px solid var(--border-strong);
+  box-shadow: var(--shadow-md);
 }
 
 .assistant-header {
@@ -2496,18 +3855,19 @@ h2 + .status-badge {
 
 .assistant-eyebrow {
   display: block;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.06em;
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--text-faint);
-  margin-bottom: 2px;
+  margin-bottom: 3px;
 }
 
 .assistant-title {
-  font-size: 15.5px;
-  font-weight: 700;
-  letter-spacing: 0;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
   margin: 0;
   text-wrap: balance;
   overflow-wrap: anywhere;
@@ -2515,14 +3875,14 @@ h2 + .status-badge {
 
 .assistant-header-actions {
   display: flex;
-  gap: 4px;
+  gap: 2px;
   flex-shrink: 0;
 }
 
 .assistant-icon-button {
   font-family: inherit;
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 500;
   color: var(--text-muted);
   background: transparent;
   border: 1px solid transparent;
@@ -2531,10 +3891,11 @@ h2 + .status-badge {
   cursor: pointer;
 }
 
-.assistant-icon-button:hover,
+.assistant-icon-button:hover:not(:disabled),
 .assistant-icon-button[aria-pressed="true"] {
   color: var(--text);
-  background: var(--neutral-subtle);
+  background: var(--bg-sunken);
+  border-color: transparent;
 }
 
 .assistant-body {
@@ -2562,24 +3923,24 @@ h2 + .status-badge {
 .assistant-suggestions {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 5px;
 }
 
 .assistant-suggestion {
   font-family: inherit;
   text-align: left;
   font-size: 13px;
-  font-weight: 500;
+  font-weight: 400;
   color: var(--text);
-  background: var(--bg-page);
+  background: var(--bg-sunken);
   border: 1px solid var(--border);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-sm);
   padding: 9px 12px;
   cursor: pointer;
 }
 
-.assistant-suggestion:hover {
-  border-color: var(--border-strong);
+.assistant-suggestion:hover:not(:disabled) {
+  border-color: var(--primary-line);
   background: var(--primary-subtle);
 }
 
@@ -2590,7 +3951,7 @@ h2 + .status-badge {
   line-height: 1.5;
   color: var(--text-inverse);
   background: var(--bg-sidebar);
-  border-radius: var(--radius-md) var(--radius-md) 3px var(--radius-md);
+  border-radius: var(--radius-md) var(--radius-md) 2px var(--radius-md);
   padding: 9px 12px;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
@@ -2604,7 +3965,7 @@ h2 + .status-badge {
 
 .assistant-answer-body p,
 .assistant-answer-body li {
-  font-size: 14px;
+  font-size: 13.5px;
   line-height: 1.6;
   color: var(--text);
   overflow-wrap: anywhere;
@@ -2624,28 +3985,33 @@ h2 + .status-badge {
   margin: 0 0 8px;
 }
 
+/* A citation is a reference number -- mono, so it reads as a marker in the
+   text rather than as part of the sentence. */
 .assistant-cite {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 17px;
-  height: 17px;
+  min-width: 16px;
+  height: 16px;
   padding: 0 4px;
   margin: 0 1px;
-  font-size: 10.5px;
-  font-weight: 700;
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 500;
   font-variant-numeric: tabular-nums;
   line-height: 1;
   vertical-align: 2px;
   color: var(--primary);
   background: var(--primary-subtle);
-  border-radius: 4px;
+  border: 1px solid var(--primary-line);
+  border-radius: 2px;
 }
 
 .assistant-cite:hover {
   text-decoration: none;
-  color: var(--text-inverse);
+  color: oklch(98% 0.01 268);
   background: var(--primary);
+  border-color: var(--primary);
 }
 
 .assistant-sources {
@@ -2665,8 +4031,9 @@ h2 + .status-badge {
 }
 
 .assistant-sources li:target .assistant-source-number {
-  color: var(--text-inverse);
+  color: oklch(98% 0.01 268);
   background: var(--primary);
+  border-color: var(--primary);
 }
 
 .assistant-source-number {
@@ -2676,12 +4043,14 @@ h2 + .status-badge {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 10.5px;
-  font-weight: 700;
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 500;
   font-variant-numeric: tabular-nums;
   color: var(--primary);
   background: var(--primary-subtle);
-  border-radius: 4px;
+  border: 1px solid var(--primary-line);
+  border-radius: 2px;
   margin-top: 1px;
 }
 
@@ -2695,7 +4064,7 @@ h2 + .status-badge {
 .assistant-source-link {
   display: flex;
   flex-direction: column;
-  font-weight: 600;
+  font-weight: 500;
   font-size: 13px;
   line-height: 1.35;
   overflow-wrap: anywhere;
@@ -2703,18 +4072,19 @@ h2 + .status-badge {
 
 .assistant-source-section {
   font-size: 12px;
-  font-weight: 500;
+  font-weight: 400;
   color: var(--text-muted);
 }
 
 .assistant-source-badge {
   align-self: flex-start;
   font-size: 11px;
-  font-weight: 600;
+  font-weight: 500;
   color: var(--warning-text);
   background: var(--warning-subtle);
-  border-radius: 999px;
-  padding: 1px 8px;
+  border: 1px solid var(--warning-line);
+  border-radius: var(--radius-sm);
+  padding: 1px 7px;
 }
 
 .assistant-flag {
@@ -2723,21 +4093,25 @@ h2 + .status-badge {
   margin: 0;
   padding: 7px 10px;
   border-radius: var(--radius-sm);
+  border: 1px solid transparent;
 }
 
 .assistant-flag-danger {
   color: var(--danger-text);
   background: var(--danger-subtle);
+  border-color: var(--danger-line);
 }
 
 .assistant-flag-warning {
   color: var(--warning-text);
   background: var(--warning-subtle);
+  border-color: var(--warning-line);
 }
 
 .assistant-flag-neutral {
   color: var(--neutral-text);
   background: var(--neutral-subtle);
+  border-color: var(--neutral-line);
 }
 
 .assistant-mode-note {
@@ -2755,10 +4129,11 @@ h2 + .status-badge {
 }
 
 .assistant-working-dot {
-  width: 8px;
-  height: 8px;
+  width: 7px;
+  height: 7px;
   border-radius: 50%;
   background: var(--primary);
+  flex-shrink: 0;
   animation: assistant-pulse 1.1s ease-in-out infinite;
 }
 
@@ -2776,6 +4151,10 @@ h2 + .status-badge {
   .assistant-working-dot {
     animation: none;
   }
+
+  * {
+    transition-duration: 0.01ms !important;
+  }
 }
 
 /* The global form rule gives every form card styling and a 560px cap. */
@@ -2789,34 +4168,28 @@ form.assistant-composer {
   border: none;
   border-top: 1px solid var(--border);
   border-radius: 0;
-  box-shadow: none;
 }
 
 .assistant-composer textarea {
   flex: 1;
   font-family: inherit;
-  font-size: 14px;
+  font-size: 13.5px;
   line-height: 1.45;
   color: var(--text);
   resize: none;
   border: 1px solid var(--border-strong);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-sm);
   padding: 9px 11px;
   max-height: 160px;
-}
-
-.assistant-composer textarea:focus {
-  outline: none;
-  border-color: var(--primary);
-  box-shadow: 0 0 0 3px var(--primary-subtle);
+  min-height: 0;
 }
 
 .assistant-composer button[type="submit"] {
   font-family: inherit;
   font-size: 13px;
-  font-weight: 700;
+  font-weight: 600;
   padding: 9px 16px;
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-sm);
   cursor: pointer;
 }
 
@@ -2830,7 +4203,7 @@ form.assistant-composer {
 .assistant-history {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 1px;
 }
 
 .assistant-history li {
@@ -2848,19 +4221,20 @@ form.assistant-composer {
   font-family: inherit;
   text-align: left;
   background: transparent;
-  border: none;
+  border: 1px solid transparent;
   border-radius: var(--radius-sm);
-  padding: 9px 10px;
+  padding: 8px 10px;
   cursor: pointer;
 }
 
-.assistant-history-item:hover {
-  background: var(--bg-page);
+.assistant-history-item:hover:not(:disabled) {
+  background: var(--bg-sunken);
+  border-color: transparent;
 }
 
 .assistant-history-title {
-  font-size: 13.5px;
-  font-weight: 600;
+  font-size: 13px;
+  font-weight: 500;
   color: var(--text);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -2869,7 +4243,8 @@ form.assistant-composer {
 
 .assistant-history-when {
   flex-shrink: 0;
-  font-size: 12px;
+  font-family: var(--mono);
+  font-size: 11px;
   color: var(--text-faint);
   font-variant-numeric: tabular-nums;
 }
@@ -2877,18 +4252,19 @@ form.assistant-composer {
 .assistant-history-delete {
   font-family: inherit;
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 500;
   color: var(--text-faint);
   background: transparent;
-  border: none;
+  border: 1px solid transparent;
   border-radius: var(--radius-sm);
   padding: 6px 8px;
   cursor: pointer;
 }
 
-.assistant-history-delete:hover {
+.assistant-history-delete:hover:not(:disabled) {
   color: var(--danger-text);
   background: var(--danger-subtle);
+  border-color: transparent;
 }
 
 .assistant-visually-hidden {
@@ -2900,7 +4276,7 @@ form.assistant-composer {
   white-space: nowrap;
 }
 
-/* ---------- AI draft of an impact assessment ---------- */
+/* ---------- AI drafting surfaces ---------- */
 
 .draft-launch,
 .draft-review {
@@ -2908,20 +4284,24 @@ form.assistant-composer {
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
   padding: 18px 20px;
-  margin: 18px 0 22px;
+  margin: 20px 0 24px;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 14px;
 }
 
+/* Nothing here is saved yet, and the dashed edge says so before the copy
+   has to. */
 .draft-launch {
   border-style: dashed;
   border-color: var(--border-strong);
+  background: var(--bg-sunken);
 }
 
 .draft-launch-copy p {
-  font-size: 13.5px;
-  max-width: 68ch;
+  font-size: 13px;
+  line-height: 1.55;
+  max-width: 72ch;
   margin: 0;
 }
 
@@ -2932,40 +4312,38 @@ form.assistant-composer {
   align-items: flex-start;
 }
 
-.draft-guidance-field label {
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.03em;
-  color: var(--text-faint);
-}
-
 .draft-guidance-field textarea {
   width: 100%;
-  max-width: 60ch;
+  max-width: 62ch;
   font-family: inherit;
   resize: vertical;
+  background: var(--bg-surface);
 }
 
 .draft-guidance-field button {
   align-self: flex-start;
   font-family: inherit;
   font-size: 13px;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--text-inverse);
   background: var(--bg-sidebar);
-  border: 1px solid var(--bg-sidebar-active);
-  border-radius: var(--radius-md);
-  padding: 9px 16px;
+  border: 1px solid var(--bg-sidebar);
+  border-radius: var(--radius-sm);
+  padding: 8px 15px;
   cursor: pointer;
+  margin-top: 2px;
 }
 
 .draft-guidance-field button:hover:not(:disabled) {
   background: var(--bg-sidebar-active);
+  border-color: var(--bg-sidebar-active);
+  color: var(--text-inverse);
 }
 
 .draft-review-title {
   margin: 0 0 4px;
-  font-size: 15.5px;
+  font-size: 15px;
+  font-weight: 600;
 }
 
 .draft-review-meta,
@@ -2973,6 +4351,11 @@ form.assistant-composer {
   font-size: 12.5px;
   color: var(--text-muted);
   margin: 0;
+}
+
+.draft-review-meta {
+  font-family: var(--mono);
+  font-size: 11.5px;
   font-variant-numeric: tabular-nums;
 }
 
@@ -2980,31 +4363,35 @@ form.assistant-composer {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  padding-top: 8px;
+  padding-top: 12px;
   border-top: 1px solid var(--border);
 }
 
 .draft-group-title {
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.05em;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--text-faint);
-  margin: 4px 0 0;
+  margin: 0;
 }
 
 .draft-row {
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
-  padding: 10px 12px;
+  padding: 12px 14px;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px;
 }
 
+/* A ticked row is the one that will actually be written, so it is marked on
+   its edge rather than tinted all over. */
 .draft-row.is-applying {
-  border-color: var(--primary);
-  background: color-mix(in oklch, var(--primary-subtle) 45%, var(--bg-surface));
+  border-color: var(--primary-line);
+  box-shadow: inset 3px 0 0 var(--primary);
+  background: var(--primary-subtle);
 }
 
 .draft-row-head {
@@ -3020,41 +4407,52 @@ form.assistant-composer {
   gap: 8px;
   margin: 0;
   cursor: pointer;
+  font-family: var(--sans);
+  font-size: inherit;
+  text-transform: none;
+  letter-spacing: 0;
+  color: inherit;
 }
 
 .draft-apply input {
-  width: 16px;
-  height: 16px;
+  width: 15px;
+  height: 15px;
   accent-color: var(--primary);
 }
 
 .draft-row-label {
-  font-size: 13.5px;
-  font-weight: 700;
+  font-size: 13px;
+  font-weight: 600;
   color: var(--text);
 }
 
 .draft-badge {
-  font-size: 11px;
-  font-weight: 600;
-  border-radius: 999px;
-  padding: 1px 8px;
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  border-radius: var(--radius-sm);
+  border: 1px solid transparent;
+  padding: 1.5px 7px;
 }
 
 .draft-badge-warning {
   color: var(--warning-text);
   background: var(--warning-subtle);
+  border-color: var(--warning-line);
 }
 
 .draft-badge-neutral {
   color: var(--neutral-text);
   background: var(--neutral-subtle);
+  border-color: var(--neutral-line);
 }
 
 .draft-compare {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr);
-  gap: 12px;
+  gap: 14px;
 }
 
 @media (max-width: 760px) {
@@ -3067,14 +4465,15 @@ form.assistant-composer {
 .draft-proposed {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 5px;
   min-width: 0;
 }
 
 .draft-caption {
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.05em;
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.09em;
   text-transform: uppercase;
   color: var(--text-faint);
   margin: 0;
@@ -3082,7 +4481,6 @@ form.assistant-composer {
 
 .draft-empty {
   font-size: 13px;
-  font-style: italic;
   color: var(--text-faint);
 }
 
@@ -3097,44 +4495,23 @@ form.assistant-composer {
 }
 
 .draft-proposed textarea,
-.draft-proposed select {
+.draft-proposed select,
+.draft-proposed input[type="text"] {
   font-family: inherit;
   font-size: 13.5px;
-  line-height: 1.45;
+  line-height: 1.5;
   color: var(--text);
   border: 1px solid var(--border-strong);
   border-radius: var(--radius-sm);
   padding: 7px 9px;
   resize: vertical;
   background: var(--bg-surface);
+  min-height: 0;
 }
 
 .draft-proposed select {
   align-self: flex-start;
   font-variant-numeric: tabular-nums;
-}
-
-.draft-proposed textarea:focus,
-.draft-proposed select:focus {
-  outline: none;
-  border-color: var(--primary);
-  box-shadow: 0 0 0 3px var(--primary-subtle);
-}
-
-.draft-proposed input[type="text"] {
-  font-family: inherit;
-  font-size: 13.5px;
-  color: var(--text);
-  border: 1px solid var(--border-strong);
-  border-radius: var(--radius-sm);
-  padding: 7px 9px;
-  background: var(--bg-surface);
-}
-
-.draft-proposed input[type="text"]:focus {
-  outline: none;
-  border-color: var(--primary);
-  box-shadow: 0 0 0 3px var(--primary-subtle);
 }
 
 .draft-score-pair {
@@ -3154,12 +4531,17 @@ form.assistant-composer {
   flex-wrap: wrap;
 }
 
+/* What the records couldn't support. Neutral, not an error -- withholding
+   is the system working. */
 .draft-gap {
   font-size: 12.5px;
-  color: var(--neutral-text);
-  background: var(--neutral-subtle);
+  line-height: 1.5;
+  color: var(--text-muted);
+  background: var(--bg-sunken);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--border-strong);
   border-radius: var(--radius-sm);
-  padding: 6px 9px;
+  padding: 8px 10px;
   margin: 0;
 }
 
@@ -3168,23 +4550,559 @@ form.assistant-composer {
   bottom: 0;
   display: flex;
   gap: 8px;
-  padding: 12px 0 2px;
+  padding: 14px 0 2px;
   background: var(--bg-surface);
   border-top: 1px solid var(--border);
 }
 
 .draft-apply-button {
-  font-family: inherit;
-  font-weight: 700;
-  color: var(--text-inverse);
-  background: var(--primary);
-  border: 1px solid var(--primary);
-  border-radius: var(--radius-sm);
-  padding: 8px 16px;
-  cursor: pointer;
+  font-size: 13px;
+  padding: 8px 17px;
 }
 
+/* ============================================================================
+   MOTION & GROUND
+
+   The page ground is colour alone -- three slow washes, no ruling. Motion is
+   functional: things that respond to the pointer say so, values that were
+   just computed draw themselves in once, and nothing loops. Every effect
+   here is short, single-shot, and off entirely under prefers-reduced-motion.
+   ========================================================================= */
+
+:root {
+  --grid-line: oklch(30% 0.02 75 / 0.05);
+  --grid-major: oklch(30% 0.02 75 / 0.09);
+  --wash: oklch(46% 0.145 268 / 0.03);
+  --wash-far: oklch(57% 0.13 190 / 0.014);
+  --wash-warm: oklch(70% 0.145 68 / 0.018);
+  --shadow-lift: 0 8px 22px oklch(25% 0.02 75 / 0.09), 0 2px 5px oklch(25% 0.02 75 / 0.05);
+  --ease-out: cubic-bezier(0.22, 0.68, 0.3, 1);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --grid-line: oklch(100% 0 0 / 0.032);
+    --grid-major: oklch(100% 0 0 / 0.06);
+    --wash: oklch(74% 0.13 268 / 0.075);
+    --wash-far: oklch(70% 0.12 190 / 0.05);
+    --wash-warm: oklch(78% 0.14 72 / 0.035);
+    --shadow-lift: 0 10px 26px oklch(0% 0 0 / 0.5), 0 2px 6px oklch(0% 0 0 / 0.35);
+  }
+}
+
+:root[data-theme="dark"] {
+  --grid-line: oklch(100% 0 0 / 0.032);
+  --grid-major: oklch(100% 0 0 / 0.06);
+  --wash: oklch(74% 0.13 268 / 0.075);
+  --wash-far: oklch(70% 0.12 190 / 0.05);
+  --wash-warm: oklch(78% 0.14 72 / 0.035);
+  --shadow-lift: 0 10px 26px oklch(0% 0 0 / 0.5), 0 2px 6px oklch(0% 0 0 / 0.35);
+}
+
+/* ---------- Control surfaces ----------
+   Fields are recessed and buttons are raised -- the two read as opposite
+   states of the same material, which is what makes a form look designed
+   rather than assembled from defaults. */
+
+:root {
+  --field-bg: oklch(98.4% 0.003 85);
+  --field-border: oklch(87.5% 0.006 85);
+  --field-underline: oklch(79% 0.012 85);
+  --field-inset: inset 0 1px 2px oklch(25% 0.02 75 / 0.055);
+
+  --btn-top: oklch(100% 0 0);
+  --btn-bottom: oklch(97.2% 0.004 85);
+  --btn-highlight: oklch(100% 0 0 / 0.8);
+  --btn-shadow: 0 1px 1px oklch(25% 0.02 75 / 0.05);
+  --primary-top: oklch(53% 0.155 268);
+  --danger-top: oklch(61% 0.195 27);
+  --chevron: oklch(52% 0.011 78);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --field-bg: oklch(17.2% 0.007 75);
+    --field-border: oklch(31% 0.008 75);
+    --field-underline: oklch(43% 0.01 75);
+    --field-inset: inset 0 1px 2px oklch(0% 0 0 / 0.3);
+
+    --btn-top: oklch(25.5% 0.009 75);
+    --btn-bottom: oklch(21% 0.008 75);
+    --btn-highlight: oklch(100% 0 0 / 0.07);
+    --btn-shadow: 0 1px 2px oklch(0% 0 0 / 0.35);
+    --primary-top: oklch(55% 0.155 268);
+    --danger-top: oklch(60% 0.19 27);
+    --chevron: oklch(70% 0.01 80);
+  }
+}
+
+:root[data-theme="dark"] {
+  --field-bg: oklch(17.2% 0.007 75);
+  --field-border: oklch(31% 0.008 75);
+  --field-underline: oklch(43% 0.01 75);
+  --field-inset: inset 0 1px 2px oklch(0% 0 0 / 0.3);
+
+  --btn-top: oklch(25.5% 0.009 75);
+  --btn-bottom: oklch(21% 0.008 75);
+  --btn-highlight: oklch(100% 0 0 / 0.07);
+  --btn-shadow: 0 1px 2px oklch(0% 0 0 / 0.35);
+  --primary-top: oklch(55% 0.155 268);
+  --danger-top: oklch(60% 0.19 27);
+  --chevron: oklch(70% 0.01 80);
+}
+
+/* ---------- Table tones ---------- */
+
+:root {
+  /* The band is barely a tint -- it has to group a row without turning the
+     register into a striped deckchair. */
+  --th-fill: linear-gradient(to bottom, oklch(96.5% 0.018 268), oklch(97.6% 0.008 268));
+  --th-label: oklch(44% 0.09 268);
+  --row-band: oklch(97.4% 0.004 85 / 0.75);
+  --row-hover: oklch(95.8% 0.022 268);
+  --section-fill: oklch(96.6% 0.022 268);
+  /* Translucent, so a cell control reads the same step away from a plain,
+     banded, hovered or flagged row. Never an opaque colour here. */
+  --cell-fill: oklch(0% 0 0 / 0.028);
+  --cell-fill-strong: oklch(0% 0 0 / 0.055);
+  --cell-border: oklch(0% 0 0 / 0.11);
+  --cell-border-strong: oklch(0% 0 0 / 0.26);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --th-fill: linear-gradient(to bottom, oklch(25% 0.035 268), oklch(21.5% 0.015 268));
+    --th-label: oklch(80% 0.07 268);
+    --row-band: oklch(100% 0 0 / 0.022);
+    --row-hover: oklch(30% 0.05 268 / 0.55);
+    --section-fill: oklch(24.5% 0.035 268);
+    --cell-fill: oklch(100% 0 0 / 0.055);
+    --cell-fill-strong: oklch(100% 0 0 / 0.1);
+    --cell-border: oklch(100% 0 0 / 0.15);
+    --cell-border-strong: oklch(100% 0 0 / 0.32);
+  }
+}
+
+:root[data-theme="dark"] {
+  --th-fill: linear-gradient(to bottom, oklch(25% 0.035 268), oklch(21.5% 0.015 268));
+  --th-label: oklch(80% 0.07 268);
+  --row-band: oklch(100% 0 0 / 0.022);
+  --row-hover: oklch(30% 0.05 268 / 0.55);
+  --section-fill: oklch(24.5% 0.035 268);
+  --cell-fill: oklch(100% 0 0 / 0.055);
+  --cell-fill-strong: oklch(100% 0 0 / 0.1);
+  --cell-border: oklch(100% 0 0 / 0.15);
+  --cell-border-strong: oklch(100% 0 0 / 0.32);
+}
+
+/* ---------- Page ground ----------
+   A negative-z fixed layer, so it never scrolls, never intercepts a click,
+   and costs nothing in layout. The mask fades the ruling out toward the
+   bottom of the viewport so long pages don't sit on a hard edge. */
+
+/* No ruling any more -- the ground is colour alone. Three slow washes give
+   it depth and let the motes drift through warm and cool zones instead of a
+   flat field. */
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -2;
+  pointer-events: none;
+  background-image:
+    radial-gradient(70rem 40rem at 82% -10%, var(--wash), transparent 64%),
+    radial-gradient(52rem 34rem at 4% 106%, var(--wash-warm), transparent 62%),
+    radial-gradient(46rem 30rem at 50% 50%, var(--wash-far), transparent 70%);
+}
+
+/* The sidebar gets its own ruling and a slow vertical fall, so the chrome
+   reads as a distinct material rather than a flat block of ink. */
+.sidebar {
+  background-image: linear-gradient(to bottom, oklch(100% 0 0 / 0.04), transparent 42%);
+  box-shadow: inset -1px 0 0 oklch(100% 0 0 / 0.06);
+}
+
+/* ---------- Scrollbars ---------- */
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-strong) transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border: 3px solid transparent;
+  background-clip: content-box;
+  border-radius: 99px;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: var(--text-faint);
+  background-clip: content-box;
+}
+
+/* ---------- Links ----------
+   The rule grows in under the word instead of appearing all at once, and
+   because it is only a decoration colour there is no reflow. */
+
+a {
+  text-decoration: underline;
+  text-decoration-color: transparent;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 2px;
+  transition: color 0.14s var(--ease-out), text-decoration-color 0.14s var(--ease-out);
+}
+
+a:hover {
+  text-decoration-color: currentColor;
+}
+
+.sidebar-link,
+.framework-tag-chip,
+.assistant-cite,
+.assistant-source-link,
+.stat-card-value a,
+.handbook-toc a {
+  text-decoration: none;
+}
+
+/* ---------- Sidebar ---------- */
+
+.sidebar-link:hover {
+  border-left-color: color-mix(in oklch, var(--primary) 55%, transparent);
+}
+
+.sidebar-link.active {
+  box-shadow: -1px 0 10px -2px color-mix(in oklch, var(--primary) 45%, transparent);
+}
+
+.sidebar-link svg {
+  transition: transform 0.18s var(--ease-out), opacity 0.14s;
+}
+
+.sidebar-link:hover svg {
+  transform: translateX(1px);
+  opacity: 1;
+}
+
+.sidebar-brand-mark {
+  transition: transform 0.2s var(--ease-out), box-shadow 0.2s var(--ease-out);
+}
+
+.sidebar-brand:hover .sidebar-brand-mark {
+  transform: rotate(-4deg) scale(1.05);
+  box-shadow: 0 0 16px -2px color-mix(in oklch, var(--primary) 60%, transparent);
+}
+
+/* ---------- Buttons ---------- */
+
+button,
+.btn {
+  transition: background-color 0.12s var(--ease-out), border-color 0.12s var(--ease-out),
+    color 0.12s var(--ease-out), box-shadow 0.16s var(--ease-out), transform 0.08s var(--ease-out);
+}
+
+button:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+button[type="submit"]:hover:not(:disabled),
+.page-header > button:hover:not(:disabled),
 .draft-apply-button:hover:not(:disabled) {
-  background: var(--primary-hover);
-  border-color: var(--primary-hover);
+  box-shadow: 0 4px 14px -3px color-mix(in oklch, var(--primary) 60%, transparent);
+}
+
+button.danger:hover:not(:disabled) {
+  box-shadow: 0 4px 14px -3px color-mix(in oklch, var(--danger) 55%, transparent);
+}
+
+.draft-guidance-field button:hover:not(:disabled) {
+  box-shadow: 0 4px 14px -4px oklch(20% 0.01 75 / 0.5);
+}
+
+/* ---------- Tabs ----------
+   The active rule slides between tabs rather than jumping. */
+
+.tab-bar button {
+  position: relative;
+  transition: color 0.14s var(--ease-out);
+}
+
+.tab-bar button::after {
+  content: "";
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  bottom: -1px;
+  height: 2px;
+  background: var(--primary);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.22s var(--ease-out);
+}
+
+.tab-bar button:hover::after {
+  transform: scaleX(1);
+  background: var(--border-strong);
+}
+
+.tab-bar button.active {
+  border-bottom-color: transparent;
+}
+
+.tab-bar button.active::after,
+.tab-bar button.active:hover::after {
+  transform: scaleX(1);
+  background: var(--primary);
+}
+
+/* ---------- Table rows ----------
+   A hovered row is marked on its edge, the way a finger tracks down a
+   printed register. */
+
+tbody tr {
+  transition: background-color 0.12s var(--ease-out), box-shadow 0.14s var(--ease-out);
+}
+
+tbody tr:hover {
+  box-shadow: inset 2px 0 0 var(--primary);
+}
+
+.row-flagged,
+.row-flagged:hover {
+  box-shadow: inset 2px 0 0 var(--danger);
+}
+
+/* Group headings and matrix cells aren't rows you can act on, so they don't
+   take the pointer rail. */
+.table-section-row,
+.table-section-row:hover,
+.data-grid-group-row,
+.data-grid-group-row:hover,
+.risk-matrix tbody tr,
+.risk-matrix tbody tr:hover {
+  box-shadow: none;
+}
+
+/* ---------- Cards that lift ----------
+   The rail on a toned card is kept in its own custom property so a hover
+   shadow composes with it instead of wiping it out. */
+
+.stat-card,
+.dashboard-card,
+.governance-role-card,
+.handbook-pagemap-item,
+.impact-factor,
+.stage-step,
+.document-browser-list li,
+.draft-row {
+  --rail: 0 0 transparent;
+  box-shadow: var(--rail), var(--card-shadow);
+  transition: transform 0.18s var(--ease-out), border-color 0.18s var(--ease-out),
+    box-shadow 0.18s var(--ease-out), background-color 0.14s var(--ease-out);
+}
+
+.stat-card[data-tone="danger"] {
+  --rail: inset 3px 0 0 var(--danger);
+}
+
+.stat-card[data-tone="warning"] {
+  --rail: inset 3px 0 0 var(--warning);
+}
+
+.draft-row.is-applying {
+  --rail: inset 3px 0 0 var(--primary);
+}
+
+.stat-card:hover,
+.dashboard-card:hover,
+.governance-role-card:hover,
+.handbook-pagemap-item:hover,
+.impact-factor:hover,
+.stage-step:hover {
+  transform: translateY(-2px);
+  border-color: var(--border-strong);
+  box-shadow: var(--rail), var(--shadow-lift);
+}
+
+.assistant-suggestion:hover:not(:disabled),
+.document-browser-list li:hover {
+  transform: translateX(2px);
+}
+
+.stage-step.is-current:hover,
+.stat-card[data-tone="danger"]:hover {
+  border-color: currentColor;
+}
+
+/* ---------- Chips ---------- */
+
+.framework-tag-chip,
+.status-badge,
+.impact-review-chip,
+.score-pill {
+  transition: transform 0.14s var(--ease-out), box-shadow 0.14s var(--ease-out),
+    background-color 0.14s var(--ease-out), border-color 0.14s var(--ease-out);
+}
+
+a.framework-tag-chip:hover,
+.framework-tag-chips .framework-tag-chip:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 3px 10px -3px color-mix(in oklch, var(--primary) 55%, transparent);
+}
+
+/* Something waiting on a person gets a soft halo -- static, so a table of
+   twenty rows doesn't flicker, but enough to find at a glance. */
+.status-badge[data-status="in_review"]::before,
+.status-badge[data-status="in_progress"]::before {
+  box-shadow: 0 0 0 2.5px color-mix(in oklch, var(--warning) 28%, transparent);
+}
+
+/* ---------- Citations ---------- */
+
+.assistant-cite,
+.assistant-source-number {
+  transition: transform 0.14s var(--ease-out), background-color 0.14s var(--ease-out),
+    color 0.14s var(--ease-out), border-color 0.14s var(--ease-out);
+}
+
+.assistant-cite:hover {
+  transform: translateY(-1px);
+}
+
+/* ---------- Inputs ---------- */
+
+input,
+textarea,
+select {
+  transition: border-color 0.14s var(--ease-out), box-shadow 0.16s var(--ease-out),
+    background-color 0.14s var(--ease-out);
+}
+
+/* ---------- Drawing values in ----------
+   A computed figure draws itself once, on arrival, so the reader sees the
+   quantity resolve rather than a static number appearing from nowhere. */
+
+.progress-ring-value {
+  transition: stroke-dasharray 0.85s var(--ease-out);
+}
+
+@starting-style {
+  .progress-ring-value {
+    stroke-dasharray: 0 1000;
+  }
+}
+
+.segmented-bar-fill {
+  transition: width 0.7s var(--ease-out);
+}
+
+@starting-style {
+  .segmented-bar-fill {
+    width: 0%;
+  }
+}
+
+/* ---------- Arrival ----------
+   One short rise as a page's content lands. Every element is at its resting
+   state within a third of a second, so nothing is hidden waiting on a
+   scroll, and a thumbnail or a fast reader sees the finished page. */
+
+@keyframes surface-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+
+.main-content > * {
+  animation: surface-in 0.3s var(--ease-out) both;
+}
+
+.dashboard-section,
+.dashboard-grid > *,
+.dashboard-split > * {
+  animation: surface-in 0.32s var(--ease-out) both;
+}
+
+.dashboard-grid > *:nth-child(2) { animation-delay: 0.04s; }
+.dashboard-grid > *:nth-child(3) { animation-delay: 0.08s; }
+.dashboard-grid > *:nth-child(4) { animation-delay: 0.12s; }
+.dashboard-grid > *:nth-child(5) { animation-delay: 0.16s; }
+.dashboard-grid > *:nth-child(n + 6) { animation-delay: 0.2s; }
+
+.draft-launch,
+.draft-review,
+.modal-panel {
+  animation: surface-in 0.26s var(--ease-out) both;
+}
+
+.modal-backdrop {
+  animation: backdrop-in 0.2s var(--ease-out) both;
+}
+
+@keyframes backdrop-in {
+  from {
+    opacity: 0;
+  }
+}
+
+/* The assistant is an overlay, so it comes in from the edge it lives on. */
+@keyframes panel-in {
+  from {
+    transform: translateX(16px);
+    opacity: 0;
+  }
+}
+
+.assistant-panel {
+  animation: panel-in 0.24s var(--ease-out) both;
+}
+
+.assistant-launcher {
+  transition: transform 0.18s var(--ease-out), background-color 0.14s, box-shadow 0.18s;
+}
+
+.assistant-launcher:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 14px 30px -8px oklch(20% 0.01 75 / 0.45);
+}
+
+/* ---------- Reduced motion ----------
+   Everything above is decoration on top of a layout that already works, so
+   it all comes off cleanly. */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+
+  .stat-card:hover,
+  .dashboard-card:hover,
+  .governance-role-card:hover,
+  .handbook-pagemap-item:hover,
+  .impact-factor:hover,
+  .stage-step:hover,
+  .assistant-suggestion:hover:not(:disabled),
+  .document-browser-list li:hover,
+  .assistant-launcher:hover:not(:disabled),
+  .sidebar-brand:hover .sidebar-brand-mark,
+  a.framework-tag-chip:hover,
+  .assistant-cite:hover,
+  button:active:not(:disabled) {
+    transform: none;
+  }
 }

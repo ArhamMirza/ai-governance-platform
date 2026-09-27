@@ -97,7 +97,6 @@ export function AISystemDetail({ rowId }: AISystemDetailProps) {
       <h3>Documents</h3>
       <DocumentBrowser entityType={ENTITY_TYPE} entityId={rowId} />
 
-      <h3>Audit Log</h3>
       <AuditLogViewer entityType={ENTITY_TYPE} entityId={rowId} />
     </article>
   );

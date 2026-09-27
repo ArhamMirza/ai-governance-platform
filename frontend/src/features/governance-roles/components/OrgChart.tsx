@@ -4,8 +4,10 @@ import { readError } from "../../../shared/api/readError";
 import { useOrgChart, useUpdateGovernanceRole } from "../hooks";
 import type { OrgChartNode } from "../types";
 
-const BOX_WIDTH = 180;
-const BOX_HEIGHT = 84;
+const BOX_WIDTH = 196;
+// Tall enough for a two-line role name, the holder, and the reports-to
+// control beneath them -- at 84 the control was clipped by the box.
+const BOX_HEIGHT = 108;
 const H_GAP = 24;
 const V_GAP = 56;
 
@@ -128,8 +130,8 @@ export function OrgChart({ canManage }: OrgChartProps) {
             height={BOX_HEIGHT}
           >
             <div className="org-chart-box">
-              <strong>{node.name}</strong>
-              <span className="gate-detail">
+              <strong className="org-chart-box-name">{node.name}</strong>
+              <span className="org-chart-box-holder">
                 {node.holders.length === 0
                   ? "Vacant"
                   : node.holders.map((h) => h.name).join(", ")}

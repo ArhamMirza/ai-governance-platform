@@ -44,11 +44,20 @@ function makeAdapter(overrides: Partial<SheetApiAdapter> = {}): SheetApiAdapter 
   };
 }
 
-function renderGrid(adapter: SheetApiAdapter, readOnlyColumnKeys?: string[]) {
+function renderGrid(
+  adapter: SheetApiAdapter,
+  readOnlyColumnKeys?: string[],
+  visibleColumnKeys?: string[],
+) {
   const queryClient = createTestQueryClient();
   return render(
     <QueryClientProvider client={queryClient}>
-      <DataGrid queryKey={["test-sheet"]} adapter={adapter} readOnlyColumnKeys={readOnlyColumnKeys} />
+      <DataGrid
+        queryKey={["test-sheet"]}
+        adapter={adapter}
+        readOnlyColumnKeys={readOnlyColumnKeys}
+        visibleColumnKeys={visibleColumnKeys}
+      />
     </QueryClientProvider>,
   );
 }
@@ -144,6 +153,44 @@ describe("DataGrid", () => {
 
     await waitFor(() => {
       expect(adapter.addRow).toHaveBeenCalledWith({ category: "Privacy" });
+    });
+  });
+
+  it("never submits a value typed for a column that's no longer visible", async () => {
+    const adapter = makeAdapter();
+    const user = userEvent.setup();
+    const queryClient = createTestQueryClient();
+    const { rerender } = render(
+      <QueryClientProvider client={queryClient}>
+        <DataGrid
+          queryKey={["test-sheet"]}
+          adapter={adapter}
+          visibleColumnKeys={["category", "likelihood"]}
+        />
+      </QueryClientProvider>,
+    );
+
+    // Type into "category" while it's visible (e.g. the "Overview" view),
+    // then switch to a view where it's no longer shown -- the same prop
+    // change AISystemInventoryGrid makes when someone clicks a different
+    // view tab, without ever submitting in between.
+    await user.type(await screen.findByLabelText("New row Category"), "Privacy");
+    rerender(
+      <QueryClientProvider client={queryClient}>
+        <DataGrid
+          queryKey={["test-sheet"]}
+          adapter={adapter}
+          visibleColumnKeys={["likelihood", "inherent_risk_score"]}
+        />
+      </QueryClientProvider>,
+    );
+
+    expect(screen.queryByLabelText("New row Category")).not.toBeInTheDocument();
+    await user.type(await screen.findByLabelText("New row Likelihood"), "3");
+    await user.click(screen.getByRole("button", { name: "Add Row" }));
+
+    await waitFor(() => {
+      expect(adapter.addRow).toHaveBeenCalledWith({ likelihood: "3" });
     });
   });
 

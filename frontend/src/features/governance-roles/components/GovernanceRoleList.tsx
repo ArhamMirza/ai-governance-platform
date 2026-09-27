@@ -40,16 +40,18 @@ export function GovernanceRoleList({ canManage }: GovernanceRoleListProps) {
   return (
     <>
       {canManage && (
-        <div className="page-header">
-          <div />
-          <button onClick={() => setShowForm((prev) => !prev)}>
+        <div className="section-toolbar">
+          <button
+            className={showForm ? undefined : "is-primary"}
+            onClick={() => setShowForm((prev) => !prev)}
+          >
             {showForm ? "Cancel" : "Add Role"}
           </button>
         </div>
       )}
 
       {showForm && (
-        <div className="governance-role-card">
+        <div className="governance-role-card is-new-role">
           {error && <p role="alert">{error}</p>}
           <div className="governance-role-field">
             <label htmlFor="new-role-name">Role name</label>
@@ -80,12 +82,15 @@ export function GovernanceRoleList({ canManage }: GovernanceRoleListProps) {
               ))}
             </select>
           </div>
-          <button
-            onClick={handleCreate}
-            disabled={!name.trim() || !responsibilities.trim() || createRole.isPending}
-          >
-            {createRole.isPending ? "Creating..." : "Create Role"}
-          </button>
+          <footer className="governance-role-actions">
+            <button
+              className="is-primary"
+              onClick={handleCreate}
+              disabled={!name.trim() || !responsibilities.trim() || createRole.isPending}
+            >
+              {createRole.isPending ? "Creating..." : "Create Role"}
+            </button>
+          </footer>
         </div>
       )}
 

@@ -29,6 +29,8 @@ const inventorySheet: SheetWithRows = {
   columns: [
     { key: "name", label: "Name", data_type: "text" },
     { key: "risk_tier", label: "Risk Tier", data_type: "text" },
+    { key: "resource_documentation", label: "Resource Documentation", data_type: "text" },
+    { key: "data_resources", label: "Data Resources", data_type: "text" },
   ],
   rows: [
     {
@@ -61,5 +63,30 @@ describe("AISystemInventoryGrid", () => {
       expect(httpClient.get).toHaveBeenCalledWith("/ai-system-inventory");
       expect(screen.getByLabelText("Name for row 1")).toHaveValue("Resume Screener");
     });
+  });
+
+  it("doesn't label the pinned name column with another view's group heading", async () => {
+    vi.mocked(httpClient.get).mockResolvedValue(inventorySheet);
+    const queryClient = createTestQueryClient();
+
+    render(
+      <MemoryRouter initialEntries={["/?view=resources"]}>
+        <QueryClientProvider client={queryClient}>
+          <AISystemInventoryGrid />
+        </QueryClientProvider>
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByLabelText("Name for row 1")).toBeInTheDocument();
+    });
+
+    // "name" is pinned into every view rather than belonging to any one of
+    // them -- it must never carry "System Overview" (the "overview" view's
+    // own group label) into a view that isn't Overview.
+    expect(screen.queryByRole("columnheader", { name: "System Overview" })).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("columnheader", { name: "Resource Documentation (A.4.2 / A.4.3)" }),
+    ).toBeInTheDocument();
   });
 });

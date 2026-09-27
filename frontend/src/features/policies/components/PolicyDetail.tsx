@@ -41,10 +41,14 @@ export function PolicyDetail({ policyId }: PolicyDetailProps) {
 
   return (
     <article>
-      <h2>{policy.title}</h2>
-      <StatusBadge status={policy.status} />
-      <p>{policy.description}</p>
-      <p>Version {policy.version}</p>
+      <header className="record-header">
+        <div className="record-header-top">
+          <h2>{policy.title}</h2>
+          <StatusBadge status={policy.status} />
+        </div>
+        <p className="record-version">Version {policy.version}</p>
+        {policy.description && <p className="record-lede">{policy.description}</p>}
+      </header>
 
       <div>
         <label htmlFor="policy-owner-edit">Owner</label>
@@ -109,7 +113,6 @@ export function PolicyDetail({ policyId }: PolicyDetailProps) {
         ))}
       </ul>
 
-      <h3>Audit Log</h3>
       <AuditLogViewer entityType="Policy" entityId={policyId} />
     </article>
   );

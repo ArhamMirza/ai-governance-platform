@@ -11,11 +11,13 @@ function mockHooks({
   userLoading = false,
   isSuccess = false,
   registrationOpen = false,
+  statusError = false,
 }: {
   user?: unknown;
   userLoading?: boolean;
   isSuccess?: boolean;
   registrationOpen?: boolean;
+  statusError?: boolean;
 } = {}) {
   vi.mocked(useCurrentUser).mockReturnValue({
     data: user,
@@ -23,8 +25,9 @@ function mockHooks({
     isSuccess,
   } as never);
   vi.mocked(useRegistrationStatus).mockReturnValue({
-    data: { registration_open: registrationOpen },
+    data: statusError ? undefined : { registration_open: registrationOpen },
     isLoading: false,
+    isError: statusError,
   } as never);
   // LoginForm/RegisterForm render as real children of AuthGate (not
   // stubbed out), so their own hooks need a usable return value too.
@@ -93,5 +96,21 @@ describe("AuthGate", () => {
 
     expect(screen.getByText("Loading...")).toBeInTheDocument();
     expect(screen.queryByText("Protected content")).not.toBeInTheDocument();
+  });
+
+  it("never silently guesses login-vs-register when the registration check fails", () => {
+    mockHooks({ statusError: true });
+
+    render(
+      <AuthGate>
+        <div>Protected content</div>
+      </AuthGate>,
+    );
+
+    expect(
+      screen.getByText("Couldn't reach the server. Check your connection and reload."),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Sign in" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Create your account" })).not.toBeInTheDocument();
   });
 });

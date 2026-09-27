@@ -71,4 +71,14 @@ describe("AuditLogViewer", () => {
       expect(screen.getByText("Failed to load audit log.")).toBeInTheDocument();
     });
   });
+
+  it("gives its title a real heading role, so it shows up in the page's heading outline", async () => {
+    vi.mocked(auditLogApi.list).mockResolvedValue([]);
+
+    renderViewer();
+
+    await waitFor(() => {
+      expect(screen.getByRole("heading", { name: "Audit log" })).toBeInTheDocument();
+    });
+  });
 });

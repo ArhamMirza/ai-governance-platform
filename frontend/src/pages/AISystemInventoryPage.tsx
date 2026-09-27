@@ -22,7 +22,6 @@ export function AISystemInventoryPage() {
 
       {sheet && (
         <>
-          <h3>Audit Log</h3>
           <AuditLogViewer entityType="AISystemInventory" entityId={sheet.id} />
         </>
       )}
