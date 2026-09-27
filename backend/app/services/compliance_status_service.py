@@ -34,6 +34,7 @@ from enum import StrEnum
 from sqlalchemy.orm import Session
 
 from app.core import review_cadence
+from app.models.audit_program import AuditProgram
 from app.models.corrective_action import CorrectiveAction, CorrectiveActionStatus
 from app.models.evidence import Evidence
 from app.models.framework_soa_entry import SoaApplicability
@@ -45,6 +46,7 @@ from app.repositories import (
     framework_control_repository,
     framework_soa_repository,
     framework_tag_repository,
+    internal_audit_repository,
 )
 from app.schemas.compliance_status import (
     ComplianceStatusCounts,
@@ -52,7 +54,7 @@ from app.schemas.compliance_status import (
     ControlComplianceStatus,
     TaggedItemStatus,
 )
-from app.services import corrective_action_service
+from app.services import corrective_action_service, internal_audit_service
 
 
 class ComplianceStatus(StrEnum):
@@ -188,11 +190,23 @@ def _resolve_corrective_action(db: Session, entity_id: int, today: date) -> _Res
     return _Resolved(record.title, True, f"Corrective action in progress, due {record.due_date}")
 
 
+def _resolve_audit_program(db: Session, entity_id: int, today: date) -> _Resolved | None:
+    record = db.get(AuditProgram, entity_id)
+    if record is None:
+        return None
+    audits = internal_audit_repository.list_for_program(db, entity_id)
+    if internal_audit_service.is_overdue(record, audits, today):
+        due = internal_audit_service.next_due_date(record, audits)
+        return _Resolved(record.title, False, f"Internal audit overdue since {due}")
+    return _Resolved(record.title, True, "Internal audit program current")
+
+
 _RESOLVERS = {
     "Policy": _resolve_policy,
     "Procedure": _resolve_procedure,
     "ImpactAssessment": _resolve_impact_assessment,
     "RiskAssessment": _resolve_risk_assessment,
+    "AuditProgram": _resolve_audit_program,
     "Evidence": _resolve_evidence,
     "CorrectiveAction": _resolve_corrective_action,
 }

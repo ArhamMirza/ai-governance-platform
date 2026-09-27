@@ -34,6 +34,7 @@ from app.routers import (
     health,
     impact_assessment_drafts,
     impact_assessments,
+    internal_audits,
     organization_context,
     organization_context_drafts,
     policies,
@@ -132,3 +133,4 @@ app.include_router(assistant.router, prefix="/api/v1", dependencies=_protected)
 app.include_router(impact_assessment_drafts.router, prefix="/api/v1", dependencies=_protected)
 app.include_router(risk_item_suggestions.router, prefix="/api/v1", dependencies=_protected)
 app.include_router(corrective_actions.router, prefix="/api/v1", dependencies=_protected)
+app.include_router(internal_audits.router, prefix="/api/v1", dependencies=_protected)

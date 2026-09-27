@@ -8,11 +8,13 @@ from sqlalchemy.orm import Session
 
 from app.repositories import framework_control_repository
 from app.schemas.corrective_action import CorrectiveActionCreate
+from app.schemas.internal_audit import AuditProgramCreate
 from app.schemas.policy import PolicyCreate
 from app.services import (
     compliance_status_service,
     corrective_action_service,
     framework_service,
+    internal_audit_service,
     policy_service,
 )
 
@@ -279,3 +281,67 @@ def test_an_overdue_open_corrective_action_is_partial(db_session: Session) -> No
     assert row.status == "partial"
     assert row.tagged_items[0].current is False
     assert "overdue" in row.tagged_items[0].detail.lower()
+
+
+# ---------- internal audit program ----------
+
+
+def make_audit_program(db: Session, **overrides) -> int:
+    defaults = dict(
+        title="Annual AI System Audit",
+        schedule_type="interval",
+        interval_months=6,
+        start_date=date.today() + timedelta(days=30),
+    )
+    defaults.update(overrides)
+    program = internal_audit_service.create_audit_program(
+        db, AuditProgramCreate(**defaults), actor_id=None
+    )
+    return program.id
+
+
+def test_an_interval_program_not_yet_due_is_current(db_session: Session) -> None:
+    control_id = clause_control_id(db_session)
+    program_id = make_audit_program(db_session)
+    framework_service.set_tags(
+        db_session, "AuditProgram", program_id, [control_id], actor_id=None
+    )
+
+    row = status_for(db_session, control_id)
+
+    assert row.status == "satisfied"
+    assert row.tagged_items[0].current is True
+
+
+def test_an_overdue_interval_program_is_partial(db_session: Session) -> None:
+    control_id = clause_control_id(db_session)
+    program_id = make_audit_program(
+        db_session, start_date=date.today() - timedelta(days=1)
+    )
+    framework_service.set_tags(
+        db_session, "AuditProgram", program_id, [control_id], actor_id=None
+    )
+
+    row = status_for(db_session, control_id)
+
+    assert row.status == "partial"
+    assert row.tagged_items[0].current is False
+    assert "overdue" in row.tagged_items[0].detail.lower()
+
+
+def test_an_ad_hoc_program_is_always_current(db_session: Session) -> None:
+    control_id = clause_control_id(db_session)
+    program_id = make_audit_program(
+        db_session,
+        schedule_type="ad_hoc",
+        interval_months=None,
+        start_date=date.today() - timedelta(days=3650),
+    )
+    framework_service.set_tags(
+        db_session, "AuditProgram", program_id, [control_id], actor_id=None
+    )
+
+    row = status_for(db_session, control_id)
+
+    assert row.status == "satisfied"
+    assert row.tagged_items[0].current is True
