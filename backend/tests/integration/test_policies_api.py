@@ -66,6 +66,19 @@ def test_update_policy_metadata_does_not_bump_version(client: TestClient) -> Non
     assert response.json()["version"] == 1
 
 
+def test_update_policy_effective_date(client: TestClient) -> None:
+    """Regression: a date in the change set used to crash the audit log
+    write, so setting an effective date returned a 500."""
+    created = create_policy(client)
+
+    response = client.put(
+        f"/api/v1/policies/{created['id']}", json={"effective_date": "2026-06-01"}
+    )
+
+    assert response.status_code == 200
+    assert response.json()["effective_date"] == "2026-06-01"
+
+
 def test_update_policy_can_set_owner(client: TestClient, second_user: User) -> None:
     policy_id = create_policy(client)["id"]
 
