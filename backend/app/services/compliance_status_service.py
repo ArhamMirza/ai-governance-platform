@@ -47,6 +47,7 @@ from app.repositories import (
     framework_soa_repository,
     framework_tag_repository,
     internal_audit_repository,
+    management_review_repository,
 )
 from app.schemas.compliance_status import (
     ComplianceStatusCounts,
@@ -54,7 +55,11 @@ from app.schemas.compliance_status import (
     ControlComplianceStatus,
     TaggedItemStatus,
 )
-from app.services import corrective_action_service, internal_audit_service
+from app.services import (
+    corrective_action_service,
+    internal_audit_service,
+    management_review_service,
+)
 
 
 class ComplianceStatus(StrEnum):
@@ -72,8 +77,13 @@ class _Resolved:
 
 
 def _approval_like_state(
-    *, status: str, approved_status: str, next_review_date: date | None, today: date,
-    noun: str, draft_like: dict[str, str],
+    *,
+    status: str,
+    approved_status: str,
+    next_review_date: date | None,
+    today: date,
+    noun: str,
+    draft_like: dict[str, str],
 ) -> tuple[bool, str]:
     """Shared shape for Policy/Procedure/assessment status: current only once
     approved/completed *and* still within its review cadence."""
@@ -201,6 +211,23 @@ def _resolve_audit_program(db: Session, entity_id: int, today: date) -> _Resolve
     return _Resolved(record.title, True, "Internal audit program current")
 
 
+def _resolve_management_review_settings(
+    db: Session, entity_id: int, today: date
+) -> _Resolved | None:
+    # Unlike every other resolver, this singleton "exists" (with its
+    # not-yet-configured defaults) whether or not a row has ever been
+    # saved -- the same reasoning risk_criteria_service.get_criteria
+    # follows for RiskCriteria's own singleton.
+    if entity_id != management_review_service.SETTINGS_ENTITY_ID:
+        return None
+    record = management_review_service.get_settings(db)
+    meetings = management_review_repository.list_meetings(db)
+    if management_review_service.is_overdue(record, meetings, today):
+        due = management_review_service.next_due_date(record, meetings)
+        return _Resolved("Management review", False, f"Management review overdue since {due}")
+    return _Resolved("Management review", True, "Management review current")
+
+
 _RESOLVERS = {
     "Policy": _resolve_policy,
     "Procedure": _resolve_procedure,
@@ -209,6 +236,7 @@ _RESOLVERS = {
     "AuditProgram": _resolve_audit_program,
     "Evidence": _resolve_evidence,
     "CorrectiveAction": _resolve_corrective_action,
+    "ManagementReviewSettings": _resolve_management_review_settings,
 }
 
 
@@ -261,9 +289,7 @@ def get_status(db: Session, framework: str | None = None) -> list[ControlComplia
     for control in controls:
         is_annex_a = control.category == "annex_a_control"
         soa_entry = soa_by_control.get(control.id)
-        soa_applicable = (
-            soa_entry is None or soa_entry.applicability == SoaApplicability.APPLICABLE
-        )
+        soa_applicable = soa_entry is None or soa_entry.applicability == SoaApplicability.APPLICABLE
 
         items: list[TaggedItemStatus] = []
         for tag in tags_by_control.get(control.id, []):

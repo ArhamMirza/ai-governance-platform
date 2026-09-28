@@ -9,12 +9,14 @@ from sqlalchemy.orm import Session
 from app.repositories import framework_control_repository
 from app.schemas.corrective_action import CorrectiveActionCreate
 from app.schemas.internal_audit import AuditProgramCreate
+from app.schemas.management_review import ManagementReviewSettingsUpdate
 from app.schemas.policy import PolicyCreate
 from app.services import (
     compliance_status_service,
     corrective_action_service,
     framework_service,
     internal_audit_service,
+    management_review_service,
     policy_service,
 )
 
@@ -139,9 +141,7 @@ def test_one_stale_item_among_several_makes_the_whole_control_partial(
     policy_service.submit_for_review(db_session, approved_id, actor_id=None)
     policy_service.approve_policy(db_session, approved_id, actor_id=None)
     draft_id = make_policy(db_session)
-    framework_service.set_tags(
-        db_session, "Policy", approved_id, [control_id], actor_id=None
-    )
+    framework_service.set_tags(db_session, "Policy", approved_id, [control_id], actor_id=None)
     framework_service.set_tags(db_session, "Policy", draft_id, [control_id], actor_id=None)
 
     row = status_for(db_session, control_id)
@@ -183,7 +183,10 @@ def test_an_annex_a_control_marked_not_applicable_is_not_applicable_even_if_tagg
     policy_id = make_policy(db_session)
     framework_service.set_tags(db_session, "Policy", policy_id, [control_id], actor_id=None)
     framework_service.update_soa_entry(
-        db_session, control_id, "not_applicable", "We don't operate this kind of system.",
+        db_session,
+        control_id,
+        "not_applicable",
+        "We don't operate this kind of system.",
         actor_id=None,
     )
 
@@ -303,9 +306,7 @@ def make_audit_program(db: Session, **overrides) -> int:
 def test_an_interval_program_not_yet_due_is_current(db_session: Session) -> None:
     control_id = clause_control_id(db_session)
     program_id = make_audit_program(db_session)
-    framework_service.set_tags(
-        db_session, "AuditProgram", program_id, [control_id], actor_id=None
-    )
+    framework_service.set_tags(db_session, "AuditProgram", program_id, [control_id], actor_id=None)
 
     row = status_for(db_session, control_id)
 
@@ -315,12 +316,8 @@ def test_an_interval_program_not_yet_due_is_current(db_session: Session) -> None
 
 def test_an_overdue_interval_program_is_partial(db_session: Session) -> None:
     control_id = clause_control_id(db_session)
-    program_id = make_audit_program(
-        db_session, start_date=date.today() - timedelta(days=1)
-    )
-    framework_service.set_tags(
-        db_session, "AuditProgram", program_id, [control_id], actor_id=None
-    )
+    program_id = make_audit_program(db_session, start_date=date.today() - timedelta(days=1))
+    framework_service.set_tags(db_session, "AuditProgram", program_id, [control_id], actor_id=None)
 
     row = status_for(db_session, control_id)
 
@@ -337,11 +334,52 @@ def test_an_ad_hoc_program_is_always_current(db_session: Session) -> None:
         interval_months=None,
         start_date=date.today() - timedelta(days=3650),
     )
+    framework_service.set_tags(db_session, "AuditProgram", program_id, [control_id], actor_id=None)
+
+    row = status_for(db_session, control_id)
+
+    assert row.status == "satisfied"
+    assert row.tagged_items[0].current is True
+
+
+# ---------- management review ----------
+
+
+def test_management_review_with_no_schedule_is_always_current(db_session: Session) -> None:
+    control_id = clause_control_id(db_session)
     framework_service.set_tags(
-        db_session, "AuditProgram", program_id, [control_id], actor_id=None
+        db_session,
+        "ManagementReviewSettings",
+        management_review_service.SETTINGS_ENTITY_ID,
+        [control_id],
+        actor_id=None,
     )
 
     row = status_for(db_session, control_id)
 
     assert row.status == "satisfied"
     assert row.tagged_items[0].current is True
+
+
+def test_an_overdue_management_review_is_partial(db_session: Session) -> None:
+    control_id = clause_control_id(db_session)
+    management_review_service.update_settings(
+        db_session,
+        ManagementReviewSettingsUpdate(
+            interval_months=12, start_date=date.today() - timedelta(days=1)
+        ),
+        actor_id=None,
+    )
+    framework_service.set_tags(
+        db_session,
+        "ManagementReviewSettings",
+        management_review_service.SETTINGS_ENTITY_ID,
+        [control_id],
+        actor_id=None,
+    )
+
+    row = status_for(db_session, control_id)
+
+    assert row.status == "partial"
+    assert row.tagged_items[0].current is False
+    assert "overdue" in row.tagged_items[0].detail.lower()

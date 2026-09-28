@@ -20,6 +20,8 @@ from app.models.impact_assessment import ImpactAssessment
 from app.models.impact_factor_assessment import ImpactFactorAssessment
 from app.models.index_queue import IndexQueueEntry
 from app.models.internal_audit import InternalAudit, InternalAuditStatus
+from app.models.management_review_meeting import ManagementReviewMeeting
+from app.models.management_review_settings import ManagementReviewSettings
 from app.models.organization_context import OrganizationContext, OrganizationContextStatus
 from app.models.policy import Policy
 from app.models.procedure import Procedure
@@ -62,6 +64,8 @@ __all__ = [
     "IndexStatus",
     "InternalAudit",
     "InternalAuditStatus",
+    "ManagementReviewMeeting",
+    "ManagementReviewSettings",
     "MessageRole",
     "OrganizationContext",
     "OrganizationContextStatus",
