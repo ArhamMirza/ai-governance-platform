@@ -21,6 +21,7 @@ from app.routers import (
     assistant,
     audit_log,
     auth,
+    competence,
     compliance_status,
     corrective_actions,
     dashboard,
@@ -138,3 +139,4 @@ app.include_router(corrective_actions.router, prefix="/api/v1", dependencies=_pr
 app.include_router(internal_audits.router, prefix="/api/v1", dependencies=_protected)
 app.include_router(management_review.router, prefix="/api/v1", dependencies=_protected)
 app.include_router(ai_incidents.router, prefix="/api/v1", dependencies=_protected)
+app.include_router(competence.router, prefix="/api/v1", dependencies=_protected)

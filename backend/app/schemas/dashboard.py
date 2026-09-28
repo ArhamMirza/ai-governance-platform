@@ -86,6 +86,16 @@ class MyCorrectiveActionItem(BaseModel):
     overdue: bool
 
 
+class MyTrainingItem(BaseModel):
+    """One competence requirement the requesting user hasn't met -- never
+    completed, or lapsed -- for the "My Training" dashboard panel."""
+
+    requirement_id: int
+    title: str
+    status: str
+    next_due: date | None
+
+
 class PendingApprovalItem(BaseModel):
     """One record currently waiting on the requesting user's approval,
     across every entity type that has an approval gate."""
@@ -111,4 +121,5 @@ class DashboardSummary(BaseModel):
     criteria: RiskCriteriaRead
     my_risk_items: list[MyRiskItem]
     my_corrective_actions: list[MyCorrectiveActionItem]
+    my_training: list[MyTrainingItem]
     pending_approvals: list[PendingApprovalItem]

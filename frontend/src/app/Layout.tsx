@@ -52,6 +52,17 @@ const governanceRolesNavItem: NavItem = {
   ),
 };
 
+const competenceNavItem: NavItem = {
+  to: "/competence",
+  label: "Competence",
+  icon: (
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M22 10 12 5 2 10l10 5 10-5z" />
+      <path d="M6 12v5c3 2 9 2 12 0v-5" />
+    </svg>
+  ),
+};
+
 const dashboardNavItem: NavItem = {
   to: "/",
   label: "Dashboard",
@@ -238,7 +249,10 @@ function navGroupsFor(role: string | undefined): NavGroup[] {
 
   return [
     { label: null, items: [dashboardNavItem] },
-    { label: "Foundation", items: [orgContextNavItem, governanceRolesNavItem] },
+    {
+      label: "Foundation",
+      items: [orgContextNavItem, governanceRolesNavItem, competenceNavItem],
+    },
     { label: "Documentation", items: [policiesNavItem, proceduresNavItem, handbookNavItem] },
     { label: "Inventory", items: [aiSystemsNavItem, dataInventoryNavItem, archiveNavItem] },
     {

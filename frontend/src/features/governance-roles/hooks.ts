@@ -19,6 +19,9 @@ function useInvalidateGovernanceRoles() {
     // Every owner/assessor picker badges against this -- a role or
     // assignment change can change what any of them should show.
     queryClient.invalidateQueries({ queryKey: ["users", "directory"] });
+    // Who a competence requirement applies to follows role assignments.
+    queryClient.invalidateQueries({ queryKey: ["competence"] });
+    queryClient.invalidateQueries({ queryKey: ["dashboard-summary"] });
   };
 }
 

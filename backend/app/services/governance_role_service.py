@@ -13,7 +13,7 @@ from app.models.governance_role import GovernanceRole
 from app.models.governance_role_assignment import GovernanceRoleAssignment
 from app.models.governance_role_delegation import GovernanceRoleDelegation
 from app.models.user import User, UserRole
-from app.repositories import governance_role_repository
+from app.repositories import competence_repository, governance_role_repository
 from app.services import audit_service
 
 ENTITY_TYPE = "GovernanceRole"
@@ -157,6 +157,15 @@ def delete_role(db: Session, role_id: int, actor_id: int | None) -> None:
     if governance_role_repository.has_children(db, role_id):
         raise ConflictError(
             f"'{role.name}' still has roles reporting to it; reassign those first."
+        )
+    # Unlinking would silently turn "required of this role" into "required of
+    # everyone" -- so the requirement has to be retargeted or removed first.
+    targeting = competence_repository.list_requirements_for_role(db, role_id)
+    if targeting:
+        titles = ", ".join(f"'{requirement.title}'" for requirement in targeting)
+        raise ConflictError(
+            f"'{role.name}' is still the target of competence requirement(s) {titles}; "
+            "retarget or delete those first."
         )
     for assignment in governance_role_repository.list_assignments_for_role(db, role_id):
         governance_role_repository.delete_assignment(db, assignment)

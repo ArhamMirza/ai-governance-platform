@@ -6,12 +6,14 @@ import pytest
 from app.core import risk_scoring
 from app.models.ai_incident import AIIncident
 from app.models.audit_program import AuditProgram
+from app.models.competence_requirement import CompetenceRequirement
 from app.models.corrective_action import CorrectiveAction
 from app.models.management_review_settings import ManagementReviewSettings
 from app.models.policy import Policy, PolicyStatus
 from app.models.procedure import Procedure, ProcedureStatus
 from app.models.risk_assessment import RiskAssessment, RiskAssessmentStatus
 from app.models.sheet import SheetRow
+from app.schemas.competence import PersonCompetence
 from app.services import dashboard_service
 
 PAST_DEADLINE = "2020-01-01"
@@ -623,3 +625,64 @@ def test_get_summary_flags_open_incidents_and_overdue_serious_reports(
     counts = {item.key: item.count for item in result.attention}
     assert counts["incident_reports_overdue"] == 1
     assert counts["open_incidents"] == 2
+
+
+
+@patch("app.services.dashboard_service.risk_criteria_service")
+@patch("app.services.dashboard_service.sheet_repository")
+@patch("app.services.dashboard_service.risk_assessment_repository")
+@patch("app.services.dashboard_service.ai_system_inventory_service")
+@patch("app.services.dashboard_service.procedure_repository")
+@patch("app.services.dashboard_service.policy_repository")
+@patch("app.services.dashboard_service.management_review_repository")
+@patch("app.services.dashboard_service.competence_service")
+def test_get_summary_counts_competence_gaps_and_lists_my_training(
+    mock_competence,
+    mock_mr_repo,
+    mock_policy_repo,
+    mock_procedure_repo,
+    mock_inventory,
+    mock_ra_repo,
+    mock_sheet_repo,
+    mock_criteria,
+    db,
+) -> None:
+    mock_criteria.get_bands.return_value = risk_scoring.DEFAULT_BANDS
+    mock_policy_repo.list_all.return_value = []
+    mock_procedure_repo.list_all.return_value = []
+    mock_inventory.list_rows.return_value = []
+    mock_ra_repo.list_all.return_value = []
+    mock_sheet_repo.list_rows_for_sheets.return_value = {}
+    mock_mr_repo.get_settings.return_value = None
+    mock_mr_repo.list_meetings.return_value = []
+    awareness = CompetenceRequirement(id=1, title="AI policy awareness")
+    bias = CompetenceRequirement(id=2, title="Bias testing")
+    mock_competence.standings.return_value = [
+        (
+            awareness,
+            [
+                PersonCompetence(user_id=99, status="current", last_completed_on=PAST_DATE,
+                                 next_due=None),
+                PersonCompetence(user_id=5, status="missing", last_completed_on=None,
+                                 next_due=None),
+            ],
+        ),
+        (
+            bias,
+            [
+                PersonCompetence(user_id=99, status="expired", last_completed_on=PAST_DATE,
+                                 next_due=PAST_DATE),
+            ],
+        ),
+    ]
+    mock_competence.gap_count.side_effect = lambda people: sum(
+        1 for person in people if person.status != "current"
+    )
+
+    result = dashboard_service.get_summary(db, actor_id=99)
+
+    counts = {item.key: item.count for item in result.attention}
+    assert counts["competence_gaps"] == 2
+    assert [(item.title, item.status) for item in result.my_training] == [
+        ("Bias testing", "expired")
+    ]

@@ -8,12 +8,14 @@ from sqlalchemy.orm import Session
 
 from app.repositories import framework_control_repository
 from app.schemas.ai_incident import AIIncidentCreate
+from app.schemas.competence import CompetenceRecordCreate, CompetenceRequirementCreate
 from app.schemas.corrective_action import CorrectiveActionCreate
 from app.schemas.internal_audit import AuditProgramCreate
 from app.schemas.management_review import ManagementReviewSettingsUpdate
 from app.schemas.policy import PolicyCreate
 from app.services import (
     ai_incident_service,
+    competence_service,
     compliance_status_service,
     corrective_action_service,
     framework_service,
@@ -427,3 +429,46 @@ def test_an_unreported_serious_incident_past_its_deadline_is_partial(
     assert row.status == "partial"
     assert row.tagged_items[0].current is False
     assert "not reported" in row.tagged_items[0].detail.lower()
+
+
+# ---------- competence requirement ----------
+
+
+def test_a_competence_requirement_with_gaps_is_partial(db_session: Session, make_user) -> None:
+    control_id = clause_control_id(db_session)
+    make_user()
+    requirement = competence_service.create_requirement(
+        db_session, CompetenceRequirementCreate(title="AI policy awareness"), actor_id=None
+    )
+    framework_service.set_tags(
+        db_session, "CompetenceRequirement", requirement.id, [control_id], actor_id=None
+    )
+
+    row = status_for(db_session, control_id)
+
+    assert row.status == "partial"
+    assert "not yet competent" in row.tagged_items[0].detail
+
+
+def test_a_competence_requirement_everyone_has_met_is_satisfied(
+    db_session: Session, make_user
+) -> None:
+    control_id = clause_control_id(db_session)
+    person = make_user()
+    requirement = competence_service.create_requirement(
+        db_session, CompetenceRequirementCreate(title="AI policy awareness"), actor_id=None
+    )
+    competence_service.record_completion(
+        db_session,
+        requirement.id,
+        CompetenceRecordCreate(user_id=person.id, completed_on=date.today()),
+        actor_id=None,
+    )
+    framework_service.set_tags(
+        db_session, "CompetenceRequirement", requirement.id, [control_id], actor_id=None
+    )
+
+    row = status_for(db_session, control_id)
+
+    assert row.status == "satisfied"
+    assert row.tagged_items[0].current is True

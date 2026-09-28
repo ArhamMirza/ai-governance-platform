@@ -10,6 +10,7 @@ import type {
   AttentionItem,
   MyCorrectiveActionItem,
   MyRiskItem,
+  MyTrainingItem,
   PendingApprovalEntityType,
   PendingApprovalItem,
   StatusCounts,
@@ -42,6 +43,7 @@ const ATTENTION_LINKS: Record<string, string> = {
   management_review_overdue: "/management-review",
   incident_reports_overdue: "/incidents",
   open_incidents: "/incidents",
+  competence_gaps: "/competence",
 };
 
 const STATUS_TONES: Record<string, Segment["tone"]> = {
@@ -182,6 +184,34 @@ function MyCorrectiveActionsPanel({ items }: { items: MyCorrectiveActionItem[] }
   );
 }
 
+function MyTrainingPanel({ items }: { items: MyTrainingItem[] }) {
+  if (items.length === 0) return null;
+
+  return (
+    <div className="dashboard-card">
+      <h3>My Training</h3>
+      <p>Training your roles require that you haven't completed, or that has lapsed.</p>
+      <ul className="my-risk-items-list">
+        {items.map((item) => (
+          <li key={item.requirement_id} data-overdue={item.status === "expired"}>
+            <Link to={`/competence/${item.requirement_id}`}>{item.title}</Link>
+            <span className="my-risk-item-meta">
+              {item.status === "expired" ? (
+                <>
+                  <span className="flag-chip">Lapsed</span>
+                  {item.next_due && <span>Was due {item.next_due}</span>}
+                </>
+              ) : (
+                <span>Not yet completed</span>
+              )}
+            </span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 export function DashboardSummaryView() {
   const { data: summary, isLoading, isError } = useDashboardSummary();
 
@@ -222,6 +252,8 @@ export function DashboardSummaryView() {
       <MyRiskItemsPanel items={summary.my_risk_items} />
 
       <MyCorrectiveActionsPanel items={summary.my_corrective_actions} />
+
+      <MyTrainingPanel items={summary.my_training} />
 
       <section className="dashboard-section">
         <h2>Risk Posture</h2>

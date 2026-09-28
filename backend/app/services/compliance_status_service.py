@@ -36,6 +36,7 @@ from sqlalchemy.orm import Session
 from app.core import review_cadence
 from app.models.ai_incident import AIIncident
 from app.models.audit_program import AuditProgram
+from app.models.competence_requirement import CompetenceRequirement
 from app.models.corrective_action import CorrectiveAction, CorrectiveActionStatus
 from app.models.evidence import Evidence
 from app.models.framework_soa_entry import SoaApplicability
@@ -58,6 +59,7 @@ from app.schemas.compliance_status import (
 )
 from app.services import (
     ai_incident_service,
+    competence_service,
     corrective_action_service,
     internal_audit_service,
     management_review_service,
@@ -242,6 +244,19 @@ def _resolve_ai_incident(db: Session, entity_id: int, today: date) -> _Resolved 
     return _Resolved(record.title, True, f"Incident {record.status}")
 
 
+def _resolve_competence_requirement(
+    db: Session, entity_id: int, today: date
+) -> _Resolved | None:
+    record = db.get(CompetenceRequirement, entity_id)
+    if record is None:
+        return None
+    people = competence_service.people_for(db, record, today)
+    gaps = competence_service.gap_count(people)
+    if gaps:
+        return _Resolved(record.title, False, f"{gaps} of {len(people)} people not yet competent")
+    return _Resolved(record.title, True, f"{len(people)} of {len(people)} people competent")
+
+
 _RESOLVERS = {
     "Policy": _resolve_policy,
     "Procedure": _resolve_procedure,
@@ -252,6 +267,7 @@ _RESOLVERS = {
     "CorrectiveAction": _resolve_corrective_action,
     "ManagementReviewSettings": _resolve_management_review_settings,
     "AIIncident": _resolve_ai_incident,
+    "CompetenceRequirement": _resolve_competence_requirement,
 }
 
 
