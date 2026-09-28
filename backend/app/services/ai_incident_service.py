@@ -137,16 +137,7 @@ def update_incident(
         incident.resolved_at = None
 
     incident = ai_incident_repository.save(db, incident)
-    # mode="json" -- the audit diff is a plain JSON column, which can't hold
-    # the date objects the dates in `changes` are.
-    audit_service.log(
-        db,
-        ENTITY_TYPE,
-        incident.id,
-        "updated",
-        actor_id,
-        data.model_dump(exclude_unset=True, mode="json"),
-    )
+    audit_service.log(db, ENTITY_TYPE, incident.id, "updated", actor_id, changes)
     return incident
 
 

@@ -60,6 +60,26 @@ def test_past_due_date_is_reported_overdue(client: TestClient, test_user: User) 
     assert created["overdue"] is True
 
 
+def test_moving_the_due_date_is_saved_and_audited(client: TestClient, test_user: User) -> None:
+    """Regression: the date in the change set used to crash the audit log
+    write, so the detail page's due-date picker returned a 500."""
+    created = create_corrective_action(client, assignee_id=test_user.id)
+    new_due_date = (date.today() + timedelta(days=30)).isoformat()
+
+    response = client.put(
+        f"/api/v1/corrective-actions/{created['id']}", json={"due_date": new_due_date}
+    )
+
+    assert response.status_code == 200
+    assert response.json()["due_date"] == new_due_date
+    entries = client.get(
+        "/api/v1/audit-log",
+        params={"entity_type": "CorrectiveAction", "entity_id": created["id"]},
+    ).json()
+    updated = next(entry for entry in entries if entry["action"] == "updated")
+    assert updated["diff"] == {"due_date": new_due_date}
+
+
 def test_cannot_edit_once_pending_verification(client: TestClient, test_user: User) -> None:
     created = create_corrective_action(client, assignee_id=test_user.id)
     ca_id = created["id"]

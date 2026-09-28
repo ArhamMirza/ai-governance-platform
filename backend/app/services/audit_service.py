@@ -1,3 +1,4 @@
+from fastapi.encoders import jsonable_encoder
 from sqlalchemy.orm import Session
 
 from app.core.exceptions import ConflictError
@@ -45,12 +46,15 @@ def log(
     actor_id: int | None,
     diff: dict | None = None,
 ) -> AuditLogEntry:
+    # The diff column is plain JSON, and callers routinely pass a schema's
+    # model_dump() straight through -- dates, datetimes and enums included.
+    # Encoding here, once, keeps every caller from having to remember to.
     entry = AuditLogEntry(
         entity_type=entity_type,
         entity_id=entity_id,
         action=action,
         actor_id=actor_id,
-        diff=diff,
+        diff=jsonable_encoder(diff) if diff is not None else None,
     )
     db.add(entry)
     db.commit()
