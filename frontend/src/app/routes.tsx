@@ -14,6 +14,8 @@ import { FrameworksPage } from "../pages/FrameworksPage";
 import { GovernanceRolesPage } from "../pages/GovernanceRolesPage";
 import { HandbookPage } from "../pages/HandbookPage";
 import { ImpactAssessmentDetailPage } from "../pages/ImpactAssessmentDetailPage";
+import { IncidentDetailPage } from "../pages/IncidentDetailPage";
+import { IncidentsPage } from "../pages/IncidentsPage";
 import { ManagementReviewMeetingDetailPage } from "../pages/ManagementReviewMeetingDetailPage";
 import { ManagementReviewPage } from "../pages/ManagementReviewPage";
 import { OrganizationContextPage } from "../pages/OrganizationContextPage";
@@ -50,6 +52,8 @@ export function AppRoutes() {
           path="/risk-assessments/:riskAssessmentId"
           element={<RiskAssessmentDetailPage />}
         />
+        <Route path="/incidents" element={<IncidentsPage />} />
+        <Route path="/incidents/:incidentId" element={<IncidentDetailPage />} />
         <Route path="/corrective-actions" element={<CorrectiveActionsPage />} />
         <Route
           path="/corrective-actions/:correctiveActionId"

@@ -40,6 +40,8 @@ const ATTENTION_LINKS: Record<string, string> = {
   overdue_corrective_actions: "/corrective-actions",
   audits_overdue: "/audit-programs",
   management_review_overdue: "/management-review",
+  incident_reports_overdue: "/incidents",
+  open_incidents: "/incidents",
 };
 
 const STATUS_TONES: Record<string, Segment["tone"]> = {

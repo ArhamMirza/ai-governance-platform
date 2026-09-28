@@ -4,6 +4,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from app.core import risk_scoring
+from app.models.ai_incident import AIIncident
 from app.models.audit_program import AuditProgram
 from app.models.corrective_action import CorrectiveAction
 from app.models.management_review_settings import ManagementReviewSettings
@@ -562,3 +563,63 @@ def test_get_summary_hides_management_review_when_not_overdue(
     result = dashboard_service.get_summary(db, actor_id=99)
 
     assert not any(item.key == "management_review_overdue" for item in result.attention)
+
+
+def make_incident(**overrides) -> AIIncident:
+    defaults = dict(
+        id=1,
+        title="Harmful output",
+        description="x",
+        detected_on=PAST_DATE,
+        status="open",
+        is_serious=False,
+        serious_category=None,
+        authority_notified_on=None,
+    )
+    defaults.update(overrides)
+    return AIIncident(**defaults)
+
+
+@patch("app.services.dashboard_service.risk_criteria_service")
+@patch("app.services.dashboard_service.sheet_repository")
+@patch("app.services.dashboard_service.risk_assessment_repository")
+@patch("app.services.dashboard_service.ai_system_inventory_service")
+@patch("app.services.dashboard_service.procedure_repository")
+@patch("app.services.dashboard_service.policy_repository")
+@patch("app.services.dashboard_service.management_review_repository")
+@patch("app.services.dashboard_service.ai_incident_repository")
+def test_get_summary_flags_open_incidents_and_overdue_serious_reports(
+    mock_incident_repo,
+    mock_mr_repo,
+    mock_policy_repo,
+    mock_procedure_repo,
+    mock_inventory,
+    mock_ra_repo,
+    mock_sheet_repo,
+    mock_criteria,
+    db,
+) -> None:
+    mock_criteria.get_bands.return_value = risk_scoring.DEFAULT_BANDS
+    mock_policy_repo.list_all.return_value = []
+    mock_procedure_repo.list_all.return_value = []
+    mock_inventory.list_rows.return_value = []
+    mock_ra_repo.list_all.return_value = []
+    mock_sheet_repo.list_rows_for_sheets.return_value = {}
+    mock_mr_repo.get_settings.return_value = None
+    mock_mr_repo.list_meetings.return_value = []
+    mock_incident_repo.list_all.return_value = [
+        # Serious, never reported, deadline long gone.
+        make_incident(id=1, is_serious=True, serious_category="death"),
+        # Serious but reported -- open, not overdue.
+        make_incident(
+            id=2, is_serious=True, serious_category="death", authority_notified_on=PAST_DATE
+        ),
+        # Resolved -- neither.
+        make_incident(id=3, status="resolved"),
+    ]
+
+    result = dashboard_service.get_summary(db, actor_id=99)
+
+    counts = {item.key: item.count for item in result.attention}
+    assert counts["incident_reports_overdue"] == 1
+    assert counts["open_incidents"] == 2

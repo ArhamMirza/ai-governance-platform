@@ -7,11 +7,13 @@ from datetime import date, timedelta
 from sqlalchemy.orm import Session
 
 from app.repositories import framework_control_repository
+from app.schemas.ai_incident import AIIncidentCreate
 from app.schemas.corrective_action import CorrectiveActionCreate
 from app.schemas.internal_audit import AuditProgramCreate
 from app.schemas.management_review import ManagementReviewSettingsUpdate
 from app.schemas.policy import PolicyCreate
 from app.services import (
+    ai_incident_service,
     compliance_status_service,
     corrective_action_service,
     framework_service,
@@ -383,3 +385,45 @@ def test_an_overdue_management_review_is_partial(db_session: Session) -> None:
     assert row.status == "partial"
     assert row.tagged_items[0].current is False
     assert "overdue" in row.tagged_items[0].detail.lower()
+
+
+# ---------- AI incident ----------
+
+
+def make_incident(db: Session, **overrides) -> int:
+    defaults = dict(title="Harmful output", description="x", detected_on=date.today())
+    defaults.update(overrides)
+    incident = ai_incident_service.create_incident(
+        db, AIIncidentCreate(**defaults), actor_id=None
+    )
+    return incident.id
+
+
+def test_an_incident_that_is_not_serious_is_current(db_session: Session) -> None:
+    control_id = eu_control_id(db_session)
+    incident_id = make_incident(db_session, detected_on=date.today() - timedelta(days=365))
+    framework_service.set_tags(db_session, "AIIncident", incident_id, [control_id], actor_id=None)
+
+    row = status_for(db_session, control_id)
+
+    assert row.status == "satisfied"
+    assert row.tagged_items[0].current is True
+
+
+def test_an_unreported_serious_incident_past_its_deadline_is_partial(
+    db_session: Session,
+) -> None:
+    control_id = eu_control_id(db_session)
+    incident_id = make_incident(
+        db_session,
+        detected_on=date.today() - timedelta(days=16),
+        is_serious=True,
+        serious_category="other",
+    )
+    framework_service.set_tags(db_session, "AIIncident", incident_id, [control_id], actor_id=None)
+
+    row = status_for(db_session, control_id)
+
+    assert row.status == "partial"
+    assert row.tagged_items[0].current is False
+    assert "not reported" in row.tagged_items[0].detail.lower()

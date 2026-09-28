@@ -120,11 +120,14 @@ def delete_row(db: Session, row_id: int, actor_id: int | None) -> None:
 
     Datasets are unlinked rather than deleted: a Data Inventory entry is an
     organizational data asset with its own owner and review, so it outlives
-    any one system that used it (see data_inventory_service.unlink_ai_system)."""
+    any one system that used it (see data_inventory_service.unlink_ai_system).
+    Incidents are unlinked for the same reason: they record what happened,
+    which stays true after the system is gone."""
     # Imported here rather than at module scope: both assessment services
     # import this one (to validate the AI system row), so a top-level import
     # would be circular.
     from app.services import (
+        ai_incident_service,
         ai_system_lifecycle_service,
         data_inventory_service,
         impact_assessment_service,
@@ -151,6 +154,7 @@ def delete_row(db: Session, row_id: int, actor_id: int | None) -> None:
         impact_assessment_service.delete(db, impact_assessment.id, actor_id)
 
     data_inventory_service.unlink_ai_system(db, row_id, actor_id)
+    ai_incident_service.unlink_ai_system(db, row_id, actor_id)
     ai_system_lifecycle_service.delete_for_ai_system(db, row_id)
     evidence_service.delete_all_for_entity(db, AI_SYSTEM_DOCUMENT_ENTITY_TYPE, row_id)
 

@@ -34,6 +34,7 @@ from enum import StrEnum
 from sqlalchemy.orm import Session
 
 from app.core import review_cadence
+from app.models.ai_incident import AIIncident
 from app.models.audit_program import AuditProgram
 from app.models.corrective_action import CorrectiveAction, CorrectiveActionStatus
 from app.models.evidence import Evidence
@@ -56,6 +57,7 @@ from app.schemas.compliance_status import (
     TaggedItemStatus,
 )
 from app.services import (
+    ai_incident_service,
     corrective_action_service,
     internal_audit_service,
     management_review_service,
@@ -228,6 +230,18 @@ def _resolve_management_review_settings(
     return _Resolved("Management review", True, "Management review current")
 
 
+def _resolve_ai_incident(db: Session, entity_id: int, today: date) -> _Resolved | None:
+    record = db.get(AIIncident, entity_id)
+    if record is None:
+        return None
+    if ai_incident_service.is_reporting_overdue(record, today):
+        deadline = ai_incident_service.reporting_deadline(record)
+        return _Resolved(
+            record.title, False, f"Serious incident not reported to the authority by {deadline}"
+        )
+    return _Resolved(record.title, True, f"Incident {record.status}")
+
+
 _RESOLVERS = {
     "Policy": _resolve_policy,
     "Procedure": _resolve_procedure,
@@ -237,6 +251,7 @@ _RESOLVERS = {
     "Evidence": _resolve_evidence,
     "CorrectiveAction": _resolve_corrective_action,
     "ManagementReviewSettings": _resolve_management_review_settings,
+    "AIIncident": _resolve_ai_incident,
 }
 
 
