@@ -6,6 +6,8 @@ import { ArchivePage } from "../pages/ArchivePage";
 import { AuditDetailPage } from "../pages/AuditDetailPage";
 import { AuditProgramDetailPage } from "../pages/AuditProgramDetailPage";
 import { AuditProgramsPage } from "../pages/AuditProgramsPage";
+import { CompetencePage } from "../pages/CompetencePage";
+import { CompetenceRequirementDetailPage } from "../pages/CompetenceRequirementDetailPage";
 import { CorrectiveActionDetailPage } from "../pages/CorrectiveActionDetailPage";
 import { CorrectiveActionsPage } from "../pages/CorrectiveActionsPage";
 import { DashboardPage } from "../pages/DashboardPage";
@@ -51,6 +53,11 @@ export function AppRoutes() {
         <Route
           path="/risk-assessments/:riskAssessmentId"
           element={<RiskAssessmentDetailPage />}
+        />
+        <Route path="/competence" element={<CompetencePage />} />
+        <Route
+          path="/competence/:requirementId"
+          element={<CompetenceRequirementDetailPage />}
         />
         <Route path="/incidents" element={<IncidentsPage />} />
         <Route path="/incidents/:incidentId" element={<IncidentDetailPage />} />

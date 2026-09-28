@@ -63,6 +63,13 @@ export interface MyCorrectiveActionItem {
   overdue: boolean;
 }
 
+export interface MyTrainingItem {
+  requirement_id: number;
+  title: string;
+  status: "expired" | "missing";
+  next_due: string | null;
+}
+
 export type PendingApprovalEntityType =
   | "Policy"
   | "Procedure"
@@ -93,5 +100,6 @@ export interface DashboardSummary {
   criteria: RiskCriteria;
   my_risk_items: MyRiskItem[];
   my_corrective_actions: MyCorrectiveActionItem[];
+  my_training: MyTrainingItem[];
   pending_approvals: PendingApprovalItem[];
 }

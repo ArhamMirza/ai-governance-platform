@@ -6,6 +6,8 @@ from app.models.ai_system_lifecycle import AISystemLifecycle
 from app.models.audit_finding import AuditFinding, AuditFindingType
 from app.models.audit_log import AuditLogEntry
 from app.models.audit_program import AuditProgram, AuditProgramStatus, AuditScheduleType
+from app.models.competence_record import CompetenceRecord
+from app.models.competence_requirement import CompetenceRequirement
 from app.models.corrective_action import CorrectiveAction, CorrectiveActionStatus
 from app.models.data_inventory_record import DataInventoryRecord
 from app.models.document_chunk import ChunkSource, DocumentChunk, IndexStatus, SourceType
@@ -49,6 +51,8 @@ __all__ = [
     "AuditProgramStatus",
     "AuditScheduleType",
     "ChunkSource",
+    "CompetenceRecord",
+    "CompetenceRequirement",
     "CorrectiveAction",
     "CorrectiveActionStatus",
     "DataInventoryRecord",

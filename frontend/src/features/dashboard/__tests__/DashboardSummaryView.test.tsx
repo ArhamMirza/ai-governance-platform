@@ -72,6 +72,14 @@ const summary: DashboardSummary = {
       overdue: true,
     },
   ],
+  my_training: [
+    {
+      requirement_id: 8,
+      title: "Bias testing fundamentals",
+      status: "expired",
+      next_due: "2026-01-01",
+    },
+  ],
   pending_approvals: [
     {
       entity_type: "Policy",
@@ -116,6 +124,7 @@ const emptySummary: DashboardSummary = {
   criteria,
   my_risk_items: [],
   my_corrective_actions: [],
+  my_training: [],
   pending_approvals: [],
 };
 
@@ -257,6 +266,17 @@ describe("DashboardSummaryView", () => {
       expect(screen.getByText("Nothing needs attention")).toBeInTheDocument();
     });
     expect(screen.queryByText("My Corrective Actions")).not.toBeInTheDocument();
+    expect(screen.queryByText("My Training")).not.toBeInTheDocument();
+  });
+
+  it("shows my lapsed training, linking to the requirement", async () => {
+    vi.mocked(dashboardApi.getSummary).mockResolvedValue(summary);
+
+    renderView();
+
+    const link = await screen.findByRole("link", { name: "Bias testing fundamentals" });
+    expect(link).toHaveAttribute("href", "/competence/8");
+    expect(within(link.closest("li")!).getByText("Lapsed")).toBeInTheDocument();
   });
 
   it("shows pending approvals, linking to the right record", async () => {

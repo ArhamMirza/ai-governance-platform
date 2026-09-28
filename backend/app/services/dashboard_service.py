@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 
 from app.core import review_cadence, risk_scoring
 from app.models.ai_incident import AIIncidentStatus
+from app.models.competence_requirement import CompetenceRequirement
 from app.models.corrective_action import CorrectiveAction, CorrectiveActionStatus
 from app.models.impact_assessment import ImpactAssessmentStatus
 from app.models.risk_assessment import RiskAssessment
@@ -22,6 +23,7 @@ from app.repositories import (
     sheet_repository,
     user_repository,
 )
+from app.schemas.competence import PersonCompetence
 from app.schemas.dashboard import (
     AISystemSummary,
     AttentionItem,
@@ -29,6 +31,7 @@ from app.schemas.dashboard import (
     DashboardSummary,
     MyCorrectiveActionItem,
     MyRiskItem,
+    MyTrainingItem,
     RiskAssessmentSummary,
     StatusCounts,
 )
@@ -36,6 +39,7 @@ from app.services import (
     ai_incident_service,
     ai_system_inventory_service,
     ai_system_lifecycle_service,
+    competence_service,
     compliance_status_service,
     corrective_action_service,
     data_inventory_service,
@@ -73,6 +77,7 @@ def _attention(
     management_review_overdue: bool,
     incident_reports_overdue_count: int,
     open_incident_count: int,
+    competence_gap_count: int,
 ) -> list[AttentionItem]:
     """Actionable items, most urgent first. Zero-count items are dropped so the
     panel only ever shows things that need doing."""
@@ -187,6 +192,12 @@ def _attention(
             count=open_incident_count,
             severity="warning",
         ),
+        AttentionItem(
+            key="competence_gaps",
+            label="Required training not completed or lapsed",
+            count=competence_gap_count,
+            severity="warning",
+        ),
     ]
     return [item for item in candidates if item.count > 0]
 
@@ -241,6 +252,26 @@ def _my_corrective_actions(
         if ca.assignee_id == actor_id and ca.status != CorrectiveActionStatus.CLOSED
     ]
     items.sort(key=lambda item: (not item.overdue, item.due_date))
+    return items
+
+
+def _my_training(
+    standings: list[tuple[CompetenceRequirement, list[PersonCompetence]]], actor_id: int
+) -> list[MyTrainingItem]:
+    """Requirements the requesting user hasn't met -- lapsed ones first,
+    since those were once done and have quietly expired."""
+    items = [
+        MyTrainingItem(
+            requirement_id=requirement.id,
+            title=requirement.title,
+            status=person.status,
+            next_due=person.next_due,
+        )
+        for requirement, people in standings
+        for person in people
+        if person.user_id == actor_id and person.status != "current"
+    ]
+    items.sort(key=lambda item: (item.status != "expired", item.title))
     return items
 
 
@@ -388,6 +419,11 @@ def get_summary(db: Session, actor_id: int) -> DashboardSummary:
         1 for incident in incidents if incident.status != AIIncidentStatus.RESOLVED
     )
 
+    competence_standings = competence_service.standings(db, today)
+    competence_gap_count = sum(
+        competence_service.gap_count(people) for _, people in competence_standings
+    )
+
     return DashboardSummary(
         policies=StatusCounts(
             total=len(policies), by_status=dict(Counter(p.status for p in policies))
@@ -432,11 +468,13 @@ def get_summary(db: Session, actor_id: int) -> DashboardSummary:
             management_review_overdue=management_review_overdue,
             incident_reports_overdue_count=incident_reports_overdue_count,
             open_incident_count=open_incident_count,
+            competence_gap_count=competence_gap_count,
         ),
         matrix=risk_analytics_service.matrix_cells(all_risk_rows),
         criteria=risk_criteria_service.get_criteria(db),
         my_risk_items=_my_risk_items(risk_assessments, rows_by_sheet, actor_id),
         my_corrective_actions=_my_corrective_actions(corrective_actions, actor_id, today),
+        my_training=_my_training(competence_standings, actor_id),
         pending_approvals=pending_approvals_service.get_pending_approvals(
             db,
             actor_id,
