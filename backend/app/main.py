@@ -15,6 +15,7 @@ from app.core.exceptions import (
 from app.dependencies import get_current_user
 from app.routers import (
     ai_assist,
+    ai_incidents,
     ai_system_inventory,
     ai_system_lifecycle,
     assistant,
@@ -136,3 +137,4 @@ app.include_router(risk_item_suggestions.router, prefix="/api/v1", dependencies=
 app.include_router(corrective_actions.router, prefix="/api/v1", dependencies=_protected)
 app.include_router(internal_audits.router, prefix="/api/v1", dependencies=_protected)
 app.include_router(management_review.router, prefix="/api/v1", dependencies=_protected)
+app.include_router(ai_incidents.router, prefix="/api/v1", dependencies=_protected)

@@ -254,6 +254,11 @@ EU_AI_ACT_CONTROLS: list[tuple[str, str, str]] = [
      "Providers shall establish a post-market monitoring system proportionate to "
      "the risks of the AI system, and use it to evaluate the system's continuing "
      "compliance."),
+    ("Art.73", "Reporting of serious incidents",
+     "Providers of high-risk AI systems shall report any serious incident to the market "
+     "surveillance authority within 15 days of becoming aware of it -- within 10 days of "
+     "a death, and within 2 days of a widespread infringement or serious and "
+     "irreversible disruption of critical infrastructure."),
 ]
 
 

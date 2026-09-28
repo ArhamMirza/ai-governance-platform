@@ -161,6 +161,17 @@ const correctiveActionsNavItem: NavItem = {
   ),
 };
 
+const incidentsNavItem: NavItem = {
+  to: "/incidents",
+  label: "Incidents",
+  icon: (
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z" />
+        <path d="M12 9v4M12 17h.01" />
+      </svg>
+  ),
+};
+
 const internalAuditsNavItem: NavItem = {
   to: "/audit-programs",
   label: "Internal Audits",
@@ -234,6 +245,7 @@ function navGroupsFor(role: string | undefined): NavGroup[] {
       label: "Assurance",
       items: [
         riskNavItem,
+        incidentsNavItem,
         correctiveActionsNavItem,
         internalAuditsNavItem,
         managementReviewNavItem,

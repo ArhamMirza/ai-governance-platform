@@ -4,11 +4,13 @@ from datetime import UTC, date, datetime
 from sqlalchemy.orm import Session
 
 from app.core import review_cadence, risk_scoring
+from app.models.ai_incident import AIIncidentStatus
 from app.models.corrective_action import CorrectiveAction, CorrectiveActionStatus
 from app.models.impact_assessment import ImpactAssessmentStatus
 from app.models.risk_assessment import RiskAssessment
 from app.models.sheet import SheetRow
 from app.repositories import (
+    ai_incident_repository,
     ai_system_lifecycle_repository,
     corrective_action_repository,
     impact_assessment_repository,
@@ -31,6 +33,7 @@ from app.schemas.dashboard import (
     StatusCounts,
 )
 from app.services import (
+    ai_incident_service,
     ai_system_inventory_service,
     ai_system_lifecycle_service,
     compliance_status_service,
@@ -68,6 +71,8 @@ def _attention(
     overdue_corrective_action_count: int,
     overdue_audit_count: int,
     management_review_overdue: bool,
+    incident_reports_overdue_count: int,
+    open_incident_count: int,
 ) -> list[AttentionItem]:
     """Actionable items, most urgent first. Zero-count items are dropped so the
     panel only ever shows things that need doing."""
@@ -169,6 +174,18 @@ def _attention(
             # dropped like every other zero-count item.
             count=1 if management_review_overdue else 0,
             severity="danger",
+        ),
+        AttentionItem(
+            key="incident_reports_overdue",
+            label="Serious incidents not reported to the authority in time",
+            count=incident_reports_overdue_count,
+            severity="danger",
+        ),
+        AttentionItem(
+            key="open_incidents",
+            label="AI incidents still open",
+            count=open_incident_count,
+            severity="warning",
         ),
     ]
     return [item for item in candidates if item.count > 0]
@@ -363,6 +380,14 @@ def get_summary(db: Session, actor_id: int) -> DashboardSummary:
         management_review_settings, management_review_meetings, today
     )
 
+    incidents = ai_incident_repository.list_all(db)
+    incident_reports_overdue_count = sum(
+        1 for incident in incidents if ai_incident_service.is_reporting_overdue(incident, today)
+    )
+    open_incident_count = sum(
+        1 for incident in incidents if incident.status != AIIncidentStatus.RESOLVED
+    )
+
     return DashboardSummary(
         policies=StatusCounts(
             total=len(policies), by_status=dict(Counter(p.status for p in policies))
@@ -405,6 +430,8 @@ def get_summary(db: Session, actor_id: int) -> DashboardSummary:
             overdue_corrective_action_count=overdue_corrective_action_count,
             overdue_audit_count=overdue_audit_count,
             management_review_overdue=management_review_overdue,
+            incident_reports_overdue_count=incident_reports_overdue_count,
+            open_incident_count=open_incident_count,
         ),
         matrix=risk_analytics_service.matrix_cells(all_risk_rows),
         criteria=risk_criteria_service.get_criteria(db),

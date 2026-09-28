@@ -158,13 +158,13 @@ def test_get_mapping_returns_all_clauses_and_articles_but_not_annex_a_controls(
 
     categories = {e.category for e in entries}
     assert categories == {"clause", "annex_a_control"}
-    assert len(entries) == 85
+    assert len(entries) == 86
 
 
 def test_get_mapping_filters_by_framework(db_session: Session) -> None:
     entries = framework_service.get_mapping(db_session, "eu_ai_act")
 
-    assert len(entries) == 23
+    assert len(entries) == 24
     assert all(e.framework == "eu_ai_act" for e in entries)
 
 
