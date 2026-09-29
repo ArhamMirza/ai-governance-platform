@@ -44,12 +44,14 @@ from app.models.impact_assessment import ImpactAssessment, ImpactAssessmentStatu
 from app.models.policy import Policy, PolicyStatus
 from app.models.procedure import Procedure, ProcedureStatus
 from app.models.risk_assessment import RiskAssessment, RiskAssessmentStatus
+from app.models.supplier import Supplier
 from app.repositories import (
     framework_control_repository,
     framework_soa_repository,
     framework_tag_repository,
     internal_audit_repository,
     management_review_repository,
+    supplier_repository,
 )
 from app.schemas.compliance_status import (
     ComplianceStatusCounts,
@@ -63,6 +65,7 @@ from app.services import (
     corrective_action_service,
     internal_audit_service,
     management_review_service,
+    supplier_service,
 )
 
 
@@ -257,6 +260,24 @@ def _resolve_competence_requirement(
     return _Resolved(record.title, True, f"{len(people)} of {len(people)} people competent")
 
 
+def _resolve_supplier(db: Session, entity_id: int, today: date) -> _Resolved | None:
+    record = db.get(Supplier, entity_id)
+    if record is None:
+        return None
+    review_dates = [
+        review.review_date
+        for review in supplier_repository.list_reviews_for_supplier(db, entity_id)
+    ]
+    standing = supplier_service.standing(record, review_dates, today)
+    if standing.review_overdue:
+        return _Resolved(
+            record.name, False, f"Supplier review overdue since {standing.next_review_due}"
+        )
+    if standing.contract_status == "expired":
+        return _Resolved(record.name, False, f"Supplier contract ended {record.contract_end}")
+    return _Resolved(record.name, True, f"Supplier {record.status}")
+
+
 _RESOLVERS = {
     "Policy": _resolve_policy,
     "Procedure": _resolve_procedure,
@@ -268,6 +289,7 @@ _RESOLVERS = {
     "ManagementReviewSettings": _resolve_management_review_settings,
     "AIIncident": _resolve_ai_incident,
     "CompetenceRequirement": _resolve_competence_requirement,
+    "Supplier": _resolve_supplier,
 }
 
 

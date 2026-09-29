@@ -32,6 +32,9 @@ from app.models.risk_assessment import RiskAssessment
 from app.models.risk_criteria import RiskCriteria
 from app.models.session import Session
 from app.models.sheet import Sheet, SheetRow
+from app.models.supplier import Supplier, SupplierStatus, SupplierType
+from app.models.supplier_ai_system import SupplierAISystem
+from app.models.supplier_review import SupplierReview, SupplierReviewOutcome
 from app.models.user import User
 
 __all__ = [
@@ -85,6 +88,12 @@ __all__ = [
     "SourceType",
     "Sheet",
     "SheetRow",
+    "Supplier",
+    "SupplierAISystem",
+    "SupplierReview",
+    "SupplierReviewOutcome",
+    "SupplierStatus",
+    "SupplierType",
     "User",
 ]
 

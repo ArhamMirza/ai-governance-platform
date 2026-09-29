@@ -1,0 +1,90 @@
+from datetime import date, datetime
+
+from pydantic import BaseModel, ConfigDict, Field
+
+from app.core.supplier_schedule import ContractStatus
+from app.models.supplier import SupplierStatus, SupplierType
+from app.models.supplier_review import SupplierReviewOutcome
+from app.schemas.framework_control import FrameworkControlRead
+
+
+class SupplierCreate(BaseModel):
+    name: str = Field(min_length=1)
+    supplier_type: SupplierType = SupplierType.OTHER
+    description: str | None = None
+    owner_id: int | None = None
+    contact_name: str | None = None
+    contact_email: str | None = None
+    contract_reference: str | None = None
+    contract_start: date | None = None
+    contract_end: date | None = None
+    review_interval_months: int | None = Field(default=None, ge=1)
+    first_review_due: date | None = None
+
+
+class SupplierUpdate(BaseModel):
+    name: str | None = Field(default=None, min_length=1)
+    supplier_type: SupplierType | None = None
+    description: str | None = None
+    status: SupplierStatus | None = None
+    owner_id: int | None = None
+    contact_name: str | None = None
+    contact_email: str | None = None
+    contract_reference: str | None = None
+    contract_start: date | None = None
+    contract_end: date | None = None
+    responsibilities: str | None = None
+    requirements: str | None = None
+    review_interval_months: int | None = Field(default=None, ge=1)
+    first_review_due: date | None = None
+
+
+class SupplierAISystemsUpdate(BaseModel):
+    ai_system_row_ids: list[int]
+
+
+class SupplierReviewCreate(BaseModel):
+    review_date: date
+    outcome: SupplierReviewOutcome = SupplierReviewOutcome.SATISFACTORY
+    notes: str | None = None
+
+
+class SupplierReviewRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    supplier_id: int
+    review_date: date
+    outcome: SupplierReviewOutcome
+    notes: str | None
+    reviewed_by: int | None
+    created_at: datetime
+
+
+class SupplierRead(BaseModel):
+    id: int
+    name: str
+    supplier_type: SupplierType
+    description: str | None
+    status: SupplierStatus
+    owner_id: int | None
+    contact_name: str | None
+    contact_email: str | None
+    contract_reference: str | None
+    contract_start: date | None
+    contract_end: date | None
+    responsibilities: str | None
+    requirements: str | None
+    review_interval_months: int | None
+    first_review_due: date | None
+    ai_system_row_ids: list[int]
+    next_review_due: date | None
+    review_overdue: bool
+    contract_status: ContractStatus | None
+    framework_tags: list[FrameworkControlRead]
+    created_at: datetime
+    updated_at: datetime
+
+
+class SupplierDetailRead(SupplierRead):
+    reviews: list[SupplierReviewRead]
