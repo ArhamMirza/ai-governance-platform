@@ -13,6 +13,7 @@ from app.models.policy import Policy, PolicyStatus
 from app.models.procedure import Procedure, ProcedureStatus
 from app.models.risk_assessment import RiskAssessment, RiskAssessmentStatus
 from app.models.sheet import SheetRow
+from app.models.supplier import Supplier
 from app.schemas.competence import PersonCompetence
 from app.services import dashboard_service
 
@@ -686,3 +687,50 @@ def test_get_summary_counts_competence_gaps_and_lists_my_training(
     assert [(item.title, item.status) for item in result.my_training] == [
         ("Bias testing", "expired")
     ]
+
+
+
+@patch("app.services.dashboard_service.risk_criteria_service")
+@patch("app.services.dashboard_service.sheet_repository")
+@patch("app.services.dashboard_service.risk_assessment_repository")
+@patch("app.services.dashboard_service.ai_system_inventory_service")
+@patch("app.services.dashboard_service.procedure_repository")
+@patch("app.services.dashboard_service.policy_repository")
+@patch("app.services.dashboard_service.management_review_repository")
+@patch("app.services.dashboard_service.supplier_repository")
+def test_get_summary_flags_supplier_reviews_and_contracts(
+    mock_supplier_repo,
+    mock_mr_repo,
+    mock_policy_repo,
+    mock_procedure_repo,
+    mock_inventory,
+    mock_ra_repo,
+    mock_sheet_repo,
+    mock_criteria,
+    db,
+) -> None:
+    mock_criteria.get_bands.return_value = risk_scoring.DEFAULT_BANDS
+    mock_policy_repo.list_all.return_value = []
+    mock_procedure_repo.list_all.return_value = []
+    mock_inventory.list_rows.return_value = []
+    mock_ra_repo.list_all.return_value = []
+    mock_sheet_repo.list_rows_for_sheets.return_value = {}
+    mock_mr_repo.get_settings.return_value = None
+    mock_mr_repo.list_meetings.return_value = []
+    mock_supplier_repo.list_reviews.return_value = []
+    mock_supplier_repo.list_all.return_value = [
+        # Review long overdue, contract long ended.
+        Supplier(id=1, name="Overdue Co", status="active", review_interval_months=12,
+                 first_review_due=PAST_DATE, contract_end=PAST_DATE),
+        # Nothing due.
+        Supplier(id=2, name="Fine Co", status="active", contract_end=FUTURE_DATE),
+        # Inactive -- never alerts.
+        Supplier(id=3, name="Former Co", status="inactive", review_interval_months=12,
+                 first_review_due=PAST_DATE, contract_end=PAST_DATE),
+    ]
+
+    result = dashboard_service.get_summary(db, actor_id=99)
+
+    counts = {item.key: item.count for item in result.attention}
+    assert counts["supplier_reviews_overdue"] == 1
+    assert counts["supplier_contracts_expiring"] == 1

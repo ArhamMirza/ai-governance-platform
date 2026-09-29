@@ -21,6 +21,7 @@ from app.repositories import (
     procedure_repository,
     risk_assessment_repository,
     sheet_repository,
+    supplier_repository,
     user_repository,
 )
 from app.schemas.competence import PersonCompetence
@@ -49,6 +50,7 @@ from app.services import (
     pending_approvals_service,
     risk_analytics_service,
     risk_criteria_service,
+    supplier_service,
 )
 
 APPROVED_STATUS = "approved"
@@ -78,6 +80,8 @@ def _attention(
     incident_reports_overdue_count: int,
     open_incident_count: int,
     competence_gap_count: int,
+    supplier_reviews_overdue_count: int,
+    supplier_contracts_expiring_count: int,
 ) -> list[AttentionItem]:
     """Actionable items, most urgent first. Zero-count items are dropped so the
     panel only ever shows things that need doing."""
@@ -196,6 +200,18 @@ def _attention(
             key="competence_gaps",
             label="Required training not completed or lapsed",
             count=competence_gap_count,
+            severity="warning",
+        ),
+        AttentionItem(
+            key="supplier_reviews_overdue",
+            label="Supplier reviews overdue",
+            count=supplier_reviews_overdue_count,
+            severity="danger",
+        ),
+        AttentionItem(
+            key="supplier_contracts_expiring",
+            label="Supplier contracts ending soon or already ended",
+            count=supplier_contracts_expiring_count,
             severity="warning",
         ),
     ]
@@ -424,6 +440,16 @@ def get_summary(db: Session, actor_id: int) -> DashboardSummary:
         competence_service.gap_count(people) for _, people in competence_standings
     )
 
+    supplier_review_dates = supplier_service.review_dates_by_supplier(db)
+    supplier_standings = [
+        supplier_service.standing(supplier, supplier_review_dates[supplier.id], today)
+        for supplier in supplier_repository.list_all(db)
+    ]
+    supplier_reviews_overdue_count = sum(1 for s in supplier_standings if s.review_overdue)
+    supplier_contracts_expiring_count = sum(
+        1 for s in supplier_standings if s.contract_status is not None
+    )
+
     return DashboardSummary(
         policies=StatusCounts(
             total=len(policies), by_status=dict(Counter(p.status for p in policies))
@@ -469,6 +495,8 @@ def get_summary(db: Session, actor_id: int) -> DashboardSummary:
             incident_reports_overdue_count=incident_reports_overdue_count,
             open_incident_count=open_incident_count,
             competence_gap_count=competence_gap_count,
+            supplier_reviews_overdue_count=supplier_reviews_overdue_count,
+            supplier_contracts_expiring_count=supplier_contracts_expiring_count,
         ),
         matrix=risk_analytics_service.matrix_cells(all_risk_rows),
         criteria=risk_criteria_service.get_criteria(db),

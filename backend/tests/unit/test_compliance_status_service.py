@@ -13,6 +13,7 @@ from app.schemas.corrective_action import CorrectiveActionCreate
 from app.schemas.internal_audit import AuditProgramCreate
 from app.schemas.management_review import ManagementReviewSettingsUpdate
 from app.schemas.policy import PolicyCreate
+from app.schemas.supplier import SupplierCreate
 from app.services import (
     ai_incident_service,
     competence_service,
@@ -22,6 +23,7 @@ from app.services import (
     internal_audit_service,
     management_review_service,
     policy_service,
+    supplier_service,
 )
 
 
@@ -472,3 +474,49 @@ def test_a_competence_requirement_everyone_has_met_is_satisfied(
 
     assert row.status == "satisfied"
     assert row.tagged_items[0].current is True
+
+
+# ---------- supplier ----------
+
+
+def make_supplier(db: Session, **overrides) -> int:
+    defaults = dict(name="Acme Models")
+    defaults.update(overrides)
+    return supplier_service.create_supplier(db, SupplierCreate(**defaults), actor_id=None).id
+
+
+def test_a_supplier_with_nothing_due_is_current(db_session: Session) -> None:
+    control_id = annex_a_control_id(db_session)
+    supplier_id = make_supplier(db_session)
+    framework_service.set_tags(db_session, "Supplier", supplier_id, [control_id], actor_id=None)
+
+    row = status_for(db_session, control_id)
+
+    assert row.status == "satisfied"
+    assert row.tagged_items[0].current is True
+
+
+def test_a_supplier_with_an_overdue_review_is_partial(db_session: Session) -> None:
+    control_id = annex_a_control_id(db_session)
+    supplier_id = make_supplier(
+        db_session,
+        review_interval_months=12,
+        first_review_due=date.today() - timedelta(days=1),
+    )
+    framework_service.set_tags(db_session, "Supplier", supplier_id, [control_id], actor_id=None)
+
+    row = status_for(db_session, control_id)
+
+    assert row.status == "partial"
+    assert "review overdue" in row.tagged_items[0].detail.lower()
+
+
+def test_a_supplier_whose_contract_has_ended_is_partial(db_session: Session) -> None:
+    control_id = annex_a_control_id(db_session)
+    supplier_id = make_supplier(db_session, contract_end=date.today() - timedelta(days=1))
+    framework_service.set_tags(db_session, "Supplier", supplier_id, [control_id], actor_id=None)
+
+    row = status_for(db_session, control_id)
+
+    assert row.status == "partial"
+    assert "contract ended" in row.tagged_items[0].detail.lower()

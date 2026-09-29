@@ -26,6 +26,17 @@ const usersNavItem: NavItem = {
   ),
 };
 
+const suppliersNavItem: NavItem = {
+  to: "/suppliers",
+  label: "Suppliers",
+  icon: (
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 21h18M5 21V8l7-5 7 5v13" />
+      <path d="M9 21v-6h6v6" />
+    </svg>
+  ),
+};
+
 const archiveNavItem: NavItem = {
   to: "/archive",
   label: "Archive",
@@ -254,7 +265,10 @@ function navGroupsFor(role: string | undefined): NavGroup[] {
       items: [orgContextNavItem, governanceRolesNavItem, competenceNavItem],
     },
     { label: "Documentation", items: [policiesNavItem, proceduresNavItem, handbookNavItem] },
-    { label: "Inventory", items: [aiSystemsNavItem, dataInventoryNavItem, archiveNavItem] },
+    {
+      label: "Inventory",
+      items: [aiSystemsNavItem, dataInventoryNavItem, suppliersNavItem, archiveNavItem],
+    },
     {
       label: "Assurance",
       items: [

@@ -122,7 +122,8 @@ def delete_row(db: Session, row_id: int, actor_id: int | None) -> None:
     organizational data asset with its own owner and review, so it outlives
     any one system that used it (see data_inventory_service.unlink_ai_system).
     Incidents are unlinked for the same reason: they record what happened,
-    which stays true after the system is gone."""
+    which stays true after the system is gone. So are suppliers: the
+    relationship outlives any one system it contributed to."""
     # Imported here rather than at module scope: both assessment services
     # import this one (to validate the AI system row), so a top-level import
     # would be circular.
@@ -132,6 +133,7 @@ def delete_row(db: Session, row_id: int, actor_id: int | None) -> None:
         data_inventory_service,
         impact_assessment_service,
         risk_assessment_service,
+        supplier_service,
     )
 
     # Retention is the whole point of the archive: an archived record can't be
@@ -155,6 +157,7 @@ def delete_row(db: Session, row_id: int, actor_id: int | None) -> None:
 
     data_inventory_service.unlink_ai_system(db, row_id, actor_id)
     ai_incident_service.unlink_ai_system(db, row_id, actor_id)
+    supplier_service.unlink_ai_system(db, row_id, actor_id)
     ai_system_lifecycle_service.delete_for_ai_system(db, row_id)
     evidence_service.delete_all_for_entity(db, AI_SYSTEM_DOCUMENT_ENTITY_TYPE, row_id)
 

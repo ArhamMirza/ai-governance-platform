@@ -28,6 +28,8 @@ import { ProceduresPage } from "../pages/ProceduresPage";
 import { RiskAssessmentDetailPage } from "../pages/RiskAssessmentDetailPage";
 import { RiskAssessmentsPage } from "../pages/RiskAssessmentsPage";
 import { SettingsPage } from "../pages/SettingsPage";
+import { SupplierDetailPage } from "../pages/SupplierDetailPage";
+import { SuppliersPage } from "../pages/SuppliersPage";
 import { UsersPage } from "../pages/UsersPage";
 import { Layout } from "./Layout";
 
@@ -44,6 +46,8 @@ export function AppRoutes() {
         <Route path="/ai-systems" element={<AISystemInventoryPage />} />
         <Route path="/ai-systems/:rowId" element={<AISystemDetailPage />} />
         <Route path="/data-inventory" element={<DataInventoryPage />} />
+        <Route path="/suppliers" element={<SuppliersPage />} />
+        <Route path="/suppliers/:supplierId" element={<SupplierDetailPage />} />
         <Route path="/archive" element={<ArchivePage />} />
         <Route path="/risk-assessments" element={<RiskAssessmentsPage />} />
         <Route

@@ -44,6 +44,8 @@ const ATTENTION_LINKS: Record<string, string> = {
   incident_reports_overdue: "/incidents",
   open_incidents: "/incidents",
   competence_gaps: "/competence",
+  supplier_reviews_overdue: "/suppliers",
+  supplier_contracts_expiring: "/suppliers",
 };
 
 const STATUS_TONES: Record<string, Segment["tone"]> = {

@@ -47,6 +47,7 @@ from app.routers import (
     risk_assessments,
     risk_criteria,
     risk_item_suggestions,
+    suppliers,
     users,
 )
 
@@ -140,3 +141,4 @@ app.include_router(internal_audits.router, prefix="/api/v1", dependencies=_prote
 app.include_router(management_review.router, prefix="/api/v1", dependencies=_protected)
 app.include_router(ai_incidents.router, prefix="/api/v1", dependencies=_protected)
 app.include_router(competence.router, prefix="/api/v1", dependencies=_protected)
+app.include_router(suppliers.router, prefix="/api/v1", dependencies=_protected)
