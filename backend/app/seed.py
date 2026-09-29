@@ -17,28 +17,50 @@ from types import SimpleNamespace
 from sqlalchemy.orm import Session
 
 from app.core.database import SessionLocal
-from app.repositories import framework_control_repository, policy_repository
+from app.repositories import (
+    framework_control_repository,
+    governance_role_repository,
+    policy_repository,
+)
+from app.schemas.ai_incident import AIIncidentCreate, AIIncidentUpdate
+from app.schemas.competence import CompetenceRequirementCreate
+from app.schemas.corrective_action import CorrectiveActionCreate, CorrectiveActionUpdate
 from app.schemas.impact_assessment import ImpactAssessmentCreate, ImpactAssessmentUpdate
+from app.schemas.internal_audit import AuditFindingCreate, AuditProgramCreate, InternalAuditCreate
+from app.schemas.management_review import (
+    ManagementReviewMeetingCreate,
+    ManagementReviewSettingsUpdate,
+)
 from app.schemas.policy import PolicyCreate
 from app.schemas.procedure import ProcedureCreate
 from app.schemas.risk_assessment import RiskAssessmentCreate
+from app.schemas.supplier import SupplierCreate, SupplierReviewCreate, SupplierUpdate
 from app.services import (
+    ai_incident_service,
     ai_system_inventory_service,
     ai_system_lifecycle_service,
+    competence_service,
+    corrective_action_service,
     evidence_service,
     framework_service,
     impact_assessment_service,
+    internal_audit_service,
+    management_review_service,
     policy_service,
     procedure_service,
     risk_assessment_service,
+    supplier_service,
 )
+
+# Placeholder for "the first account", matching the owner_id=1 stand-in
+# _seed_impact_assessment already uses -- the seed creates no users, and
+# none of these ids are real FKs.
+PLACEHOLDER_USER_ID = 1
 
 
 def _tag(db: Session, entity_type: str, entity_id: int, *codes: str) -> None:
     """codes like 'iso_42001:8.4' or 'eu_ai_act:Art.9'."""
-    controls = {
-        f"{c.framework}:{c.code}": c.id for c in framework_control_repository.list_all(db)
-    }
+    controls = {f"{c.framework}:{c.code}": c.id for c in framework_control_repository.list_all(db)}
     control_ids = [controls[code] for code in codes]
     framework_service.set_tags(db, entity_type, entity_id, control_ids, actor_id=None)
 
@@ -180,7 +202,7 @@ def seed(db: Session) -> None:
         },
         actor_id=None,
     )
-    ai_system_inventory_service.add_row(
+    support_chatbot = ai_system_inventory_service.add_row(
         db,
         {
             "name": "Customer Support Chatbot",
@@ -315,7 +337,384 @@ def seed(db: Session) -> None:
         actor_id=None,
     )
 
+    _seed_internal_audits(db)
+    _seed_management_review(db)
+    _seed_incidents(db, support_chatbot.id, fraud_model.id, resume_screener.id)
+    _seed_competence(db)
+    _seed_suppliers(db, resume_screener.id, fraud_model.id, support_chatbot.id)
+
     print("Seed complete.")
+
+
+def _seed_internal_audits(db: Session) -> None:
+    """A recurring program with last month's audit done -- one nonconformity
+    raised as a corrective action -- and an ad-hoc program with an audit
+    still to come."""
+    print("Seeding internal audits...")
+    today = date.today()
+    annual = internal_audit_service.create_audit_program(
+        db,
+        AuditProgramCreate(
+            title="Annual AI Management System Audit",
+            description="Full-scope audit of the AIMS against ISO/IEC 42001 Clauses 4-10.",
+            schedule_type="interval",
+            interval_months=12,
+            start_date=today - timedelta(days=400),
+            owner_id=PLACEHOLDER_USER_ID,
+        ),
+        actor_id=None,
+    )
+    _tag(db, "AuditProgram", annual.id, "iso_42001:9.2")
+    audit = internal_audit_service.create_internal_audit(
+        db,
+        annual.id,
+        InternalAuditCreate(
+            title="2026 AIMS audit",
+            planned_date=today - timedelta(days=35),
+            auditor_id=PLACEHOLDER_USER_ID,
+            scope="Risk and impact assessment processes; model validation; AI policy.",
+        ),
+        actor_id=None,
+    )
+    nonconformity = internal_audit_service.create_finding(
+        db,
+        annual.id,
+        audit.id,
+        AuditFindingCreate(
+            description=(
+                "The Model Validation Procedure requires fairness testing, but the "
+                "Resume Screener's last release shipped without it."
+            ),
+            finding_type="nonconformity",
+        ),
+        actor_id=None,
+    )
+    internal_audit_service.create_finding(
+        db,
+        annual.id,
+        audit.id,
+        AuditFindingCreate(
+            description="Risk owners are named by team rather than by person.",
+            finding_type="observation",
+        ),
+        actor_id=None,
+    )
+    internal_audit_service.complete_internal_audit(
+        db,
+        annual.id,
+        audit.id,
+        actor_id=None,
+        conducted_date=today - timedelta(days=30),
+        conclusion="AIMS broadly effective; one nonconformity in model validation.",
+    )
+
+    fairness_fix = corrective_action_service.create_corrective_action(
+        db,
+        CorrectiveActionCreate(
+            title="Enforce fairness testing before release",
+            nonconformity_description=nonconformity.description,
+            root_cause="Fairness testing was a manual step with no release gate checking it.",
+            source_type="AuditFinding",
+            source_id=nonconformity.id,
+            assignee_id=PLACEHOLDER_USER_ID,
+            due_date=today + timedelta(days=21),
+        ),
+        actor_id=None,
+    )
+    corrective_action_service.update_corrective_action(
+        db, fairness_fix.id, CorrectiveActionUpdate(status="in_progress"), actor_id=None
+    )
+    _tag(db, "CorrectiveAction", fairness_fix.id, "iso_42001:10.2")
+
+    supplier_audit_program = internal_audit_service.create_audit_program(
+        db,
+        AuditProgramCreate(
+            title="Third-Party AI Controls Audit",
+            description="Audits of supplier controls, run when a supplier changes materially.",
+            schedule_type="ad_hoc",
+            owner_id=PLACEHOLDER_USER_ID,
+        ),
+        actor_id=None,
+    )
+    internal_audit_service.create_internal_audit(
+        db,
+        supplier_audit_program.id,
+        InternalAuditCreate(
+            title="Cloud hosting provider controls",
+            planned_date=today + timedelta(days=20),
+            scope="Access controls and logging for the fraud model's hosting.",
+        ),
+        actor_id=None,
+    )
+
+
+def _seed_management_review(db: Session) -> None:
+    """Yearly reviews, with last month's meeting recorded -- so the next one
+    is comfortably in the future."""
+    print("Seeding management review...")
+    today = date.today()
+    management_review_service.update_settings(
+        db,
+        ManagementReviewSettingsUpdate(interval_months=12, start_date=today - timedelta(days=380)),
+        actor_id=None,
+    )
+    _tag(
+        db,
+        management_review_service.SETTINGS_ENTITY_TYPE,
+        management_review_service.SETTINGS_ENTITY_ID,
+        "iso_42001:9.3",
+    )
+    meeting = management_review_service.create_meeting(
+        db,
+        ManagementReviewMeetingCreate(
+            meeting_date=today - timedelta(days=20),
+            chaired_by=PLACEHOLDER_USER_ID,
+            attendees="Chief AI Governance Officer, Head of Data Science, Legal, Risk",
+            previous_actions_status="All actions from last year's review are closed.",
+            context_changes="EU AI Act high-risk obligations now apply to the Resume Screener.",
+            performance_summary=(
+                "Internal audit found one nonconformity (fairness testing); corrective "
+                "action in progress. One AI incident this period, remediated."
+            ),
+            stakeholder_feedback="Recruiters asked for clearer explanations of rankings.",
+            resource_adequacy="One additional ML engineer needed for fairness testing.",
+            improvement_opportunities="Automate fairness checks in the release pipeline.",
+            decisions_and_actions=(
+                "Approved hiring for fairness testing; release gate to be in place "
+                "before the next Resume Screener release."
+            ),
+        ),
+        actor_id=None,
+    )
+    evidence_service.upload_evidence(
+        db,
+        management_review_service.MEETING_ENTITY_TYPE,
+        meeting.id,
+        None,
+        _fake_upload("management-review-minutes.pdf", b"Demo meeting minutes."),
+        "Signed minutes",
+        actor_id=None,
+    )
+
+
+def _seed_incidents(
+    db: Session, chatbot_row_id: int, fraud_row_id: int, screener_row_id: int
+) -> None:
+    """One open incident with a corrective action, one serious incident
+    reported to the authority in time, and one minor resolved one."""
+    print("Seeding AI incidents...")
+    today = date.today()
+    dosage = ai_incident_service.create_incident(
+        db,
+        AIIncidentCreate(
+            title="Chatbot gave medication dosage advice",
+            description="The support chatbot answered a customer's question about dosage.",
+            ai_system_row_id=chatbot_row_id,
+            detected_on=today - timedelta(days=6),
+            severity="high",
+            owner_id=PLACEHOLDER_USER_ID,
+        ),
+        actor_id=None,
+    )
+    ai_incident_service.update_incident(
+        db,
+        dosage.id,
+        AIIncidentUpdate(
+            status="investigating",
+            impact_description="One customer; no harm reported.",
+            immediate_actions="Added medical topics to the chatbot's refusal list.",
+        ),
+        actor_id=None,
+    )
+    guardrails = corrective_action_service.create_corrective_action(
+        db,
+        CorrectiveActionCreate(
+            title="Block medical advice in chatbot guardrails",
+            nonconformity_description=dosage.description,
+            source_type=ai_incident_service.ENTITY_TYPE,
+            source_id=dosage.id,
+            assignee_id=PLACEHOLDER_USER_ID,
+            due_date=today - timedelta(days=2),
+        ),
+        actor_id=None,
+    )
+    _tag(db, "CorrectiveAction", guardrails.id, "iso_42001:10.2")
+    _tag(db, ai_incident_service.ENTITY_TYPE, dosage.id, "iso_42001:A.8.4")
+
+    blocked = ai_incident_service.create_incident(
+        db,
+        AIIncidentCreate(
+            title="Legitimate transactions blocked in one region",
+            description=(
+                "A data pipeline change caused the fraud model to flag most transactions "
+                "from one region, and accounts were restricted before analysts reviewed them."
+            ),
+            ai_system_row_id=fraud_row_id,
+            detected_on=today - timedelta(days=25),
+            occurred_on=today - timedelta(days=26),
+            severity="critical",
+            owner_id=PLACEHOLDER_USER_ID,
+            is_serious=True,
+            serious_category="other",
+        ),
+        actor_id=None,
+    )
+    ai_incident_service.update_incident(
+        db,
+        blocked.id,
+        AIIncidentUpdate(
+            impact_description="About 1,200 account holders temporarily lost access to funds.",
+            immediate_actions="Rolled back the pipeline change and restored the accounts.",
+            root_cause="An unvalidated feature change shifted the model's score distribution.",
+            authority_notified_on=today - timedelta(days=14),
+            authority_reference="MSA-2026-0417",
+            status="resolved",
+        ),
+        actor_id=None,
+    )
+    _tag(db, ai_incident_service.ENTITY_TYPE, blocked.id, "eu_ai_act:Art.73")
+
+    outage = ai_incident_service.create_incident(
+        db,
+        AIIncidentCreate(
+            title="Ranking outage fell back to unranked list",
+            description=(
+                "The ranking service timed out for two hours; recruiters saw an unranked list."
+            ),
+            ai_system_row_id=screener_row_id,
+            detected_on=today - timedelta(days=45),
+            severity="low",
+        ),
+        actor_id=None,
+    )
+    ai_incident_service.update_incident(
+        db, outage.id, AIIncidentUpdate(status="resolved"), actor_id=None
+    )
+
+
+def _seed_competence(db: Session) -> None:
+    """Requirements only -- the seed creates no user accounts to record
+    completions against, so whoever signs up first sees their own gaps."""
+    print("Seeding competence requirements...")
+    roles = {role.name: role.id for role in governance_role_repository.list_all(db)}
+    requirements = [
+        CompetenceRequirementCreate(
+            title="AI policy awareness",
+            description="What the AI policy requires, and each person's part in it (Clause 7.3).",
+            refresh_interval_months=12,
+        ),
+        CompetenceRequirementCreate(
+            title="Bias and fairness testing",
+            description="Running and interpreting fairness tests before a model release.",
+            governance_role_id=roles.get("Implementation Team"),
+            refresh_interval_months=24,
+        ),
+        CompetenceRequirementCreate(
+            title="EU AI Act obligations for system owners",
+            description="Provider and deployer obligations for high-risk AI systems.",
+            governance_role_id=roles.get("AI System Owner"),
+        ),
+    ]
+    for data in requirements:
+        requirement = competence_service.create_requirement(db, data, actor_id=None)
+        _tag(
+            db,
+            competence_service.REQUIREMENT_ENTITY_TYPE,
+            requirement.id,
+            "iso_42001:7.2",
+            "iso_42001:7.3",
+        )
+
+
+def _seed_suppliers(
+    db: Session, screener_row_id: int, fraud_row_id: int, chatbot_row_id: int
+) -> None:
+    """A supplier whose contract is ending soon, one whose first review is
+    overdue, and a former supplier that shouldn't raise any alerts."""
+    print("Seeding suppliers...")
+    today = date.today()
+    models = supplier_service.create_supplier(
+        db,
+        SupplierCreate(
+            name="Northwind Model Labs",
+            supplier_type="model_provider",
+            description="Foundation model behind the Resume Screener's ranking.",
+            owner_id=PLACEHOLDER_USER_ID,
+            contact_name="Priya Shah",
+            contact_email="partnerships@northwind.example",
+            contract_reference="MSA-NW-2024",
+            contract_start=today - timedelta(days=700),
+            contract_end=today + timedelta(days=20),
+            review_interval_months=12,
+            first_review_due=today - timedelta(days=400),
+        ),
+        actor_id=None,
+    )
+    supplier_service.update_supplier(
+        db,
+        models.id,
+        SupplierUpdate(
+            responsibilities=(
+                "Northwind: model training, bias evaluation of the base model, security "
+                "patches. Us: fine-tuning data, deployment, human review of rankings."
+            ),
+            requirements="Model cards for every release; 30 days' notice of model changes.",
+        ),
+        actor_id=None,
+    )
+    supplier_service.set_ai_systems(db, models.id, [screener_row_id], actor_id=None)
+    supplier_service.record_review(
+        db,
+        models.id,
+        SupplierReviewCreate(
+            review_date=today - timedelta(days=35),
+            outcome="satisfactory",
+            notes="Model card and bias evaluation received for the latest release.",
+        ),
+        actor_id=None,
+    )
+    evidence_service.upload_evidence(
+        db,
+        supplier_service.ENTITY_TYPE,
+        models.id,
+        None,
+        _fake_upload("northwind-msa.pdf", b"Demo master services agreement."),
+        "Master services agreement",
+        actor_id=None,
+    )
+    _tag(db, supplier_service.ENTITY_TYPE, models.id, "iso_42001:A.10.2", "iso_42001:A.10.3")
+
+    cloud = supplier_service.create_supplier(
+        db,
+        SupplierCreate(
+            name="Contoso Cloud",
+            supplier_type="infrastructure",
+            description="Hosting and GPU compute for production models.",
+            owner_id=PLACEHOLDER_USER_ID,
+            contract_reference="CC-ENT-7731",
+            contract_start=today - timedelta(days=300),
+            contract_end=today + timedelta(days=430),
+            review_interval_months=12,
+            first_review_due=today - timedelta(days=10),
+        ),
+        actor_id=None,
+    )
+    supplier_service.set_ai_systems(db, cloud.id, [fraud_row_id, chatbot_row_id], actor_id=None)
+    _tag(db, supplier_service.ENTITY_TYPE, cloud.id, "iso_42001:A.10.2")
+
+    labelling = supplier_service.create_supplier(
+        db,
+        SupplierCreate(
+            name="DataVista Labelling",
+            supplier_type="data_provider",
+            description="Labelled historical transactions used to train the fraud model.",
+            contract_end=today - timedelta(days=60),
+        ),
+        actor_id=None,
+    )
+    supplier_service.update_supplier(
+        db, labelling.id, SupplierUpdate(status="inactive"), actor_id=None
+    )
 
 
 def main() -> None:
