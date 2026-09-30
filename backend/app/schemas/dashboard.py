@@ -59,6 +59,9 @@ class AttentionItem(BaseModel):
     label: str
     count: int
     severity: str
+    # The area it belongs to; items arrive already ordered so each area's
+    # items are contiguous -- see dashboard_service._order_attention.
+    group: str
 
 
 class MyRiskItem(BaseModel):

@@ -43,6 +43,9 @@ export interface AttentionItem {
   label: string;
   count: number;
   severity: string;
+  /** The area it belongs to. Items arrive ordered so each area's items are
+   * contiguous, areas with anything critical first. */
+  group: string;
 }
 
 export interface MyRiskItem {

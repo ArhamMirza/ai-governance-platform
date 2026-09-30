@@ -1637,6 +1637,44 @@ td button {
   flex-shrink: 0;
 }
 
+.attention-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 6px;
+}
+
+.attention-header h2 {
+  margin: 0;
+}
+
+.attention-header p {
+  margin: 0;
+  font-size: 12.5px;
+  color: var(--text-faint);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Areas flow into as many columns as fit, so twenty-odd items read as a
+   handful of short lists rather than one long one. */
+.attention-groups {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr));
+  gap: 4px 32px;
+  align-items: start;
+}
+
+.attention-group h3 {
+  margin: 12px 0 2px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+
 .attention-panel ul {
   display: flex;
   flex-direction: column;
