@@ -1,3 +1,4 @@
+import inspect
 from datetime import date
 from unittest.mock import MagicMock, patch
 
@@ -628,7 +629,6 @@ def test_get_summary_flags_open_incidents_and_overdue_serious_reports(
     assert counts["open_incidents"] == 2
 
 
-
 @patch("app.services.dashboard_service.risk_criteria_service")
 @patch("app.services.dashboard_service.sheet_repository")
 @patch("app.services.dashboard_service.risk_assessment_repository")
@@ -662,17 +662,20 @@ def test_get_summary_counts_competence_gaps_and_lists_my_training(
         (
             awareness,
             [
-                PersonCompetence(user_id=99, status="current", last_completed_on=PAST_DATE,
-                                 next_due=None),
-                PersonCompetence(user_id=5, status="missing", last_completed_on=None,
-                                 next_due=None),
+                PersonCompetence(
+                    user_id=99, status="current", last_completed_on=PAST_DATE, next_due=None
+                ),
+                PersonCompetence(
+                    user_id=5, status="missing", last_completed_on=None, next_due=None
+                ),
             ],
         ),
         (
             bias,
             [
-                PersonCompetence(user_id=99, status="expired", last_completed_on=PAST_DATE,
-                                 next_due=PAST_DATE),
+                PersonCompetence(
+                    user_id=99, status="expired", last_completed_on=PAST_DATE, next_due=PAST_DATE
+                ),
             ],
         ),
     ]
@@ -687,7 +690,6 @@ def test_get_summary_counts_competence_gaps_and_lists_my_training(
     assert [(item.title, item.status) for item in result.my_training] == [
         ("Bias testing", "expired")
     ]
-
 
 
 @patch("app.services.dashboard_service.risk_criteria_service")
@@ -720,13 +722,25 @@ def test_get_summary_flags_supplier_reviews_and_contracts(
     mock_supplier_repo.list_reviews.return_value = []
     mock_supplier_repo.list_all.return_value = [
         # Review long overdue, contract long ended.
-        Supplier(id=1, name="Overdue Co", status="active", review_interval_months=12,
-                 first_review_due=PAST_DATE, contract_end=PAST_DATE),
+        Supplier(
+            id=1,
+            name="Overdue Co",
+            status="active",
+            review_interval_months=12,
+            first_review_due=PAST_DATE,
+            contract_end=PAST_DATE,
+        ),
         # Nothing due.
         Supplier(id=2, name="Fine Co", status="active", contract_end=FUTURE_DATE),
         # Inactive -- never alerts.
-        Supplier(id=3, name="Former Co", status="inactive", review_interval_months=12,
-                 first_review_due=PAST_DATE, contract_end=PAST_DATE),
+        Supplier(
+            id=3,
+            name="Former Co",
+            status="inactive",
+            review_interval_months=12,
+            first_review_due=PAST_DATE,
+            contract_end=PAST_DATE,
+        ),
     ]
 
     result = dashboard_service.get_summary(db, actor_id=99)
@@ -734,3 +748,58 @@ def test_get_summary_flags_supplier_reviews_and_contracts(
     counts = {item.key: item.count for item in result.attention}
     assert counts["supplier_reviews_overdue"] == 1
     assert counts["supplier_contracts_expiring"] == 1
+
+
+ATTENTION_PARAMS = list(inspect.signature(dashboard_service._attention).parameters)
+
+
+def _attention_with(**counts):
+    """_attention with every count zero except the ones given."""
+    defaults = {name: 0 for name in ATTENTION_PARAMS}
+    defaults["management_review_overdue"] = False
+    return dashboard_service._attention(**{**defaults, **counts})
+
+
+def test_every_attention_item_belongs_to_a_known_area() -> None:
+    items = _attention_with(
+        **{**{name: 1 for name in ATTENTION_PARAMS}, "management_review_overdue": True}
+    )
+
+    assert len(items) == 21
+    assert {item.group for item in items} == set(dashboard_service.ATTENTION_GROUP_ORDER)
+
+
+def test_attention_items_are_contiguous_by_area() -> None:
+    # _attention lists these interleaved: an inventory item, a risk item,
+    # then another inventory item.
+    items = _attention_with(
+        retention_expired_count=1,
+        unassessed_count=1,
+        ai_systems_without_owner_count=1,
+    )
+
+    groups = [item.group for item in items]
+    runs = [group for i, group in enumerate(groups) if i == 0 or groups[i - 1] != group]
+    assert len(runs) == len(set(groups))
+
+
+def test_areas_with_something_critical_come_first() -> None:
+    items = _attention_with(
+        competence_gap_count=3,  # People -- warning only
+        supplier_reviews_overdue_count=1,  # Inventory -- critical
+        open_incident_count=2,  # Incidents -- warning only
+    )
+
+    assert [item.group for item in items] == [
+        dashboard_service.INVENTORY_GROUP,
+        dashboard_service.INCIDENTS_GROUP,
+        dashboard_service.PEOPLE_GROUP,
+    ]
+
+
+def test_within_an_area_critical_items_come_before_warnings() -> None:
+    # _attention lists the (warning) retention item before the (critical)
+    # supplier review item; the panel should flip them.
+    items = _attention_with(retention_expired_count=1, supplier_reviews_overdue_count=1)
+
+    assert [item.key for item in items] == ["supplier_reviews_overdue", "retention_expired"]

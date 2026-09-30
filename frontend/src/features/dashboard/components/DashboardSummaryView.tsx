@@ -103,19 +103,47 @@ function AttentionPanel({ items }: { items: AttentionItem[] }) {
     );
   }
 
+  const groups = groupByArea(items);
+
   return (
     <div className="attention-panel">
-      <h2>Needs Attention</h2>
-      <ul>
-        {items.map((item) => (
-          <li key={item.key} data-severity={item.severity}>
-            <span className="attention-count">{item.count}</span>
-            <Link to={ATTENTION_LINKS[item.key] ?? "/"}>{item.label}</Link>
-          </li>
+      <div className="attention-header">
+        <h2>Needs Attention</h2>
+        <p>
+          {items.length} {items.length === 1 ? "issue" : "issues"} across {groups.length}{" "}
+          {groups.length === 1 ? "area" : "areas"}
+        </p>
+      </div>
+      <div className="attention-groups">
+        {groups.map((group) => (
+          <section key={group.name} className="attention-group" aria-label={group.name}>
+            <h3>{group.name}</h3>
+            <ul>
+              {group.items.map((item) => (
+                <li key={item.key} data-severity={item.severity}>
+                  <span className="attention-count">{item.count}</span>
+                  <Link to={ATTENTION_LINKS[item.key] ?? "/"}>{item.label}</Link>
+                </li>
+              ))}
+            </ul>
+          </section>
         ))}
-      </ul>
+      </div>
     </div>
   );
+}
+
+/** The server already orders items so each area's are contiguous and the
+ * most urgent areas come first -- this only splits them into sections,
+ * keeping that order. */
+function groupByArea(items: AttentionItem[]): { name: string; items: AttentionItem[] }[] {
+  const groups: { name: string; items: AttentionItem[] }[] = [];
+  for (const item of items) {
+    const last = groups.at(-1);
+    if (last && last.name === item.group) last.items.push(item);
+    else groups.push({ name: item.group, items: [item] });
+  }
+  return groups;
 }
 
 function PendingApprovalsPanel({ items }: { items: PendingApprovalItem[] }) {

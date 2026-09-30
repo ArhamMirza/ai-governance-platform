@@ -58,6 +58,23 @@ IN_REVIEW_STATUS = "in_review"
 RETIRED_STATUS = "retired"
 HIGH_RISK_TIER = "high"
 
+# The areas the attention panel is split into -- what someone would go and
+# fix, rather than which table the count came from.
+INCIDENTS_GROUP = "Incidents & corrective actions"
+RISK_GROUP = "Risk & assessments"
+AUDIT_GROUP = "Audits & management review"
+INVENTORY_GROUP = "AI systems, data & suppliers"
+COMPLIANCE_GROUP = "Framework coverage"
+PEOPLE_GROUP = "People & documents"
+ATTENTION_GROUP_ORDER = [
+    INCIDENTS_GROUP,
+    RISK_GROUP,
+    AUDIT_GROUP,
+    INVENTORY_GROUP,
+    COMPLIANCE_GROUP,
+    PEOPLE_GROUP,
+]
+
 
 def _attention(
     *,
@@ -83,101 +100,117 @@ def _attention(
     supplier_reviews_overdue_count: int,
     supplier_contracts_expiring_count: int,
 ) -> list[AttentionItem]:
-    """Actionable items, most urgent first. Zero-count items are dropped so the
-    panel only ever shows things that need doing."""
+    """Actionable items, grouped by area and most urgent first. Zero-count
+    items are dropped so the panel only ever shows things that need doing."""
     candidates = [
         AttentionItem(
             key="overdue_treatments",
+            group=RISK_GROUP,
             label="Risk treatments overdue",
             count=overdue_count,
             severity="danger",
         ),
         AttentionItem(
             key="no_impact_assessment",
+            group=RISK_GROUP,
             label="AI systems without a completed impact assessment",
             count=no_impact_assessment_count,
             severity="danger",
         ),
         AttentionItem(
             key="assessments_review_overdue",
+            group=RISK_GROUP,
             label="Assessments overdue for annual review",
             count=review_overdue_count,
             severity="danger",
         ),
         AttentionItem(
             key="retention_expired",
+            group=INVENTORY_GROUP,
             label="Archived systems past their retention date",
             count=retention_expired_count,
             severity="warning",
         ),
         AttentionItem(
             key="unassessed_ai_systems",
+            group=RISK_GROUP,
             label="AI systems without a risk assessment",
             count=unassessed_count,
             severity="danger",
         ),
         AttentionItem(
             key="high_risk_assessments",
+            group=RISK_GROUP,
             label="Assessments rated high risk",
             count=high_risk_count,
             severity="warning",
         ),
         AttentionItem(
             key="awaiting_review",
+            group=PEOPLE_GROUP,
             label="Policies and procedures awaiting review",
             count=in_review_count,
             severity="warning",
         ),
         AttentionItem(
             key="vacant_governance_roles",
+            group=PEOPLE_GROUP,
             label="Governance roles with no one assigned",
             count=vacant_role_count,
             severity="warning",
         ),
         AttentionItem(
             key="ai_systems_without_owner",
+            group=INVENTORY_GROUP,
             label="AI systems without an active owner",
             count=ai_systems_without_owner_count,
             severity="warning",
         ),
         AttentionItem(
             key="risk_owner_not_a_real_account",
+            group=RISK_GROUP,
             label="Risk items whose owner isn't an active account",
             count=risk_owner_invalid_count,
             severity="warning",
         ),
         AttentionItem(
             key="data_owner_not_a_real_account",
+            group=INVENTORY_GROUP,
             label="Datasets whose owner isn't an active account",
             count=data_owner_invalid_count,
             severity="warning",
         ),
         AttentionItem(
             key="uncovered_framework_controls",
+            group=COMPLIANCE_GROUP,
             label="Framework controls with no coverage",
             count=uncovered_control_count,
             severity="danger",
         ),
         AttentionItem(
             key="stale_framework_controls",
+            group=COMPLIANCE_GROUP,
             label="Framework controls tagged but no longer current",
             count=stale_control_count,
             severity="warning",
         ),
         AttentionItem(
             key="overdue_corrective_actions",
+            group=INCIDENTS_GROUP,
             label="Corrective actions overdue",
             count=overdue_corrective_action_count,
             severity="danger",
         ),
         AttentionItem(
             key="audits_overdue",
+            group=AUDIT_GROUP,
             label="Internal audits overdue",
             count=overdue_audit_count,
             severity="danger",
         ),
         AttentionItem(
             key="management_review_overdue",
+            group=AUDIT_GROUP,
             label="Management review overdue",
             # One process, not a count -- 1 when it's overdue, otherwise
             # dropped like every other zero-count item.
@@ -186,36 +219,60 @@ def _attention(
         ),
         AttentionItem(
             key="incident_reports_overdue",
+            group=INCIDENTS_GROUP,
             label="Serious incidents not reported to the authority in time",
             count=incident_reports_overdue_count,
             severity="danger",
         ),
         AttentionItem(
             key="open_incidents",
+            group=INCIDENTS_GROUP,
             label="AI incidents still open",
             count=open_incident_count,
             severity="warning",
         ),
         AttentionItem(
             key="competence_gaps",
+            group=PEOPLE_GROUP,
             label="Required training not completed or lapsed",
             count=competence_gap_count,
             severity="warning",
         ),
         AttentionItem(
             key="supplier_reviews_overdue",
+            group=INVENTORY_GROUP,
             label="Supplier reviews overdue",
             count=supplier_reviews_overdue_count,
             severity="danger",
         ),
         AttentionItem(
             key="supplier_contracts_expiring",
+            group=INVENTORY_GROUP,
             label="Supplier contracts ending soon or already ended",
             count=supplier_contracts_expiring_count,
             severity="warning",
         ),
     ]
-    return [item for item in candidates if item.count > 0]
+    return _order_attention([item for item in candidates if item.count > 0])
+
+
+def _order_attention(items: list[AttentionItem]) -> list[AttentionItem]:
+    """Each area's items together, so the panel can render one section per
+    area. Areas with anything critical come first, then in
+    ATTENTION_GROUP_ORDER; within an area, critical before warning, else in
+    the order _attention lists them."""
+    critical_groups = {item.group for item in items if item.severity == "danger"}
+
+    def rank(indexed: tuple[int, AttentionItem]) -> tuple[bool, int, bool, int]:
+        index, item = indexed
+        return (
+            item.group not in critical_groups,
+            ATTENTION_GROUP_ORDER.index(item.group),
+            item.severity != "danger",
+            index,
+        )
+
+    return [item for _, item in sorted(enumerate(items), key=rank)]
 
 
 def _my_risk_items(

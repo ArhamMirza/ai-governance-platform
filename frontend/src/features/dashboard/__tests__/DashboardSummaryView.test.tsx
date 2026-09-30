@@ -48,7 +48,13 @@ const summary: DashboardSummary = {
     eu_ai_act: { satisfied: 1, partial: 0, no_coverage: 7, not_applicable: 0 },
   },
   attention: [
-    { key: "overdue_treatments", label: "Risk treatments overdue", count: 2, severity: "danger" },
+    {
+      key: "overdue_treatments",
+      label: "Risk treatments overdue",
+      count: 2,
+      severity: "danger",
+      group: "Risk & assessments",
+    },
   ],
   matrix: [{ likelihood: 4, impact: 4, count: 2 }],
   criteria,
@@ -165,6 +171,51 @@ describe("DashboardSummaryView", () => {
     expect(screen.getByRole("link", { name: "Risk treatments overdue" })).toBeInTheDocument();
   });
 
+  it("splits the attention panel into one section per area, in the order given", async () => {
+    vi.mocked(dashboardApi.getSummary).mockResolvedValue({
+      ...summary,
+      attention: [
+        {
+          key: "supplier_reviews_overdue",
+          label: "Supplier reviews overdue",
+          count: 1,
+          severity: "danger",
+          group: "AI systems, data & suppliers",
+        },
+        {
+          key: "retention_expired",
+          label: "Archived systems past their retention date",
+          count: 2,
+          severity: "warning",
+          group: "AI systems, data & suppliers",
+        },
+        {
+          key: "competence_gaps",
+          label: "Required training not completed or lapsed",
+          count: 3,
+          severity: "warning",
+          group: "People & documents",
+        },
+      ],
+    });
+
+    renderView();
+
+    const suppliers = await screen.findByRole("region", { name: "AI systems, data & suppliers" });
+    expect(within(suppliers).getAllByRole("link").map((link) => link.textContent)).toEqual([
+      "Supplier reviews overdue",
+      "Archived systems past their retention date",
+    ]);
+    const people = screen.getByRole("region", { name: "People & documents" });
+    expect(within(people).getByRole("link")).toHaveTextContent(
+      "Required training not completed or lapsed",
+    );
+    expect(
+      screen.getAllByRole("heading", { level: 3 }).map((heading) => heading.textContent),
+    ).toEqual(expect.arrayContaining(["AI systems, data & suppliers", "People & documents"]));
+    expect(screen.getByText("3 issues across 2 areas")).toBeInTheDocument();
+  });
+
   it("surfaces accountability coverage gaps in the attention panel", async () => {
     vi.mocked(dashboardApi.getSummary).mockResolvedValue({
       ...summary,
@@ -175,12 +226,14 @@ describe("DashboardSummaryView", () => {
           label: "Governance roles with no one assigned",
           count: 2,
           severity: "warning",
+          group: "People & documents",
         },
         {
           key: "ai_systems_without_owner",
           label: "AI systems without an owner",
           count: 1,
           severity: "warning",
+          group: "AI systems, data & suppliers",
         },
       ],
     });
@@ -380,6 +433,7 @@ describe("DashboardSummaryView", () => {
           label: "Framework controls with no coverage",
           count: 12,
           severity: "danger",
+          group: "Framework coverage",
         },
       ],
     });
