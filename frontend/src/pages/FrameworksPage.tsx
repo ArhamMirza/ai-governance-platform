@@ -2,10 +2,17 @@ import { useState } from "react";
 
 import { ComplianceStatusTable } from "../features/compliance-status/components/ComplianceStatusTable";
 import { ComplianceSummaryCards } from "../features/compliance-status/components/ComplianceSummaryCards";
+import { EuAiActApplicabilityPanel } from "../features/eu-ai-act/components/EuAiActApplicabilityPanel";
+import { EuAiActArticleTable } from "../features/eu-ai-act/components/EuAiActArticleTable";
 import { ClauseMappingTable } from "../features/framework-mapping/components/ClauseMappingTable";
 import { SoaTable } from "../features/framework-soa/components/SoaTable";
 
-type Tab = "compliance-status" | "iso-clauses" | "iso-soa" | "eu-ai-act";
+type Tab =
+  | "compliance-status"
+  | "iso-clauses"
+  | "iso-soa"
+  | "eu-ai-act"
+  | "eu-ai-act-applicability";
 
 export function FrameworksPage() {
   const [tab, setTab] = useState<Tab>("compliance-status");
@@ -44,6 +51,12 @@ export function FrameworksPage() {
         >
           EU AI Act
         </button>
+        <button
+          className={tab === "eu-ai-act-applicability" ? "active" : undefined}
+          onClick={() => setTab("eu-ai-act-applicability")}
+        >
+          EU AI Act Applicability
+        </button>
       </div>
 
       {tab === "compliance-status" && (
@@ -55,6 +68,13 @@ export function FrameworksPage() {
       {tab === "iso-clauses" && <ClauseMappingTable framework="iso_42001" />}
       {tab === "iso-soa" && <SoaTable />}
       {tab === "eu-ai-act" && <ClauseMappingTable framework="eu_ai_act" />}
+      {tab === "eu-ai-act-applicability" && (
+        <>
+          <EuAiActApplicabilityPanel />
+          <h3>Articles</h3>
+          <EuAiActArticleTable />
+        </>
+      )}
     </section>
   );
 }

@@ -21,6 +21,7 @@ describe("ComplianceSummaryCards", () => {
       iso_42001_clauses: { satisfied: 3, partial: 1, no_coverage: 2, not_applicable: 0 },
       iso_42001_annex_a: { satisfied: 0, partial: 0, no_coverage: 0, not_applicable: 38 },
       eu_ai_act: { satisfied: 0, partial: 0, no_coverage: 8, not_applicable: 0 },
+      eu_ai_act_scope: "in_scope",
     });
 
     render(<ComplianceSummaryCards />);
@@ -36,6 +37,7 @@ describe("ComplianceSummaryCards", () => {
       iso_42001_clauses: { satisfied: 0, partial: 0, no_coverage: 24, not_applicable: 0 },
       iso_42001_annex_a: { satisfied: 0, partial: 0, no_coverage: 0, not_applicable: 38 },
       eu_ai_act: { satisfied: 0, partial: 0, no_coverage: 8, not_applicable: 0 },
+      eu_ai_act_scope: "in_scope",
     });
 
     render(<ComplianceSummaryCards />);
@@ -49,6 +51,7 @@ describe("ComplianceSummaryCards", () => {
       iso_42001_clauses: { satisfied: 0, partial: 0, no_coverage: 24, not_applicable: 0 },
       iso_42001_annex_a: { satisfied: 0, partial: 0, no_coverage: 38, not_applicable: 0 },
       eu_ai_act: { satisfied: 0, partial: 0, no_coverage: 8, not_applicable: 0 },
+      eu_ai_act_scope: "in_scope",
     });
 
     render(<ComplianceSummaryCards />);

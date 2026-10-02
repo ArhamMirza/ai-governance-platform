@@ -40,3 +40,8 @@ def upsert(
     db.commit()
     db.refresh(entry)
     return entry
+
+
+def delete(db: Session, entry: FrameworkSoaEntry) -> None:
+    db.delete(entry)
+    db.commit()

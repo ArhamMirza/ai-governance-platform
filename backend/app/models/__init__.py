@@ -11,6 +11,7 @@ from app.models.competence_requirement import CompetenceRequirement
 from app.models.corrective_action import CorrectiveAction, CorrectiveActionStatus
 from app.models.data_inventory_record import DataInventoryRecord
 from app.models.document_chunk import ChunkSource, DocumentChunk, IndexStatus, SourceType
+from app.models.eu_ai_act_applicability import EuAiActApplicability
 from app.models.evidence import Evidence
 from app.models.folder import Folder
 from app.models.framework_control import FrameworkControl
@@ -61,6 +62,7 @@ __all__ = [
     "DataInventoryRecord",
     "DocumentChunk",
     "DraftStatus",
+    "EuAiActApplicability",
     "Evidence",
     "Folder",
     "FrameworkControl",

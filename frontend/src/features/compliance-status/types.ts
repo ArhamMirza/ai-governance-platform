@@ -27,8 +27,13 @@ export interface ComplianceStatusCounts {
   not_applicable: number;
 }
 
+export type EuAiActScope = "not_assessed" | "in_scope" | "out_of_scope";
+
 export interface ComplianceStatusSummary {
   iso_42001_clauses: ComplianceStatusCounts;
   iso_42001_annex_a: ComplianceStatusCounts;
   eu_ai_act: ComplianceStatusCounts;
+  /** Whether the EU AI Act applies at all -- out of scope means its figures
+   * are shown as such rather than as an empty ring. */
+  eu_ai_act_scope: EuAiActScope;
 }

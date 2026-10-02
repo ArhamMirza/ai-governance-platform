@@ -25,6 +25,7 @@ from app.repositories import (
 from app.schemas.ai_incident import AIIncidentCreate, AIIncidentUpdate
 from app.schemas.competence import CompetenceRequirementCreate
 from app.schemas.corrective_action import CorrectiveActionCreate, CorrectiveActionUpdate
+from app.schemas.eu_ai_act import EuAiActApplicabilityUpdate
 from app.schemas.impact_assessment import ImpactAssessmentCreate, ImpactAssessmentUpdate
 from app.schemas.internal_audit import AuditFindingCreate, AuditProgramCreate, InternalAuditCreate
 from app.schemas.management_review import (
@@ -41,6 +42,7 @@ from app.services import (
     ai_system_lifecycle_service,
     competence_service,
     corrective_action_service,
+    eu_ai_act_service,
     evidence_service,
     framework_service,
     impact_assessment_service,
@@ -334,6 +336,20 @@ def seed(db: Session) -> None:
             "treatment_deadline": str(date.today() + timedelta(days=30)),
             "status": "in_progress",
         },
+        actor_id=None,
+    )
+
+    print("Seeding EU AI Act applicability...")
+    # The demo organization builds its own high-risk systems (Resume
+    # Screener) and deploys a vendor's (the chatbot's model).
+    eu_ai_act_service.update_settings(
+        db,
+        EuAiActApplicabilityUpdate(
+            in_scope=True,
+            is_provider=True,
+            is_deployer=True,
+            has_high_risk_systems=True,
+        ),
         actor_id=None,
     )
 

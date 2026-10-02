@@ -99,6 +99,7 @@ def _attention(
     competence_gap_count: int,
     supplier_reviews_overdue_count: int,
     supplier_contracts_expiring_count: int,
+    eu_ai_act_not_assessed: bool,
 ) -> list[AttentionItem]:
     """Actionable items, grouped by area and most urgent first. Zero-count
     items are dropped so the panel only ever shows things that need doing."""
@@ -192,6 +193,14 @@ def _attention(
             group=COMPLIANCE_GROUP,
             label="Framework controls tagged but no longer current",
             count=stale_control_count,
+            severity="warning",
+        ),
+        AttentionItem(
+            key="eu_ai_act_not_assessed",
+            group=COMPLIANCE_GROUP,
+            label="EU AI Act applicability not yet assessed",
+            # One assessment, not a count -- like management_review_overdue.
+            count=1 if eu_ai_act_not_assessed else 0,
             severity="warning",
         ),
         AttentionItem(
@@ -554,6 +563,7 @@ def get_summary(db: Session, actor_id: int) -> DashboardSummary:
             competence_gap_count=competence_gap_count,
             supplier_reviews_overdue_count=supplier_reviews_overdue_count,
             supplier_contracts_expiring_count=supplier_contracts_expiring_count,
+            eu_ai_act_not_assessed=compliance.eu_ai_act_scope == "not_assessed",
         ),
         matrix=risk_analytics_service.matrix_cells(all_risk_rows),
         criteria=risk_criteria_service.get_criteria(db),

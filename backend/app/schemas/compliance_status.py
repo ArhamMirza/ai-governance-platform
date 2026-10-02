@@ -1,5 +1,6 @@
 from pydantic import BaseModel
 
+from app.schemas.eu_ai_act import EuAiActScope
 from app.schemas.framework_control import TaggedItem
 
 
@@ -34,3 +35,6 @@ class ComplianceStatusSummary(BaseModel):
     iso_42001_clauses: ComplianceStatusCounts
     iso_42001_annex_a: ComplianceStatusCounts
     eu_ai_act: ComplianceStatusCounts
+    # Whether the EU AI Act applies at all -- so an out-of-scope
+    # organization's EU AI Act figures can be shown as such, not as zero.
+    eu_ai_act_scope: EuAiActScope

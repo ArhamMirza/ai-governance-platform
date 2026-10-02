@@ -46,6 +46,7 @@ const summary: DashboardSummary = {
     iso_42001_clauses: { satisfied: 3, partial: 1, no_coverage: 2, not_applicable: 0 },
     iso_42001_annex_a: { satisfied: 0, partial: 0, no_coverage: 0, not_applicable: 38 },
     eu_ai_act: { satisfied: 1, partial: 0, no_coverage: 7, not_applicable: 0 },
+    eu_ai_act_scope: "in_scope",
   },
   attention: [
     {
@@ -124,6 +125,7 @@ const emptySummary: DashboardSummary = {
     iso_42001_clauses: { satisfied: 0, partial: 0, no_coverage: 0, not_applicable: 0 },
     iso_42001_annex_a: { satisfied: 0, partial: 0, no_coverage: 0, not_applicable: 0 },
     eu_ai_act: { satisfied: 0, partial: 0, no_coverage: 0, not_applicable: 0 },
+    eu_ai_act_scope: "in_scope",
   },
   attention: [],
   matrix: [],
@@ -367,6 +369,19 @@ describe("DashboardSummaryView", () => {
       expect(screen.getByText("Nothing needs attention")).toBeInTheDocument();
     });
     expect(screen.queryByText("My Risk Items")).not.toBeInTheDocument();
+  });
+
+  it("shows the EU AI Act as out of scope rather than an empty ring", async () => {
+    vi.mocked(dashboardApi.getSummary).mockResolvedValue({
+      ...summary,
+      compliance: { ...summary.compliance, eu_ai_act_scope: "out_of_scope" },
+    });
+
+    renderView();
+
+    expect(await screen.findByText("Out of scope for your organization")).toBeInTheDocument();
+    expect(screen.queryByRole("img", { name: /^EU AI Act:/ })).not.toBeInTheDocument();
+    expect(screen.getByRole("img", { name: /^ISO 42001 clauses:/ })).toBeInTheDocument();
   });
 
   it("shows an all-clear state when nothing needs attention", async () => {
