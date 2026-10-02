@@ -2,7 +2,12 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { QueryClient } from "@tanstack/react-query";
 
 import { suppliersApi } from "./api";
-import type { SupplierCreateInput, SupplierReviewInput, SupplierUpdateInput } from "./types";
+import type {
+  SupplierAISystemLinkInput,
+  SupplierCreateInput,
+  SupplierReviewInput,
+  SupplierUpdateInput,
+} from "./types";
 
 export const suppliersKey = ["suppliers"] as const;
 export const supplierKey = (id: number) => ["suppliers", id] as const;
@@ -17,6 +22,13 @@ export function useSuppliersForAISystem(rowId: number) {
   return useQuery({
     queryKey: suppliersForAISystemKey(rowId),
     queryFn: () => suppliersApi.list(rowId),
+  });
+}
+
+export function useSupplierRiskItems(id: number) {
+  return useQuery({
+    queryKey: ["suppliers", id, "risk-items"],
+    queryFn: () => suppliersApi.listRiskItems(id),
   });
 }
 
@@ -60,6 +72,15 @@ export function useSetSupplierAISystems(id: number) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (aiSystemRowIds: number[]) => suppliersApi.setAISystems(id, aiSystemRowIds),
+    onSuccess: () => invalidateSuppliers(queryClient),
+  });
+}
+
+export function useUpdateSupplierAISystemLink(id: number) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ aiSystemRowId, data }: { aiSystemRowId: number; data: SupplierAISystemLinkInput }) =>
+      suppliersApi.updateAISystemLink(id, aiSystemRowId, data),
     onSuccess: () => invalidateSuppliers(queryClient),
   });
 }

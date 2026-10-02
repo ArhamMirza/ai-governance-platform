@@ -86,12 +86,31 @@ def list_links_for_ai_system(db: Session, ai_system_row_id: int) -> list[Supplie
     )
 
 
+def get_link(db: Session, supplier_id: int, ai_system_row_id: int) -> SupplierAISystem | None:
+    return db.scalar(
+        select(SupplierAISystem).where(
+            SupplierAISystem.supplier_id == supplier_id,
+            SupplierAISystem.ai_system_row_id == ai_system_row_id,
+        )
+    )
+
+
+def save_link(db: Session, link: SupplierAISystem) -> SupplierAISystem:
+    db.commit()
+    db.refresh(link)
+    return link
+
+
 def replace_links(db: Session, supplier_id: int, ai_system_row_ids: list[int]) -> None:
-    """Swaps the supplier's links for exactly this set, in one commit."""
-    for link in list_links_for_supplier(db, supplier_id):
-        db.delete(link)
-    db.flush()
-    for row_id in sorted(set(ai_system_row_ids)):
+    """Makes the supplier's links exactly this set, in one commit. Links that
+    survive are kept as they are -- with their recorded role and Art. 25
+    answers -- rather than deleted and recreated blank."""
+    wanted = set(ai_system_row_ids)
+    existing = {link.ai_system_row_id: link for link in list_links_for_supplier(db, supplier_id)}
+    for row_id, link in existing.items():
+        if row_id not in wanted:
+            db.delete(link)
+    for row_id in sorted(wanted - existing.keys()):
         db.add(SupplierAISystem(supplier_id=supplier_id, ai_system_row_id=row_id))
     db.commit()
 

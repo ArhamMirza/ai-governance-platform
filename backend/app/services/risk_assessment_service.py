@@ -65,6 +65,9 @@ DEFAULT_COLUMNS = [
     ColumnDef(key="residual_impact", label="Residual Impact", data_type="number"),
     ColumnDef(key="residual_risk_score", label="Residual Risk Score", data_type="number"),
     ColumnDef(key="risk_owner", label="Risk Owner"),
+    # A third-party risk names the supplier it comes from -- a stringified
+    # supplier id, like risk_owner (see supplier_service.RISK_ITEM_SUPPLIER_KEY).
+    ColumnDef(key="supplier_id", label="Supplier"),
     ColumnDef(key="treatment_deadline", label="Treatment Deadline", data_type="date"),
     ColumnDef(key="status", label="Status"),
 ]

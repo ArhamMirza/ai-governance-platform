@@ -35,7 +35,12 @@ from app.schemas.management_review import (
 from app.schemas.policy import PolicyCreate
 from app.schemas.procedure import ProcedureCreate
 from app.schemas.risk_assessment import RiskAssessmentCreate
-from app.schemas.supplier import SupplierCreate, SupplierReviewCreate, SupplierUpdate
+from app.schemas.supplier import (
+    SupplierAISystemLinkUpdate,
+    SupplierCreate,
+    SupplierReviewCreate,
+    SupplierUpdate,
+)
 from app.services import (
     ai_incident_service,
     ai_system_inventory_service,
@@ -357,7 +362,9 @@ def seed(db: Session) -> None:
     _seed_management_review(db)
     _seed_incidents(db, support_chatbot.id, fraud_model.id, resume_screener.id)
     _seed_competence(db)
-    _seed_suppliers(db, resume_screener.id, fraud_model.id, support_chatbot.id)
+    _seed_suppliers(
+        db, resume_screener.id, fraud_model.id, support_chatbot.id, resume_assessment.id
+    )
 
     print("Seed complete.")
 
@@ -643,10 +650,17 @@ def _seed_competence(db: Session) -> None:
 
 
 def _seed_suppliers(
-    db: Session, screener_row_id: int, fraud_row_id: int, chatbot_row_id: int
+    db: Session,
+    screener_row_id: int,
+    fraud_row_id: int,
+    chatbot_row_id: int,
+    screener_assessment_id: int,
 ) -> None:
     """A supplier whose contract is ending soon, one whose first review is
-    overdue, and a former supplier that shouldn't raise any alerts."""
+    overdue, and a former supplier that shouldn't raise any alerts. Northwind
+    provides the Resume Screener's base model, which the demo organization
+    fine-tunes -- an Art. 25 substantial modification, consistent with its
+    EU AI Act assessment recording it as a provider."""
     print("Seeding suppliers...")
     today = date.today()
     models = supplier_service.create_supplier(
@@ -679,6 +693,29 @@ def _seed_suppliers(
         actor_id=None,
     )
     supplier_service.set_ai_systems(db, models.id, [screener_row_id], actor_id=None)
+    supplier_service.update_link(
+        db,
+        models.id,
+        screener_row_id,
+        SupplierAISystemLinkUpdate(supplier_role="provider", substantially_modified=True),
+        actor_id=None,
+    )
+    risk_assessment_service.add_row(
+        db,
+        screener_assessment_id,
+        {
+            "category": "Third party",
+            "description": "Northwind changes the base model without the agreed notice.",
+            "likelihood": 2,
+            "impact": 4,
+            "mitigation": "Contractual 30-day notice; re-run validation on every model change.",
+            "risk_owner": "ML Team",
+            "supplier_id": str(models.id),
+            "treatment_deadline": str(today + timedelta(days=45)),
+            "status": "in_progress",
+        },
+        actor_id=None,
+    )
     supplier_service.record_review(
         db,
         models.id,
@@ -716,6 +753,14 @@ def _seed_suppliers(
         actor_id=None,
     )
     supplier_service.set_ai_systems(db, cloud.id, [fraud_row_id, chatbot_row_id], actor_id=None)
+    for row_id in (fraud_row_id, chatbot_row_id):
+        supplier_service.update_link(
+            db,
+            cloud.id,
+            row_id,
+            SupplierAISystemLinkUpdate(supplier_role="component_supplier"),
+            actor_id=None,
+        )
     _tag(db, supplier_service.ENTITY_TYPE, cloud.id, "iso_42001:A.10.2")
 
     labelling = supplier_service.create_supplier(

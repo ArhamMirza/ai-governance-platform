@@ -14,14 +14,31 @@ from sqlalchemy.orm import Session
 from app.core import supplier_schedule
 from app.core.exceptions import NotFoundError, ValidationError
 from app.core.supplier_schedule import ContractStatus
+from app.models.sheet import SheetRow
 from app.models.supplier import Supplier, SupplierStatus
+from app.models.supplier_ai_system import SupplierAISystem
 from app.models.supplier_review import SupplierReview
-from app.repositories import sheet_repository, supplier_repository
-from app.schemas.supplier import SupplierCreate, SupplierReviewCreate, SupplierUpdate
-from app.services import ai_system_inventory_service, audit_service, framework_service
+from app.repositories import risk_assessment_repository, sheet_repository, supplier_repository
+from app.schemas.supplier import (
+    SupplierAISystemLinkUpdate,
+    SupplierCreate,
+    SupplierReviewCreate,
+    SupplierRiskItemRead,
+    SupplierUpdate,
+)
+from app.services import (
+    ai_system_inventory_service,
+    audit_service,
+    eu_ai_act_service,
+    framework_service,
+)
 
 ENTITY_TYPE = "Supplier"
 REVIEW_ENTITY_TYPE = "SupplierReview"
+# The risk-item column naming the supplier a third-party risk comes from --
+# see risk_assessment_service.DEFAULT_COLUMNS. A stringified id, like
+# risk_owner.
+RISK_ITEM_SUPPLIER_KEY = "supplier_id"
 
 
 def _today(today: date | None) -> date:
@@ -59,10 +76,11 @@ def review_dates_by_supplier(db: Session) -> dict[int, list[date]]:
     return dates
 
 
-def ai_systems_by_supplier(db: Session) -> dict[int, list[int]]:
-    linked: dict[int, list[int]] = defaultdict(list)
+def links_by_supplier(db: Session) -> dict[int, list[SupplierAISystem]]:
+    """Every supplier's AI system links in one query, for list views."""
+    linked: dict[int, list[SupplierAISystem]] = defaultdict(list)
     for link in supplier_repository.list_links(db):
-        linked[link.supplier_id].append(link.ai_system_row_id)
+        linked[link.supplier_id].append(link)
     return linked
 
 
@@ -158,6 +176,99 @@ def set_ai_systems(
     return supplier
 
 
+def links_for_supplier(db: Session, supplier_id: int) -> list[SupplierAISystem]:
+    return supplier_repository.list_links_for_supplier(db, supplier_id)
+
+
+def update_link(
+    db: Session,
+    supplier_id: int,
+    ai_system_row_id: int,
+    data: SupplierAISystemLinkUpdate,
+    actor_id: int | None,
+) -> SupplierAISystem:
+    """Records the supplier's role for one AI system, and whether the
+    organization has done anything with it that triggers Art. 25(1)."""
+    _get_or_raise(db, supplier_id)
+    link = supplier_repository.get_link(db, supplier_id, ai_system_row_id)
+    if link is None:
+        raise NotFoundError("SupplierAISystem", ai_system_row_id)
+    for field, value in data.model_dump().items():
+        setattr(link, field, value)
+    link = supplier_repository.save_link(db, link)
+    audit_service.log(
+        db,
+        ENTITY_TYPE,
+        supplier_id,
+        "ai_system_link_updated",
+        actor_id,
+        {"ai_system_row_id": ai_system_row_id, **data.model_dump()},
+    )
+    return link
+
+
+def possible_provider_count(db: Session) -> int:
+    """Links where the organization may have become the system's provider
+    under Art. 25(1) without its EU AI Act assessment saying it's one.
+    Nothing to flag once it's recorded as a provider, or as outside the
+    Act's scope."""
+    settings = eu_ai_act_service.get_settings(db)
+    if settings is not None and (settings.in_scope is False or settings.is_provider):
+        return 0
+    return sum(1 for link in supplier_repository.list_links(db) if link.art25_triggered)
+
+
+def _risk_rows_with_assessment(db: Session) -> list[tuple[int, int, SheetRow]]:
+    """(risk assessment id, AI system row id, row) for every risk item."""
+    assessments = risk_assessment_repository.list_all(db)
+    rows_by_sheet = sheet_repository.list_rows_for_sheets(db, [a.sheet_id for a in assessments])
+    return [
+        (assessment.id, assessment.ai_system_row_id, row)
+        for assessment in assessments
+        for row in rows_by_sheet.get(assessment.sheet_id, [])
+    ]
+
+
+def _names_supplier(row: SheetRow, supplier_id: int) -> bool:
+    return str(row.data.get(RISK_ITEM_SUPPLIER_KEY) or "").strip() == str(supplier_id)
+
+
+def risk_items_for_supplier(db: Session, supplier_id: int) -> list[SupplierRiskItemRead]:
+    _get_or_raise(db, supplier_id)
+    return [
+        SupplierRiskItemRead(
+            risk_assessment_id=assessment_id,
+            row_id=row.id,
+            ai_system_row_id=ai_system_row_id,
+            category=row.data.get("category"),
+            description=row.data.get("description"),
+            status=row.data.get("status"),
+        )
+        for assessment_id, ai_system_row_id, row in _risk_rows_with_assessment(db)
+        if _names_supplier(row, supplier_id)
+    ]
+
+
+def _clear_risk_item_supplier(db: Session, supplier_id: int, actor_id: int | None) -> None:
+    """Clears the Supplier cell on every risk item naming a supplier being
+    deleted. Written straight to the row, like
+    data_inventory_service.unlink_ai_system: the risk itself hasn't
+    changed, so an approved assessment's sign-off is left standing."""
+    for assessment_id, _, row in _risk_rows_with_assessment(db):
+        if not _names_supplier(row, supplier_id):
+            continue
+        row.data = {k: v for k, v in row.data.items() if k != RISK_ITEM_SUPPLIER_KEY}
+        sheet_repository.save_row(db, row)
+        audit_service.log(
+            db,
+            "RiskAssessment",
+            assessment_id,
+            "risk_item_supplier_cleared",
+            actor_id,
+            {"row_id": row.id, "supplier_id": supplier_id},
+        )
+
+
 def linked_ai_system_ids(db: Session, supplier_id: int) -> list[int]:
     return [
         link.ai_system_row_id
@@ -241,6 +352,7 @@ def delete_supplier(db: Session, supplier_id: int, actor_id: int | None) -> None
     supplier_repository.delete_links(
         db, supplier_repository.list_links_for_supplier(db, supplier_id)
     )
+    _clear_risk_item_supplier(db, supplier_id, actor_id)
     evidence_service.delete_all_for_entity(db, ENTITY_TYPE, supplier_id)
     framework_service.delete_tags(db, ENTITY_TYPE, supplier_id)
     supplier_repository.delete(db, supplier)

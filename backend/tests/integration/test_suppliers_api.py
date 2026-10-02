@@ -3,6 +3,7 @@ from datetime import date, timedelta
 from fastapi.testclient import TestClient
 
 from app.models.user import User
+from tests.helpers import complete_impact_assessment_db
 
 
 def create_supplier(client: TestClient, **overrides) -> dict:
@@ -112,3 +113,68 @@ def test_uploading_a_contract_and_review_evidence(client: TestClient, test_user:
             "/api/v1/evidence", params={"entity_type": entity_type, "entity_id": entity_id}
         ).json()
         assert [item["filename"] for item in listed] == [filename]
+
+
+def test_recording_a_suppliers_role_and_art25_triggers(client: TestClient, test_user: User) -> None:
+    screener = create_ai_system(client)
+    supplier = create_supplier(client)
+    client.put(
+        f"/api/v1/suppliers/{supplier['id']}/ai-systems", json={"ai_system_row_ids": [screener]}
+    )
+
+    response = client.put(
+        f"/api/v1/suppliers/{supplier['id']}/ai-systems/{screener}",
+        json={"supplier_role": "provider", "rebranded": True},
+    )
+
+    assert response.status_code == 200
+    [link] = response.json()["ai_system_links"]
+    assert link == {
+        "ai_system_row_id": screener,
+        "supplier_role": "provider",
+        "rebranded": True,
+        "substantially_modified": False,
+        "repurposed_to_high_risk": False,
+        "art25_triggered": True,
+    }
+    attention = client.get("/api/v1/dashboard/summary").json()["attention"]
+    assert any(a["key"] == "art25_possible_provider" and a["count"] == 1 for a in attention)
+
+    # The same link, seen from the AI system's side.
+    listed = client.get("/api/v1/suppliers", params={"ai_system_row_id": screener}).json()
+    assert listed[0]["ai_system_links"][0]["art25_triggered"] is True
+
+
+def test_updating_an_unlinked_ai_system_is_a_404(client: TestClient, test_user: User) -> None:
+    supplier = create_supplier(client)
+
+    response = client.put(
+        f"/api/v1/suppliers/{supplier['id']}/ai-systems/{create_ai_system(client)}",
+        json={"supplier_role": "provider"},
+    )
+
+    assert response.status_code == 404
+
+
+def test_a_supplier_lists_the_risk_items_naming_it(
+    client: TestClient, test_user: User, db_session
+) -> None:
+    supplier = create_supplier(client)
+    row_id = create_ai_system(client)
+    complete_impact_assessment_db(db_session, row_id)
+    assessment = client.post("/api/v1/risk-assessments", json={"ai_system_row_id": row_id}).json()
+    columns = [
+        c["key"]
+        for c in client.get(f"/api/v1/risk-assessments/{assessment['id']}/sheet").json()["columns"]
+    ]
+    assert columns[columns.index("risk_owner") + 1] == "supplier_id"
+    client.post(
+        f"/api/v1/risk-assessments/{assessment['id']}/rows",
+        json={"data": {"category": "Third party", "supplier_id": str(supplier["id"])}},
+    )
+
+    items = client.get(f"/api/v1/suppliers/{supplier['id']}/risk-items").json()
+
+    assert [(i["risk_assessment_id"], i["category"]) for i in items] == [
+        (assessment["id"], "Third party")
+    ]

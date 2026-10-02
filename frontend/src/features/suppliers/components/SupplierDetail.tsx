@@ -3,7 +3,6 @@ import { useNavigate } from "react-router-dom";
 
 import { ApiError } from "../../../shared/api/httpClient";
 import { StatusBadge } from "../../../shared/components/StatusBadge";
-import { useAISystemInventoryRows } from "../../ai-system-inventory/hooks";
 import { AuditLogViewer } from "../../audit-log/components/AuditLogViewer";
 import { DocumentBrowser } from "../../evidence/components/DocumentBrowser";
 import { FrameworkTagPicker } from "../../framework-tags/components/FrameworkTagPicker";
@@ -13,7 +12,6 @@ import {
   useDeleteSupplier,
   useDeleteSupplierReview,
   useRecordSupplierReview,
-  useSetSupplierAISystems,
   useSupplier,
   useUpdateSupplier,
 } from "../hooks";
@@ -24,7 +22,9 @@ import type {
   SupplierStatus,
   SupplierType,
 } from "../types";
+import { SupplierAISystemLinks } from "./SupplierAISystemLinks";
 import { SupplierFlags } from "./SupplierFlags";
+import { SupplierRiskItems } from "./SupplierRiskItems";
 
 interface SupplierDetailProps {
   supplierId: number;
@@ -150,10 +150,8 @@ function AddReviewForm({ supplierId }: { supplierId: number }) {
 
 export function SupplierDetail({ supplierId }: SupplierDetailProps) {
   const { data: supplier, isLoading, isError } = useSupplier(supplierId);
-  const { data: inventory } = useAISystemInventoryRows();
   const { data: directory } = useUserDirectory();
   const updateSupplier = useUpdateSupplier(supplierId);
-  const setAISystems = useSetSupplierAISystems(supplierId);
   const deleteSupplier = useDeleteSupplier();
   const deleteReview = useDeleteSupplierReview();
   const navigate = useNavigate();
@@ -161,13 +159,6 @@ export function SupplierDetail({ supplierId }: SupplierDetailProps) {
 
   if (isLoading) return <p>Loading supplier...</p>;
   if (isError || !supplier) return <p>Failed to load supplier.</p>;
-
-  const toggleAISystem = (rowId: number, linked: boolean) => {
-    const next = linked
-      ? [...supplier.ai_system_row_ids, rowId]
-      : supplier.ai_system_row_ids.filter((id) => id !== rowId);
-    setAISystems.mutate(next);
-  };
 
   const handleDelete = async () => {
     if (!window.confirm(`Delete ${supplier.name} and its reviews?`)) return;
@@ -278,35 +269,9 @@ export function SupplierDetail({ supplierId }: SupplierDetailProps) {
 
       {LONG_TEXT_FIELDS.map((field) => textInput(field, true))}
 
-      <section>
-        <h3>AI Systems</h3>
-        <p>Which AI systems this supplier contributes to.</p>
-        {(inventory?.rows ?? []).length === 0 ? (
-          <p>No AI systems in the inventory yet.</p>
-        ) : (
-          <ul className="checkbox-list">
-            {(inventory?.rows ?? []).map((row) => {
-              const name =
-                typeof row.data.name === "string" && row.data.name
-                  ? row.data.name
-                  : `System #${row.id}`;
-              return (
-                <li key={row.id}>
-                  <label>
-                    <input
-                      type="checkbox"
-                      checked={supplier.ai_system_row_ids.includes(row.id)}
-                      onChange={(e) => toggleAISystem(row.id, e.target.checked)}
-                      disabled={setAISystems.isPending}
-                    />
-                    {name}
-                  </label>
-                </li>
-              );
-            })}
-          </ul>
-        )}
-      </section>
+      <SupplierAISystemLinks supplier={supplier} />
+
+      <SupplierRiskItems supplierId={supplierId} />
 
       <section>
         <h3>Reviews</h3>

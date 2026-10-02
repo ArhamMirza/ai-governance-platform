@@ -10,6 +10,8 @@ import { ImpactAssessmentList } from "../../impact-assessments/components/Impact
 import { useRiskCriteria } from "../../risk-criteria/hooks";
 import { DataGrid } from "../../sheets/components/DataGrid";
 import type { SheetRow } from "../../sheets/types";
+import { AISystemSuppliers } from "../../suppliers/components/AISystemSuppliers";
+import { useSuppliers } from "../../suppliers/hooks";
 import { formatUserOption } from "../../users/formatUserOption";
 import { useUserDirectory } from "../../users/hooks";
 import { makeRiskAssessmentSheetAdapter } from "../api";
@@ -37,6 +39,7 @@ export function RiskAssessmentDetail({ riskAssessmentId }: RiskAssessmentDetailP
   const { data: riskAssessment, isLoading, isError } = useRiskAssessment(riskAssessmentId);
   const { data: inventory } = useAISystemInventoryRows();
   const { data: criteria } = useRiskCriteria();
+  const { data: suppliers } = useSuppliers();
   const { data: directory } = useUserDirectory();
   const adapter = makeRiskAssessmentSheetAdapter(riskAssessmentId);
   const queryKey = riskAssessmentSheetKey(riskAssessmentId);
@@ -56,6 +59,10 @@ export function RiskAssessmentDetail({ riskAssessmentId }: RiskAssessmentDetailP
       ? aiSystemRow.data.name
       : `AI System #${riskAssessment.ai_system_row_id}`;
 
+  const supplierOptions = (suppliers ?? []).map((supplier) => ({
+    value: String(supplier.id),
+    label: supplier.name,
+  }));
   const ownerOptions = (directory ?? []).map((user) => ({
     value: String(user.id),
     label: formatUserOption(user),
@@ -98,7 +105,7 @@ export function RiskAssessmentDetail({ riskAssessmentId }: RiskAssessmentDetailP
         longTextColumnKeys={LONG_TEXT_COLUMNS}
         isRowFlagged={isRiskItemOverdue}
         flaggedLabel="Overdue"
-        selectOptions={{ risk_owner: ownerOptions }}
+        selectOptions={{ risk_owner: ownerOptions, supplier_id: supplierOptions }}
         rowActions={(row) => (
           <button onClick={() => setManagingRow(row)}>
             {row.data.status === "closed" ? "View" : "Manage"}
@@ -116,6 +123,9 @@ export function RiskAssessmentDetail({ riskAssessmentId }: RiskAssessmentDetailP
 
       <h3>Risk Matrix</h3>
       <RiskMatrix rows={sheet?.rows ?? []} bands={criteria} />
+
+      <h3>Suppliers</h3>
+      <AISystemSuppliers rowId={riskAssessment.ai_system_row_id} />
 
       <h3>Impact Assessments</h3>
       <ImpactAssessmentList riskAssessmentId={riskAssessmentId} />
