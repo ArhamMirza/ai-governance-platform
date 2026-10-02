@@ -1,7 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
+import { ApiError } from "../../shared/api/httpClient";
 import { authApi } from "./api";
-import type { LoginInput, RegisterInput } from "./types";
+import type { AuthUser, LoginInput, RegisterInput } from "./types";
 
 export const currentUserKey = ["auth", "me"] as const;
 
@@ -12,11 +13,28 @@ export function useRegistrationStatus() {
   });
 }
 
-/** A 401 here just means "not logged in" -- not worth retrying. */
+/** The signed-in user, or null when there's no session. */
+async function fetchCurrentUser(): Promise<AuthUser | null> {
+  try {
+    return await authApi.me();
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 401) return null;
+    throw error;
+  }
+}
+
+/** Resolves to the signed-in user, or null when there's no session.
+ *
+ * A 401 is an answer ("not logged in"), not a failure, so it's kept as data.
+ * As an error with no data, React Query v5 puts the query back to *pending*
+ * on every refetch -- window focus, a component mounting -- and AuthGate
+ * swapped the sign-in form for its loading screen each time, wiping whatever
+ * was being typed and sending a half-filled login. Settled as null, a
+ * background refetch leaves the form alone. */
 export function useCurrentUser() {
   return useQuery({
     queryKey: currentUserKey,
-    queryFn: authApi.me,
+    queryFn: fetchCurrentUser,
     retry: false,
   });
 }

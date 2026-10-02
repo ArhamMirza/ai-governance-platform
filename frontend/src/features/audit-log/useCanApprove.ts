@@ -31,11 +31,11 @@ export function useCanApprove(entityType: string, entityId: number) {
   const myDirectoryEntry = directory?.find((user) => user.id === me?.id);
   const holdsCaigo =
     myDirectoryEntry?.governance_roles.includes(CHIEF_AI_GOVERNANCE_OFFICER) ?? false;
-  const isActiveDelegate = me !== undefined && delegation?.delegate_user_id === me.id;
+  const isActiveDelegate = me != null && delegation?.delegate_user_id === me.id;
   const isCaigo = holdsCaigo || isActiveDelegate;
   const submissions = entries?.filter((entry) => entry.action === "submitted_for_review") ?? [];
   const lastSubmission = submissions.at(-1);
-  const isSelfSubmission = me !== undefined && lastSubmission?.actor_id === me.id;
+  const isSelfSubmission = me != null && lastSubmission?.actor_id === me.id;
 
   if (!isCaigo) {
     return { canApprove: false, reason: "Only the Chief AI Governance Officer can approve." };

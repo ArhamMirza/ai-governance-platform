@@ -20,10 +20,10 @@ export function useCanApproveAsOwner(
   const { data: lifecycle } = useLifecycle(aiSystemRowId);
   const { data: entries } = useAuditLog(entityType, entityId);
 
-  const isOwner = me !== undefined && lifecycle?.owner_id === me.id;
+  const isOwner = me != null && lifecycle?.owner_id === me.id;
   const submissions = entries?.filter((entry) => entry.action === "submitted_for_review") ?? [];
   const lastSubmission = submissions.at(-1);
-  const isSelfSubmission = me !== undefined && lastSubmission?.actor_id === me.id;
+  const isSelfSubmission = me != null && lastSubmission?.actor_id === me.id;
 
   if (!isOwner) {
     return { canApprove: false, reason: "Only this AI system's owner can approve this stage." };

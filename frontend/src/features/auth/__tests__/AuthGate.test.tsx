@@ -85,6 +85,22 @@ describe("AuthGate", () => {
     });
   });
 
+  it("keeps the sign-in form up while a logged-out session check refetches", async () => {
+    // Logged out is a settled answer (null) -- a background refetch must not
+    // swap the form for the loading screen and wipe what's being typed.
+    mockHooks({ user: null, isSuccess: true });
+
+    render(
+      <AuthGate>
+        <div>Protected content</div>
+      </AuthGate>,
+    );
+
+    expect(await screen.findByRole("heading", { name: "Sign in" })).toBeInTheDocument();
+    expect(screen.queryByText("Loading...")).not.toBeInTheDocument();
+    expect(screen.queryByText("Protected content")).not.toBeInTheDocument();
+  });
+
   it("shows a loading state while the session check is in flight", () => {
     mockHooks({ userLoading: true });
 
