@@ -46,6 +46,7 @@ const ATTENTION_LINKS: Record<string, string> = {
   competence_gaps: "/competence",
   supplier_reviews_overdue: "/suppliers",
   supplier_contracts_expiring: "/suppliers",
+  eu_ai_act_not_assessed: "/frameworks",
 };
 
 const STATUS_TONES: Record<string, Segment["tone"]> = {
@@ -383,11 +384,20 @@ export function DashboardSummaryView() {
             total={applicableControlCount(summary.compliance.iso_42001_annex_a)}
             label="ISO 42001 Annex A"
           />
-          <ProgressRing
-            value={summary.compliance.eu_ai_act.satisfied}
-            total={applicableControlCount(summary.compliance.eu_ai_act)}
-            label="EU AI Act"
-          />
+          {summary.compliance.eu_ai_act_scope === "out_of_scope" ? (
+            <div className="progress-ring out-of-scope">
+              <div className="progress-ring-meta">
+                <div className="progress-ring-label">EU AI Act</div>
+                <div className="progress-ring-caption">Out of scope for your organization</div>
+              </div>
+            </div>
+          ) : (
+            <ProgressRing
+              value={summary.compliance.eu_ai_act.satisfied}
+              total={applicableControlCount(summary.compliance.eu_ai_act)}
+              label="EU AI Act"
+            />
+          )}
         </div>
         <p>
           <Link to="/frameworks">See the full breakdown by clause and control &rarr;</Link>

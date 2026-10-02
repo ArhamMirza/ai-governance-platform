@@ -26,6 +26,7 @@ from app.routers import (
     corrective_actions,
     dashboard,
     data_inventory,
+    eu_ai_act,
     evidence,
     folders,
     framework_controls,
@@ -142,3 +143,4 @@ app.include_router(management_review.router, prefix="/api/v1", dependencies=_pro
 app.include_router(ai_incidents.router, prefix="/api/v1", dependencies=_protected)
 app.include_router(competence.router, prefix="/api/v1", dependencies=_protected)
 app.include_router(suppliers.router, prefix="/api/v1", dependencies=_protected)
+app.include_router(eu_ai_act.router, prefix="/api/v1", dependencies=_protected)

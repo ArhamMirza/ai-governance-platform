@@ -38,8 +38,10 @@ from app.models.ai_incident import AIIncident
 from app.models.audit_program import AuditProgram
 from app.models.competence_requirement import CompetenceRequirement
 from app.models.corrective_action import CorrectiveAction, CorrectiveActionStatus
+from app.models.eu_ai_act_applicability import EuAiActApplicability
 from app.models.evidence import Evidence
-from app.models.framework_soa_entry import SoaApplicability
+from app.models.framework_control import Framework, FrameworkControl
+from app.models.framework_soa_entry import FrameworkSoaEntry, SoaApplicability
 from app.models.impact_assessment import ImpactAssessment, ImpactAssessmentStatus
 from app.models.policy import Policy, PolicyStatus
 from app.models.procedure import Procedure, ProcedureStatus
@@ -63,6 +65,7 @@ from app.services import (
     ai_incident_service,
     competence_service,
     corrective_action_service,
+    eu_ai_act_service,
     internal_audit_service,
     management_review_service,
     supplier_service,
@@ -306,17 +309,10 @@ def _resolve_tagged_item(
 
 
 def _control_status(
-    *,
-    is_annex_a: bool,
-    soa_applicable: bool,
-    soa_justification: str | None,
-    items: list[TaggedItemStatus],
+    *, excluded_reason: str | None, items: list[TaggedItemStatus]
 ) -> tuple[str, str]:
-    if is_annex_a and not soa_applicable:
-        return (
-            ComplianceStatus.NOT_APPLICABLE,
-            soa_justification or "Marked not applicable in the Statement of Applicability.",
-        )
+    if excluded_reason is not None:
+        return ComplianceStatus.NOT_APPLICABLE, excluded_reason
     if not items:
         return ComplianceStatus.NO_COVERAGE, "Nothing in the system is tagged to this control yet."
     if all(item.current for item in items):
@@ -328,6 +324,28 @@ def _control_status(
     )
 
 
+def _excluded_reason(
+    control: FrameworkControl,
+    soa_entry: FrameworkSoaEntry | None,
+    eu_ai_act_settings: EuAiActApplicability | None,
+) -> str | None:
+    """Why a control doesn't apply, or None if it does. Annex A controls
+    follow the Statement of Applicability; EU AI Act articles follow the
+    organization's applicability assessment, or a per-article override."""
+    if control.framework == Framework.EU_AI_ACT:
+        applicable, reason = eu_ai_act_service.effective_applicability(
+            eu_ai_act_settings, control.code, soa_entry
+        )
+        return None if applicable else reason
+    if control.category == "annex_a_control" and soa_entry is not None:
+        if soa_entry.applicability == SoaApplicability.NOT_APPLICABLE:
+            return (
+                soa_entry.justification
+                or "Marked not applicable in the Statement of Applicability."
+            )
+    return None
+
+
 def get_status(db: Session, framework: str | None = None) -> list[ControlComplianceStatus]:
     """Every control's computed status, in the same reading order the
     mapping and SoA views already use."""
@@ -337,12 +355,13 @@ def get_status(db: Session, framework: str | None = None) -> list[ControlComplia
     soa_by_control = {
         entry.framework_control_id: entry for entry in framework_soa_repository.list_all(db)
     }
+    eu_ai_act_settings = eu_ai_act_service.get_settings(db)
 
     results = []
     for control in controls:
-        is_annex_a = control.category == "annex_a_control"
-        soa_entry = soa_by_control.get(control.id)
-        soa_applicable = soa_entry is None or soa_entry.applicability == SoaApplicability.APPLICABLE
+        excluded_reason = _excluded_reason(
+            control, soa_by_control.get(control.id), eu_ai_act_settings
+        )
 
         items: list[TaggedItemStatus] = []
         for tag in tags_by_control.get(control.id, []):
@@ -359,12 +378,7 @@ def get_status(db: Session, framework: str | None = None) -> list[ControlComplia
                 )
             )
 
-        status, reason = _control_status(
-            is_annex_a=is_annex_a,
-            soa_applicable=soa_applicable,
-            soa_justification=soa_entry.justification if soa_entry else None,
-            items=items,
-        )
+        status, reason = _control_status(excluded_reason=excluded_reason, items=items)
 
         results.append(
             ControlComplianceStatus(
@@ -408,4 +422,5 @@ def get_summary(db: Session) -> ComplianceStatusSummary:
             [s for s in statuses if s.framework == "iso_42001" and s.category == "annex_a_control"]
         ),
         eu_ai_act=_counts([s for s in statuses if s.framework == "eu_ai_act"]),
+        eu_ai_act_scope=eu_ai_act_service.scope_of(eu_ai_act_service.get_settings(db)),
     )

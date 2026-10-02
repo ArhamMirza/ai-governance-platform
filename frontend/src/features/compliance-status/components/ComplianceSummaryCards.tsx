@@ -52,7 +52,15 @@ export function ComplianceSummaryCards() {
     <div className="dashboard-grid">
       <SummaryCard label="ISO 42001 Clauses" counts={summary.iso_42001_clauses} />
       <SummaryCard label="ISO 42001 Annex A" counts={summary.iso_42001_annex_a} />
-      <SummaryCard label="EU AI Act" counts={summary.eu_ai_act} />
+      {summary.eu_ai_act_scope === "out_of_scope" ? (
+        <StatCard
+          label="EU AI Act"
+          value="Out of scope"
+          hint="Recorded under EU AI Act Applicability."
+        />
+      ) : (
+        <SummaryCard label="EU AI Act" counts={summary.eu_ai_act} />
+      )}
     </div>
   );
 }
