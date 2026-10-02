@@ -4,6 +4,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from app.core.supplier_schedule import ContractStatus
 from app.models.supplier import SupplierStatus, SupplierType
+from app.models.supplier_ai_system import SupplierRole
 from app.models.supplier_review import SupplierReviewOutcome
 from app.schemas.framework_control import FrameworkControlRead
 
@@ -43,6 +44,37 @@ class SupplierAISystemsUpdate(BaseModel):
     ai_system_row_ids: list[int]
 
 
+class SupplierAISystemLinkUpdate(BaseModel):
+    supplier_role: SupplierRole | None = None
+    rebranded: bool = False
+    substantially_modified: bool = False
+    repurposed_to_high_risk: bool = False
+
+
+class SupplierAISystemLinkRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    ai_system_row_id: int
+    supplier_role: SupplierRole | None
+    rebranded: bool
+    substantially_modified: bool
+    repurposed_to_high_risk: bool
+    # Computed from the three above -- the organization may be this
+    # system's provider under EU AI Act Art. 25(1).
+    art25_triggered: bool
+
+
+class SupplierRiskItemRead(BaseModel):
+    """A risk item whose Supplier cell names this supplier."""
+
+    risk_assessment_id: int
+    row_id: int
+    ai_system_row_id: int
+    category: str | None
+    description: str | None
+    status: str | None
+
+
 class SupplierReviewCreate(BaseModel):
     review_date: date
     outcome: SupplierReviewOutcome = SupplierReviewOutcome.SATISFACTORY
@@ -78,6 +110,7 @@ class SupplierRead(BaseModel):
     review_interval_months: int | None
     first_review_due: date | None
     ai_system_row_ids: list[int]
+    ai_system_links: list[SupplierAISystemLinkRead]
     next_review_due: date | None
     review_overdue: bool
     contract_status: ContractStatus | None

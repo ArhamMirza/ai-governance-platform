@@ -113,6 +113,7 @@ def test_get_sheet_returns_columns_and_rows(client: TestClient) -> None:
         "residual_impact",
         "residual_risk_score",
         "risk_owner",
+        "supplier_id",
         "treatment_deadline",
         "status",
     ]

@@ -9,6 +9,7 @@ import { useCanApprove } from "../../audit-log/useCanApprove";
 import { useCanApproveAsOwner } from "../../audit-log/useCanApproveAsOwner";
 import { DocumentBrowser } from "../../evidence/components/DocumentBrowser";
 import { FrameworkTagPicker } from "../../framework-tags/components/FrameworkTagPicker";
+import { AISystemSuppliers } from "../../suppliers/components/AISystemSuppliers";
 import { formatUserOption } from "../../users/formatUserOption";
 import { useUserDirectory } from "../../users/hooks";
 import {
@@ -259,6 +260,9 @@ export function ImpactAssessmentForm({
           />
         ))}
       </div>
+
+      <h4>Suppliers</h4>
+      <AISystemSuppliers rowId={assessment.ai_system_row_id} />
 
       <h4>Framework Tags</h4>
       <FrameworkTagPicker entityType={ENTITY_TYPE} entityId={assessment.id} />

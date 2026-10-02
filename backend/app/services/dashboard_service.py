@@ -100,6 +100,7 @@ def _attention(
     supplier_reviews_overdue_count: int,
     supplier_contracts_expiring_count: int,
     eu_ai_act_not_assessed: bool,
+    possible_provider_count: int,
 ) -> list[AttentionItem]:
     """Actionable items, grouped by area and most urgent first. Zero-count
     items are dropped so the panel only ever shows things that need doing."""
@@ -201,6 +202,13 @@ def _attention(
             label="EU AI Act applicability not yet assessed",
             # One assessment, not a count -- like management_review_overdue.
             count=1 if eu_ai_act_not_assessed else 0,
+            severity="warning",
+        ),
+        AttentionItem(
+            key="art25_possible_provider",
+            group=COMPLIANCE_GROUP,
+            label="Supplier AI systems you may have become the provider of (EU AI Act Art. 25)",
+            count=possible_provider_count,
             severity="warning",
         ),
         AttentionItem(
@@ -564,6 +572,7 @@ def get_summary(db: Session, actor_id: int) -> DashboardSummary:
             supplier_reviews_overdue_count=supplier_reviews_overdue_count,
             supplier_contracts_expiring_count=supplier_contracts_expiring_count,
             eu_ai_act_not_assessed=compliance.eu_ai_act_scope == "not_assessed",
+            possible_provider_count=supplier_service.possible_provider_count(db),
         ),
         matrix=risk_analytics_service.matrix_cells(all_risk_rows),
         criteria=risk_criteria_service.get_criteria(db),

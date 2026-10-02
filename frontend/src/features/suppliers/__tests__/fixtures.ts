@@ -19,6 +19,7 @@ export function makeSupplier(overrides: Partial<Supplier> = {}): Supplier {
     review_interval_months: null,
     first_review_due: null,
     ai_system_row_ids: [],
+    ai_system_links: [],
     next_review_due: null,
     review_overdue: false,
     contract_status: null,

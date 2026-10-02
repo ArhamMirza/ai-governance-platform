@@ -10,6 +10,33 @@ export type SupplierType =
 export type SupplierStatus = "active" | "inactive";
 export type SupplierReviewOutcome = "satisfactory" | "concerns" | "unsatisfactory";
 export type ContractStatus = "expired" | "expiring";
+/** The supplier's EU AI Act role for one AI system. */
+export type SupplierRole = "provider" | "component_supplier" | "importer" | "distributor";
+
+export interface SupplierAISystemLink {
+  ai_system_row_id: number;
+  supplier_role: SupplierRole | null;
+  /** Art. 25(1) triggers -- what the organization did with this system. */
+  rebranded: boolean;
+  substantially_modified: boolean;
+  repurposed_to_high_risk: boolean;
+  /** The organization may be this system's provider under Art. 25(1). */
+  art25_triggered: boolean;
+}
+
+export type SupplierAISystemLinkInput = Omit<
+  SupplierAISystemLink,
+  "ai_system_row_id" | "art25_triggered"
+>;
+
+export interface SupplierRiskItem {
+  risk_assessment_id: number;
+  row_id: number;
+  ai_system_row_id: number;
+  category: string | null;
+  description: string | null;
+  status: string | null;
+}
 
 export interface SupplierReview {
   id: number;
@@ -38,6 +65,7 @@ export interface Supplier {
   review_interval_months: number | null;
   first_review_due: string | null;
   ai_system_row_ids: number[];
+  ai_system_links: SupplierAISystemLink[];
   next_review_due: string | null;
   review_overdue: boolean;
   contract_status: ContractStatus | null;
@@ -65,6 +93,7 @@ export type SupplierUpdateInput = Partial<
     Supplier,
     | "id"
     | "ai_system_row_ids"
+    | "ai_system_links"
     | "next_review_due"
     | "review_overdue"
     | "contract_status"

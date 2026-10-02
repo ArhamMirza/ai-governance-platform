@@ -37,7 +37,7 @@ def test_seed_populates_all_pillars(db_session: Session) -> None:
     total_risk_items = sum(
         len(risk_assessment_service.list_rows(db_session, ra.id)) for ra in risk_assessments
     )
-    assert total_risk_items == 3
+    assert total_risk_items == 4
 
 
 def test_seed_creates_an_approved_policy_with_a_document(db_session: Session) -> None:

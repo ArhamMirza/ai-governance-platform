@@ -1,10 +1,12 @@
 import { httpClient } from "../../shared/api/httpClient";
 import type {
   Supplier,
+  SupplierAISystemLinkInput,
   SupplierCreateInput,
   SupplierDetail,
   SupplierReview,
   SupplierReviewInput,
+  SupplierRiskItem,
   SupplierUpdateInput,
 } from "./types";
 
@@ -22,6 +24,9 @@ export const suppliersApi = {
     httpClient.put<SupplierDetail>(`/suppliers/${id}/ai-systems`, {
       ai_system_row_ids: aiSystemRowIds,
     }),
+  updateAISystemLink: (id: number, aiSystemRowId: number, data: SupplierAISystemLinkInput) =>
+    httpClient.put<SupplierDetail>(`/suppliers/${id}/ai-systems/${aiSystemRowId}`, data),
+  listRiskItems: (id: number) => httpClient.get<SupplierRiskItem[]>(`/suppliers/${id}/risk-items`),
   recordReview: (id: number, data: SupplierReviewInput) =>
     httpClient.post<SupplierReview>(`/suppliers/${id}/reviews`, data),
   removeReview: (reviewId: number) => httpClient.delete<void>(`/suppliers/reviews/${reviewId}`),
