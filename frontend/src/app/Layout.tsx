@@ -74,6 +74,18 @@ const competenceNavItem: NavItem = {
   ),
 };
 
+const objectivesNavItem: NavItem = {
+  to: "/objectives",
+  label: "AI Objectives",
+  icon: (
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="9" />
+      <circle cx="12" cy="12" r="5" />
+      <circle cx="12" cy="12" r="1" />
+    </svg>
+  ),
+};
+
 const dashboardNavItem: NavItem = {
   to: "/",
   label: "Dashboard",
@@ -262,7 +274,7 @@ function navGroupsFor(role: string | undefined): NavGroup[] {
     { label: null, items: [dashboardNavItem] },
     {
       label: "Foundation",
-      items: [orgContextNavItem, governanceRolesNavItem, competenceNavItem],
+      items: [orgContextNavItem, governanceRolesNavItem, competenceNavItem, objectivesNavItem],
     },
     { label: "Documentation", items: [policiesNavItem, proceduresNavItem, handbookNavItem] },
     {

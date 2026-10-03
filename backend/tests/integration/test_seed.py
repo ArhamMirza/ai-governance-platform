@@ -1,3 +1,5 @@
+from datetime import date
+
 from sqlalchemy.orm import Session
 
 from app.repositories import (
@@ -16,6 +18,7 @@ from app.services import (
     corrective_action_service,
     internal_audit_service,
     management_review_service,
+    objective_service,
     risk_assessment_service,
     supplier_service,
 )
@@ -113,6 +116,27 @@ def test_seed_populates_competence_and_suppliers(db_session: Session) -> None:
     assert (
         len(supplier_service.linked_ai_system_ids(db_session, suppliers["Contoso Cloud"].id)) == 2
     )
+
+
+def test_seed_populates_objectives_on_and_off_track(db_session: Session) -> None:
+    seed(db_session)
+
+    meeting = management_review_service.list_meetings(db_session)[0]
+    now = {o.title: s.state for o, s in objective_service.standings_as_of(db_session, date.today())}
+    then = {
+        o.title: s.state
+        for o, s in objective_service.standings_as_of(db_session, meeting.meeting_date)
+    }
+
+    assert now == {
+        "Resume Screener passes its bias test suite": "on_track",
+        "Every AI vendor is assessed before procurement": "off_track",
+        "Publish an AI transparency notice for the support chatbot": "in_progress",
+    }
+    # At last month's management review the bias objective was still short.
+    assert then["Resume Screener passes its bias test suite"] == "off_track"
+    counts = objective_service.attention_counts(db_session, date.today())
+    assert (counts.falling_short, counts.measurement_overdue) == (1, 0)
 
 
 def test_seed_is_idempotent(db_session: Session) -> None:

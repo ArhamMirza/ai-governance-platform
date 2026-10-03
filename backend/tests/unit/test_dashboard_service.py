@@ -765,7 +765,7 @@ def test_every_attention_item_belongs_to_a_known_area() -> None:
         **{**{name: 1 for name in ATTENTION_PARAMS}, "management_review_overdue": True}
     )
 
-    assert len(items) == 23
+    assert len(items) == 25
     assert {item.group for item in items} == set(dashboard_service.ATTENTION_GROUP_ORDER)
 
 
@@ -803,3 +803,22 @@ def test_within_an_area_critical_items_come_before_warnings() -> None:
     items = _attention_with(retention_expired_count=1, supplier_reviews_overdue_count=1)
 
     assert [item.key for item in items] == ["supplier_reviews_overdue", "retention_expired"]
+
+
+def test_objective_items_sit_in_their_own_area_after_risk() -> None:
+    items = _attention_with(
+        objectives_falling_short_count=2,
+        objective_measurements_overdue_count=1,
+        overdue_count=1,  # Risk -- critical, so its area leads
+        open_incident_count=1,  # Incidents -- warning only
+    )
+
+    assert [(item.key, item.count) for item in items] == [
+        ("overdue_treatments", 1),
+        ("open_incidents", 1),
+        ("objectives_off_track", 2),
+        ("objective_measurements_overdue", 1),
+    ]
+    assert {item.group for item in items if item.key.startswith("objective")} == {
+        dashboard_service.OBJECTIVES_GROUP
+    }

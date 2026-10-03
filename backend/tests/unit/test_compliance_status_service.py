@@ -2,7 +2,7 @@
 Applicability, and the state of whatever a control is tagged to -- never a
 manual status someone sets by hand."""
 
-from datetime import date, timedelta
+from datetime import UTC, date, datetime, timedelta
 
 from sqlalchemy.orm import Session
 
@@ -12,6 +12,7 @@ from app.schemas.competence import CompetenceRecordCreate, CompetenceRequirement
 from app.schemas.corrective_action import CorrectiveActionCreate
 from app.schemas.internal_audit import AuditProgramCreate
 from app.schemas.management_review import ManagementReviewSettingsUpdate
+from app.schemas.objective import MeasurementCreate, ObjectiveClose, ObjectiveCreate
 from app.schemas.policy import PolicyCreate
 from app.schemas.supplier import SupplierCreate
 from app.services import (
@@ -22,6 +23,7 @@ from app.services import (
     framework_service,
     internal_audit_service,
     management_review_service,
+    objective_service,
     policy_service,
     supplier_service,
 )
@@ -520,3 +522,108 @@ def test_a_supplier_whose_contract_has_ended_is_partial(db_session: Session) -> 
 
     assert row.status == "partial"
     assert "contract ended" in row.tagged_items[0].detail.lower()
+
+
+# The service judges "today" in UTC; so do these, so they don't depend on
+# the machine's own time zone.
+UTC_TODAY = datetime.now(UTC).date()
+
+
+def make_tagged_objective(db: Session, control_id: int, **overrides) -> int:
+    data = {
+        "title": "Bias test pass rate",
+        "kind": "measured",
+        "established_on": UTC_TODAY - timedelta(days=200),
+        "target_date": UTC_TODAY + timedelta(days=200),
+        "metric_name": "Pass rate",
+        "unit": "%",
+        "direction": "at_least",
+        "target_value": 95,
+        "measurement_interval_months": 3,
+        "first_measurement_due": UTC_TODAY + timedelta(days=30),
+    }
+    data.update(overrides)
+    objective = objective_service.create_objective(db, ObjectiveCreate(**data), actor_id=None)
+    framework_service.set_tags(db, "AIObjective", objective.id, [control_id], actor_id=None)
+    return objective.id
+
+
+def record_reading(db: Session, objective_id: int, value: float) -> None:
+    objective_service.record_measurement(
+        db,
+        objective_id,
+        MeasurementCreate(measured_on=UTC_TODAY - timedelta(days=5), value=value),
+        actor_id=None,
+    )
+
+
+def test_an_on_track_objective_is_satisfied(db_session: Session) -> None:
+    control_id = clause_control_id(db_session)
+    record_reading(db_session, make_tagged_objective(db_session, control_id), 97)
+
+    assert status_for(db_session, control_id).status == "satisfied"
+
+
+def test_an_objective_awaiting_its_first_reading_is_satisfied(db_session: Session) -> None:
+    control_id = clause_control_id(db_session)
+    make_tagged_objective(db_session, control_id)
+
+    assert status_for(db_session, control_id).status == "satisfied"
+
+
+def test_an_off_track_objective_is_partial(db_session: Session) -> None:
+    control_id = clause_control_id(db_session)
+    record_reading(db_session, make_tagged_objective(db_session, control_id), 82)
+
+    row = status_for(db_session, control_id)
+
+    assert row.status == "partial"
+    assert row.tagged_items[0].detail == "Off target: 82% vs ≥ 95%"
+
+
+def test_an_objective_overdue_for_measurement_is_partial(db_session: Session) -> None:
+    control_id = clause_control_id(db_session)
+    make_tagged_objective(
+        db_session, control_id, first_measurement_due=UTC_TODAY - timedelta(days=10)
+    )
+
+    row = status_for(db_session, control_id)
+
+    assert row.status == "partial"
+    assert "measurement overdue" in row.tagged_items[0].detail.lower()
+
+
+def test_a_milestone_past_its_target_date_is_partial(db_session: Session) -> None:
+    control_id = clause_control_id(db_session)
+    make_tagged_objective(
+        db_session,
+        control_id,
+        kind="milestone",
+        metric_name=None,
+        unit=None,
+        direction=None,
+        target_value=None,
+        measurement_interval_months=None,
+        first_measurement_due=None,
+        target_date=UTC_TODAY - timedelta(days=10),
+    )
+
+    row = status_for(db_session, control_id)
+
+    assert row.status == "partial"
+    assert "passed unmet" in row.tagged_items[0].detail
+
+
+def test_a_closed_objective_is_satisfied(db_session: Session) -> None:
+    control_id = clause_control_id(db_session)
+    objective_id = make_tagged_objective(
+        db_session, control_id, first_measurement_due=UTC_TODAY - timedelta(days=10)
+    )
+    objective_service.close_objective(
+        db_session, objective_id, ObjectiveClose(status="achieved"), actor_id=None
+    )
+
+    row = status_for(db_session, control_id)
+
+    assert row.status == "satisfied"
+    assert row.tagged_items[0].detail == "Objective achieved"

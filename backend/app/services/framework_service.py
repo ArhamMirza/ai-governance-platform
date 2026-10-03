@@ -9,6 +9,7 @@ mechanism instead of each carrying their own free-text column.
 from sqlalchemy.orm import Session
 
 from app.core.exceptions import NotFoundError, ValidationError
+from app.models.ai_objective import AIObjective
 from app.models.evidence import Evidence
 from app.models.framework_control import FrameworkControl
 from app.models.framework_soa_entry import SoaApplicability
@@ -69,6 +70,7 @@ def delete_tags(db: Session, entity_type: str, entity_id: int) -> None:
 
 
 _LABELLED_ENTITY_TYPES = {
+    "AIObjective": (AIObjective, lambda record: record.title),
     "Policy": (Policy, lambda record: record.title),
     "Procedure": (Procedure, lambda record: record.title),
     "Evidence": (Evidence, lambda record: record.filename),

@@ -2,6 +2,8 @@ from app.models.ai_assist import AiAssistSettings, AiUsage
 from app.models.ai_conversation import AiConversation, AiMessage, MessageRole
 from app.models.ai_draft import AiDraft, DraftStatus
 from app.models.ai_incident import AIIncident, AIIncidentSeverity, AIIncidentStatus
+from app.models.ai_objective import AIObjective, ObjectiveKind, ObjectiveStatus, TargetDirection
+from app.models.ai_objective_ai_system import AIObjectiveAISystem
 from app.models.ai_system_lifecycle import AISystemLifecycle
 from app.models.audit_finding import AuditFinding, AuditFindingType
 from app.models.audit_log import AuditLogEntry
@@ -26,6 +28,7 @@ from app.models.index_queue import IndexQueueEntry
 from app.models.internal_audit import InternalAudit, InternalAuditStatus
 from app.models.management_review_meeting import ManagementReviewMeeting
 from app.models.management_review_settings import ManagementReviewSettings
+from app.models.objective_measurement import ObjectiveMeasurement
 from app.models.organization_context import OrganizationContext, OrganizationContextStatus
 from app.models.policy import Policy
 from app.models.procedure import Procedure
@@ -42,6 +45,8 @@ __all__ = [
     "AIIncident",
     "AIIncidentSeverity",
     "AIIncidentStatus",
+    "AIObjective",
+    "AIObjectiveAISystem",
     "AISystemLifecycle",
     "AiAssistSettings",
     "AiConversation",
@@ -80,6 +85,9 @@ __all__ = [
     "ManagementReviewMeeting",
     "ManagementReviewSettings",
     "MessageRole",
+    "ObjectiveKind",
+    "ObjectiveMeasurement",
+    "ObjectiveStatus",
     "OrganizationContext",
     "OrganizationContextStatus",
     "Policy",
@@ -96,6 +104,7 @@ __all__ = [
     "SupplierReviewOutcome",
     "SupplierStatus",
     "SupplierType",
+    "TargetDirection",
     "User",
 ]
 

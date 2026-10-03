@@ -47,6 +47,7 @@ from app.services import (
     governance_role_service,
     internal_audit_service,
     management_review_service,
+    objective_service,
     pending_approvals_service,
     risk_analytics_service,
     risk_criteria_service,
@@ -62,6 +63,7 @@ HIGH_RISK_TIER = "high"
 # fix, rather than which table the count came from.
 INCIDENTS_GROUP = "Incidents & corrective actions"
 RISK_GROUP = "Risk & assessments"
+OBJECTIVES_GROUP = "Objectives & performance"
 AUDIT_GROUP = "Audits & management review"
 INVENTORY_GROUP = "AI systems, data & suppliers"
 COMPLIANCE_GROUP = "Framework coverage"
@@ -69,6 +71,7 @@ PEOPLE_GROUP = "People & documents"
 ATTENTION_GROUP_ORDER = [
     INCIDENTS_GROUP,
     RISK_GROUP,
+    OBJECTIVES_GROUP,
     AUDIT_GROUP,
     INVENTORY_GROUP,
     COMPLIANCE_GROUP,
@@ -101,6 +104,8 @@ def _attention(
     supplier_contracts_expiring_count: int,
     eu_ai_act_not_assessed: bool,
     possible_provider_count: int,
+    objectives_falling_short_count: int,
+    objective_measurements_overdue_count: int,
 ) -> list[AttentionItem]:
     """Actionable items, grouped by area and most urgent first. Zero-count
     items are dropped so the panel only ever shows things that need doing."""
@@ -267,6 +272,20 @@ def _attention(
             group=INVENTORY_GROUP,
             label="Supplier contracts ending soon or already ended",
             count=supplier_contracts_expiring_count,
+            severity="warning",
+        ),
+        AttentionItem(
+            key="objectives_off_track",
+            group=OBJECTIVES_GROUP,
+            label="AI objectives off track or past their target date",
+            count=objectives_falling_short_count,
+            severity="warning",
+        ),
+        AttentionItem(
+            key="objective_measurements_overdue",
+            group=OBJECTIVES_GROUP,
+            label="AI objectives overdue for measurement",
+            count=objective_measurements_overdue_count,
             severity="warning",
         ),
     ]
@@ -523,6 +542,7 @@ def get_summary(db: Session, actor_id: int) -> DashboardSummary:
     supplier_contracts_expiring_count = sum(
         1 for s in supplier_standings if s.contract_status is not None
     )
+    objective_counts = objective_service.attention_counts(db, today)
 
     return DashboardSummary(
         policies=StatusCounts(
@@ -573,6 +593,8 @@ def get_summary(db: Session, actor_id: int) -> DashboardSummary:
             supplier_contracts_expiring_count=supplier_contracts_expiring_count,
             eu_ai_act_not_assessed=compliance.eu_ai_act_scope == "not_assessed",
             possible_provider_count=supplier_service.possible_provider_count(db),
+            objectives_falling_short_count=objective_counts.falling_short,
+            objective_measurements_overdue_count=objective_counts.measurement_overdue,
         ),
         matrix=risk_analytics_service.matrix_cells(all_risk_rows),
         criteria=risk_criteria_service.get_criteria(db),
