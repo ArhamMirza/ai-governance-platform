@@ -9,7 +9,7 @@ from app.repositories import (
     risk_assessment_repository,
     supplier_repository,
 )
-from app.seed import seed
+from app.seed import PLACEHOLDER_USER_ID, seed
 from app.services import (
     ai_incident_service,
     ai_system_inventory_service,
@@ -78,6 +78,19 @@ def test_seed_populates_incidents_with_a_linked_corrective_action(db_session: Se
     assert ai_incident_service.is_reporting_overdue(serious) is False
     open_incident = incidents["Chatbot gave medication dosage advice"]
     assert corrective_action_service.list_for_source(db_session, "AIIncident", open_incident.id)
+
+
+def test_seed_risk_owners_are_user_ids(db_session: Session) -> None:
+    # The Risk Owner column is a user select keyed by stringified user id;
+    # free text like "ML Team" shows up as "(unrecognized)" in the grid.
+    seed(db_session)
+
+    owners = {
+        row.data["risk_owner"]
+        for ra in risk_assessment_repository.list_all(db_session)
+        for row in risk_assessment_service.list_rows(db_session, ra.id)
+    }
+    assert owners == {str(PLACEHOLDER_USER_ID)}
 
 
 def test_seed_populates_competence_and_suppliers(db_session: Session) -> None:
