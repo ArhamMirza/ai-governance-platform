@@ -1223,6 +1223,20 @@ td button {
   margin-right: 6px;
 }
 
+/* A sentence-long caution next to the record it's about (e.g. EU AI Act
+   Art. 25(1) on a supplier link) -- read, not scanned, so unlike
+   .flag-chip it stays in sentence case at body size. */
+.inline-warning {
+  margin: 6px 0 0;
+  padding: 6px 10px;
+  border-left: 3px solid var(--warning);
+  border-radius: var(--radius-sm);
+  background: var(--warning-subtle);
+  color: var(--warning-text);
+  font-size: 13px;
+  line-height: 1.4;
+}
+
 /* ---------- Status ----------
    A dot plus a mono code, not a pastel blob. State reads at a glance from
    the dot's colour and stays legible when colour alone can't be trusted. */

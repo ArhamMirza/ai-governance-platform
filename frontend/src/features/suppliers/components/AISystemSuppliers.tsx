@@ -29,7 +29,7 @@ export function AISystemSuppliers({ rowId }: { rowId: number }) {
             <Link to={`/suppliers/${supplier.id}`}>{supplier.name}</Link> —{" "}
             {supplierRoleLabel(link?.supplier_role ?? null)}
             <SupplierFlags supplier={supplier} />
-            {link?.art25_triggered && <p className="flag-chip">{ART25_WARNING}</p>}
+            {link?.art25_triggered && <p className="inline-warning">{ART25_WARNING}</p>}
           </li>
         );
       })}

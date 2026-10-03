@@ -67,6 +67,20 @@ describe("SupplierDetail", () => {
     expect(suppliersApi.setAISystems).toHaveBeenCalledWith(1, [7, 9]);
   });
 
+  it("unlinks one system by its own Remove button", async () => {
+    vi.mocked(suppliersApi.get).mockResolvedValue(
+      makeSupplierDetail({ ai_system_row_ids: [7, 9], ai_system_links: [link(7), link(9)] }),
+    );
+    vi.mocked(suppliersApi.setAISystems).mockResolvedValue(makeSupplierDetail());
+    const user = userEvent.setup();
+
+    renderDetail();
+
+    await user.click(await screen.findByRole("button", { name: "Remove Fraud Model" }));
+
+    expect(suppliersApi.setAISystems).toHaveBeenCalledWith(1, [7]);
+  });
+
   it("records the supplier's role and an Art. 25 trigger for a system", async () => {
     vi.mocked(suppliersApi.get).mockResolvedValue(
       makeSupplierDetail({ ai_system_row_ids: [7], ai_system_links: [link(7)] }),

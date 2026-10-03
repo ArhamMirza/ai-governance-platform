@@ -83,7 +83,7 @@ export function SupplierAISystemLinks({ supplier }: { supplier: SupplierDetail }
                         {trigger.label}
                       </label>
                     ))}
-                    {link.art25_triggered && <p className="flag-chip">{ART25_WARNING}</p>}
+                    {link.art25_triggered && <p className="inline-warning">{ART25_WARNING}</p>}
                   </td>
                   <td>
                     <button
@@ -93,6 +93,7 @@ export function SupplierAISystemLinks({ supplier }: { supplier: SupplierDetail }
                         )
                       }
                       disabled={setLinks.isPending}
+                      aria-label={`Remove ${name}`}
                     >
                       Remove
                     </button>
