@@ -48,6 +48,8 @@ const ATTENTION_LINKS: Record<string, string> = {
   supplier_contracts_expiring: "/suppliers",
   eu_ai_act_not_assessed: "/frameworks",
   art25_possible_provider: "/suppliers",
+  objectives_off_track: "/objectives",
+  objective_measurements_overdue: "/objectives",
 };
 
 const STATUS_TONES: Record<string, Segment["tone"]> = {

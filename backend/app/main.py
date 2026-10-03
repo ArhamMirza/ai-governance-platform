@@ -39,6 +39,7 @@ from app.routers import (
     impact_assessments,
     internal_audits,
     management_review,
+    objectives,
     organization_context,
     organization_context_drafts,
     policies,
@@ -144,3 +145,4 @@ app.include_router(ai_incidents.router, prefix="/api/v1", dependencies=_protecte
 app.include_router(competence.router, prefix="/api/v1", dependencies=_protected)
 app.include_router(suppliers.router, prefix="/api/v1", dependencies=_protected)
 app.include_router(eu_ai_act.router, prefix="/api/v1", dependencies=_protected)
+app.include_router(objectives.router, prefix="/api/v1", dependencies=_protected)

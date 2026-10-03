@@ -20,6 +20,8 @@ import { IncidentDetailPage } from "../pages/IncidentDetailPage";
 import { IncidentsPage } from "../pages/IncidentsPage";
 import { ManagementReviewMeetingDetailPage } from "../pages/ManagementReviewMeetingDetailPage";
 import { ManagementReviewPage } from "../pages/ManagementReviewPage";
+import { ObjectiveDetailPage } from "../pages/ObjectiveDetailPage";
+import { ObjectivesPage } from "../pages/ObjectivesPage";
 import { OrganizationContextPage } from "../pages/OrganizationContextPage";
 import { PoliciesPage } from "../pages/PoliciesPage";
 import { PolicyDetailPage } from "../pages/PolicyDetailPage";
@@ -46,6 +48,8 @@ export function AppRoutes() {
         <Route path="/ai-systems" element={<AISystemInventoryPage />} />
         <Route path="/ai-systems/:rowId" element={<AISystemDetailPage />} />
         <Route path="/data-inventory" element={<DataInventoryPage />} />
+        <Route path="/objectives" element={<ObjectivesPage />} />
+        <Route path="/objectives/:objectiveId" element={<ObjectiveDetailPage />} />
         <Route path="/suppliers" element={<SuppliersPage />} />
         <Route path="/suppliers/:supplierId" element={<SupplierDetailPage />} />
         <Route path="/archive" element={<ArchivePage />} />

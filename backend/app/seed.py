@@ -32,6 +32,7 @@ from app.schemas.management_review import (
     ManagementReviewMeetingCreate,
     ManagementReviewSettingsUpdate,
 )
+from app.schemas.objective import MeasurementCreate, ObjectiveCreate
 from app.schemas.policy import PolicyCreate
 from app.schemas.procedure import ProcedureCreate
 from app.schemas.risk_assessment import RiskAssessmentCreate
@@ -53,6 +54,7 @@ from app.services import (
     impact_assessment_service,
     internal_audit_service,
     management_review_service,
+    objective_service,
     policy_service,
     procedure_service,
     risk_assessment_service,
@@ -365,6 +367,7 @@ def seed(db: Session) -> None:
     _seed_suppliers(
         db, resume_screener.id, fraud_model.id, support_chatbot.id, resume_assessment.id
     )
+    _seed_objectives(db, vendor_policy.id, resume_screener.id, support_chatbot.id)
 
     print("Seed complete.")
 
@@ -776,6 +779,91 @@ def _seed_suppliers(
     supplier_service.update_supplier(
         db, labelling.id, SupplierUpdate(status="inactive"), actor_id=None
     )
+
+
+def _seed_objectives(
+    db: Session, vendor_policy_id: int, resume_screener_id: int, support_chatbot_id: int
+) -> None:
+    """One objective on track now but not at last month's management review
+    (whose as-of view shows the difference), one off track, one milestone."""
+    print("Seeding AI objectives...")
+    today = date.today()
+
+    def measure(objective_id: int, days_ago: int, value: float, note: str | None = None) -> None:
+        objective_service.record_measurement(
+            db,
+            objective_id,
+            MeasurementCreate(measured_on=today - timedelta(days=days_ago), value=value, note=note),
+            actor_id=None,
+        )
+
+    bias = objective_service.create_objective(
+        db,
+        ObjectiveCreate(
+            title="Resume Screener passes its bias test suite",
+            description="Share of fairness test cases passing on each release candidate.",
+            kind="measured",
+            owner_id=PLACEHOLDER_USER_ID,
+            established_on=today - timedelta(days=200),
+            target_date=today + timedelta(days=180),
+            planned_actions=(
+                "Add a fairness gate to the release pipeline; retrain on rebalanced data."
+            ),
+            resources="One ML engineer (approved at management review); test compute budget.",
+            evaluation_method="Quarterly run of the bias test suite against the release candidate.",
+            metric_name="Bias test pass rate",
+            unit="%",
+            direction="at_least",
+            target_value=95,
+            baseline_value=88,
+            measurement_interval_months=3,
+            first_measurement_due=today - timedelta(days=140),
+        ),
+        actor_id=None,
+    )
+    measure(bias.id, 140, 90)
+    measure(bias.id, 50, 93, "Gap on age-related test cases.")
+    measure(bias.id, 5, 96.5, "Fairness gate live; rebalanced training data.")
+    objective_service.set_ai_systems(db, bias.id, [resume_screener_id], actor_id=None)
+    _tag(db, objective_service.ENTITY_TYPE, bias.id, "iso_42001:6.2", "iso_42001:9.1")
+
+    vendors = objective_service.create_objective(
+        db,
+        ObjectiveCreate(
+            title="Every AI vendor is assessed before procurement",
+            kind="measured",
+            owner_id=PLACEHOLDER_USER_ID,
+            policy_id=vendor_policy_id,
+            established_on=today - timedelta(days=150),
+            target_date=today + timedelta(days=90),
+            planned_actions="Make the vendor assessment a required step in purchasing.",
+            evaluation_method="Half-yearly sample of new AI purchases.",
+            metric_name="New AI vendors assessed before contract",
+            unit="%",
+            direction="at_least",
+            target_value=100,
+            measurement_interval_months=6,
+            first_measurement_due=today - timedelta(days=60),
+        ),
+        actor_id=None,
+    )
+    measure(vendors.id, 30, 80, "One of five new vendors signed before its assessment.")
+    _tag(db, objective_service.ENTITY_TYPE, vendors.id, "iso_42001:6.2", "iso_42001:9.1")
+
+    notice = objective_service.create_objective(
+        db,
+        ObjectiveCreate(
+            title="Publish an AI transparency notice for the support chatbot",
+            kind="milestone",
+            owner_id=PLACEHOLDER_USER_ID,
+            established_on=today - timedelta(days=90),
+            target_date=today + timedelta(days=45),
+            planned_actions="Draft with Legal; add a disclosure banner to the chat widget.",
+        ),
+        actor_id=None,
+    )
+    objective_service.set_ai_systems(db, notice.id, [support_chatbot_id], actor_id=None)
+    _tag(db, objective_service.ENTITY_TYPE, notice.id, "iso_42001:6.2", "iso_42001:A.9.3")
 
 
 def main() -> None:

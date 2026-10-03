@@ -35,6 +35,7 @@ from sqlalchemy.orm import Session
 
 from app.core import review_cadence
 from app.models.ai_incident import AIIncident
+from app.models.ai_objective import AIObjective
 from app.models.audit_program import AuditProgram
 from app.models.competence_requirement import CompetenceRequirement
 from app.models.corrective_action import CorrectiveAction, CorrectiveActionStatus
@@ -68,6 +69,7 @@ from app.services import (
     eu_ai_act_service,
     internal_audit_service,
     management_review_service,
+    objective_service,
     supplier_service,
 )
 
@@ -281,6 +283,46 @@ def _resolve_supplier(db: Session, entity_id: int, today: date) -> _Resolved | N
     return _Resolved(record.name, True, f"Supplier {record.status}")
 
 
+def _format_value(value: float, unit: str | None) -> str:
+    number = f"{value:g}"
+    if not unit:
+        return number
+    # "82%" but "12 days" -- matching the frontend's formatValue.
+    return f"{number}{unit}" if unit == "%" else f"{number} {unit}"
+
+
+def _resolve_ai_objective(db: Session, entity_id: int, today: date) -> _Resolved | None:
+    record = db.get(AIObjective, entity_id)
+    if record is None:
+        return None
+    standing = objective_service.standing(
+        record, objective_service.list_measurements(db, entity_id), today
+    )
+    if standing.measurement_overdue:
+        return _Resolved(
+            record.title, False, f"Measurement overdue since {standing.next_measurement_due}"
+        )
+    if standing.state in ("off_track", "missed") and standing.latest_value is not None:
+        comparison = "≥" if record.direction == "at_least" else "≤"
+        target = _format_value(record.target_value or 0, record.unit)
+        latest = _format_value(standing.latest_value, record.unit)
+        verb = "Target missed" if standing.state == "missed" else "Off target"
+        return _Resolved(record.title, False, f"{verb}: {latest} vs {comparison} {target}")
+    if standing.state == "missed":
+        return _Resolved(record.title, False, f"Target date {record.target_date} passed unmet")
+    labels = {
+        # Before its first reading is due -- once it's due and missing, the
+        # overdue check above has already caught it.
+        "not_measured": "Awaiting its first reading",
+        "on_track": "Objective on track",
+        "in_progress": "Milestone in progress",
+        "achieved": "Objective achieved",
+        "not_achieved": "Objective closed as not achieved",
+        "withdrawn": "Objective withdrawn",
+    }
+    return _Resolved(record.title, True, labels[standing.state])
+
+
 _RESOLVERS = {
     "Policy": _resolve_policy,
     "Procedure": _resolve_procedure,
@@ -293,6 +335,7 @@ _RESOLVERS = {
     "AIIncident": _resolve_ai_incident,
     "CompetenceRequirement": _resolve_competence_requirement,
     "Supplier": _resolve_supplier,
+    "AIObjective": _resolve_ai_objective,
 }
 
 
