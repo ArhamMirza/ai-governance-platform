@@ -9,7 +9,7 @@ every one has a row from its migration.)
 
 from sqlalchemy.orm import Session
 
-from app.core import eu_ai_act_scope
+from app.core import ai_stakeholder_roles, eu_ai_act_scope
 from app.core.exceptions import NotFoundError, ValidationError
 from app.models.eu_ai_act_applicability import EuAiActApplicability
 from app.models.framework_control import Framework, FrameworkControl
@@ -25,7 +25,7 @@ from app.schemas.eu_ai_act import (
     EuAiActArticleRead,
     EuAiActScope,
 )
-from app.services import ai_system_inventory_service, audit_service
+from app.services import ai_system_inventory_service, audit_service, organization_context_service
 
 ENTITY_TYPE = "EuAiActApplicability"
 ENTITY_ID = 1
@@ -53,6 +53,16 @@ def high_risk_system_count(db: Session) -> int:
     )
 
 
+def suggested_roles(db: Session, settings: EuAiActApplicability | None) -> list[str]:
+    """The EU AI Act roles the organization's AI roles point to, offered only
+    until it has recorded any of its own."""
+    if settings is not None and eu_ai_act_scope.roles_of(settings):
+        return []
+    codes = organization_context_service.current_ai_roles(db)
+    suggested = ai_stakeholder_roles.suggested_eu_roles(codes)
+    return [role.value for role in eu_ai_act_scope.EuAiActRole if role in suggested]
+
+
 def read_settings(db: Session) -> EuAiActApplicabilityRead:
     settings = get_settings(db)
     return EuAiActApplicabilityRead(
@@ -65,6 +75,7 @@ def read_settings(db: Session) -> EuAiActApplicabilityRead:
         is_distributor=settings.is_distributor if settings else False,
         has_high_risk_systems=settings.has_high_risk_systems if settings else None,
         high_risk_system_count=high_risk_system_count(db),
+        suggested_roles=suggested_roles(db, settings),
         updated_by=settings.updated_by if settings else None,
         updated_at=settings.updated_at if settings else None,
     )

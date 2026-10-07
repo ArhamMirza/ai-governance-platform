@@ -11,13 +11,16 @@ export interface EuAiActApplicability {
   has_high_risk_systems: boolean | null;
   /** From the inventory's Risk Tier column -- a hint, never used to decide. */
   high_risk_system_count: number;
+  /** EU role keys (provider, deployer ...) the organization's AI roles point
+   * to -- offered only until it records any of its own. */
+  suggested_roles: string[];
   updated_by: number | null;
   updated_at: string | null;
 }
 
 export type EuAiActApplicabilityInput = Omit<
   EuAiActApplicability,
-  "scope" | "high_risk_system_count" | "updated_by" | "updated_at"
+  "scope" | "high_risk_system_count" | "suggested_roles" | "updated_by" | "updated_at"
 >;
 
 export type Applicability = "applicable" | "not_applicable";

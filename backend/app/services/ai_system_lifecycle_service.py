@@ -9,7 +9,12 @@ from app.core.exceptions import ConflictError, NotFoundError, ValidationError
 from app.core.lifecycle_stages import LifecycleStage, label, next_stage, previous_stage
 from app.models.ai_system_lifecycle import AISystemLifecycle
 from app.repositories import ai_system_lifecycle_repository, sheet_repository
-from app.services import audit_service, governance_role_service, lifecycle_gate_service
+from app.services import (
+    audit_service,
+    governance_role_service,
+    lifecycle_gate_service,
+    organization_context_service,
+)
 
 ENTITY_TYPE = "AISystem"
 # A distinct entity type per sign-off, so the segregation-of-duties lookup for
@@ -39,9 +44,7 @@ def _require_not_archived(lifecycle: AISystemLifecycle) -> None:
     exists to make. Deleting the row is the sole exception, and it is gated
     on retention_expired instead, in ai_system_inventory_service.delete_row."""
     if lifecycle.archived_at is not None:
-        raise ConflictError(
-            "This system is archived; its life cycle record can't be changed."
-        )
+        raise ConflictError("This system is archived; its life cycle record can't be changed.")
 
 
 def get_or_create(db: Session, ai_system_row_id: int) -> AISystemLifecycle:
@@ -104,7 +107,11 @@ def advance(db: Session, ai_system_row_id: int, actor_id: int | None) -> AISyste
     lifecycle = ai_system_lifecycle_repository.save(db, lifecycle)
     _write_stage_to_inventory(db, ai_system_row_id, target)
     audit_service.log(
-        db, ENTITY_TYPE, ai_system_row_id, "stage_advanced", actor_id,
+        db,
+        ENTITY_TYPE,
+        ai_system_row_id,
+        "stage_advanced",
+        actor_id,
         {"from": previous, "to": str(target)},
     )
     return lifecycle
@@ -136,7 +143,11 @@ def revert(
     lifecycle = ai_system_lifecycle_repository.save(db, lifecycle)
     _write_stage_to_inventory(db, ai_system_row_id, target)
     audit_service.log(
-        db, ENTITY_TYPE, ai_system_row_id, "stage_reverted", actor_id,
+        db,
+        ENTITY_TYPE,
+        ai_system_row_id,
+        "stage_reverted",
+        actor_id,
         {"from": previous, "to": str(target), "reason": reason},
     )
     return lifecycle
@@ -157,7 +168,11 @@ def set_deployment_record(
     lifecycle.deployed_at = deployed_at
     lifecycle = ai_system_lifecycle_repository.save(db, lifecycle)
     audit_service.log(
-        db, ENTITY_TYPE, ai_system_row_id, "deployment_record_updated", actor_id,
+        db,
+        ENTITY_TYPE,
+        ai_system_row_id,
+        "deployment_record_updated",
+        actor_id,
         {"environment": environment, "version": version},
     )
     return lifecycle
@@ -176,8 +191,44 @@ def set_monitoring(
     lifecycle.incident_escalation_path = incident_escalation_path
     lifecycle = ai_system_lifecycle_repository.save(db, lifecycle)
     audit_service.log(
-        db, ENTITY_TYPE, ai_system_row_id, "monitoring_updated", actor_id,
+        db,
+        ENTITY_TYPE,
+        ai_system_row_id,
+        "monitoring_updated",
+        actor_id,
         {"monitoring_owner_id": monitoring_owner_id},
+    )
+    return lifecycle
+
+
+def effective_ai_roles(db: Session, lifecycle: AISystemLifecycle) -> list[str]:
+    """This system's own AI roles if it has any set, else the
+    organization's."""
+    if lifecycle.ai_roles is not None:
+        return lifecycle.ai_roles
+    return organization_context_service.current_ai_roles(db)
+
+
+def set_ai_roles(
+    db: Session,
+    ai_system_row_id: int,
+    ai_roles: list[str] | None,
+    actor_id: int | None,
+) -> AISystemLifecycle:
+    """None goes back to following the organization's roles."""
+    lifecycle = get_or_create(db, ai_system_row_id)
+    _require_not_archived(lifecycle)
+    lifecycle.ai_roles = (
+        None if ai_roles is None else organization_context_service.validated_ai_roles(ai_roles)
+    )
+    lifecycle = ai_system_lifecycle_repository.save(db, lifecycle)
+    audit_service.log(
+        db,
+        ENTITY_TYPE,
+        ai_system_row_id,
+        "ai_roles_updated",
+        actor_id,
+        {"ai_roles": lifecycle.ai_roles},
     )
     return lifecycle
 
@@ -198,17 +249,18 @@ def set_owner(
     return lifecycle
 
 
-def request_deployment_approval(
-    db: Session, ai_system_row_id: int, actor_id: int | None
-) -> None:
+def request_deployment_approval(db: Session, ai_system_row_id: int, actor_id: int | None) -> None:
     _require_not_archived(get_or_create(db, ai_system_row_id))
     # If the requester is the sole possible CAIGO approver, refuse now rather
     # than leave the release stuck waiting on an approval nobody can give --
     # see policy_service.submit_for_review for the same guard's origin.
     governance_role_service.require_a_possible_approver(db, actor_id)
     audit_service.log(
-        db, DEPLOYMENT_APPROVAL_ENTITY_TYPE, ai_system_row_id,
-        "submitted_for_review", actor_id,
+        db,
+        DEPLOYMENT_APPROVAL_ENTITY_TYPE,
+        ai_system_row_id,
+        "submitted_for_review",
+        actor_id,
     )
 
 
@@ -246,9 +298,7 @@ def approve_deployment(
     ):
         raise ConflictError("This release has already been approved.")
 
-    audit_service.log(
-        db, DEPLOYMENT_APPROVAL_ENTITY_TYPE, ai_system_row_id, "approved", actor_id
-    )
+    audit_service.log(db, DEPLOYMENT_APPROVAL_ENTITY_TYPE, ai_system_row_id, "approved", actor_id)
     return lifecycle
 
 
@@ -265,20 +315,25 @@ def set_retirement(
     lifecycle.retention_until = retention_until
     lifecycle = ai_system_lifecycle_repository.save(db, lifecycle)
     audit_service.log(
-        db, ENTITY_TYPE, ai_system_row_id, "retirement_details_updated", actor_id,
+        db,
+        ENTITY_TYPE,
+        ai_system_row_id,
+        "retirement_details_updated",
+        actor_id,
         {"retention_until": str(retention_until) if retention_until else None},
     )
     return lifecycle
 
 
-def request_retirement_approval(
-    db: Session, ai_system_row_id: int, actor_id: int | None
-) -> None:
+def request_retirement_approval(db: Session, ai_system_row_id: int, actor_id: int | None) -> None:
     _require_not_archived(get_or_create(db, ai_system_row_id))
     governance_role_service.require_a_possible_approver(db, actor_id)
     audit_service.log(
-        db, RETIREMENT_APPROVAL_ENTITY_TYPE, ai_system_row_id,
-        "submitted_for_review", actor_id,
+        db,
+        RETIREMENT_APPROVAL_ENTITY_TYPE,
+        ai_system_row_id,
+        "submitted_for_review",
+        actor_id,
     )
 
 
@@ -308,9 +363,7 @@ def approve_retirement(
     ):
         raise ConflictError("This retirement has already been approved.")
 
-    audit_service.log(
-        db, RETIREMENT_APPROVAL_ENTITY_TYPE, ai_system_row_id, "approved", actor_id
-    )
+    audit_service.log(db, RETIREMENT_APPROVAL_ENTITY_TYPE, ai_system_row_id, "approved", actor_id)
     return lifecycle
 
 
@@ -338,7 +391,11 @@ def archive(db: Session, ai_system_row_id: int, actor_id: int | None) -> AISyste
     lifecycle.retired_at = now.date()
     lifecycle = ai_system_lifecycle_repository.save(db, lifecycle)
     audit_service.log(
-        db, ENTITY_TYPE, ai_system_row_id, "archived", actor_id,
+        db,
+        ENTITY_TYPE,
+        ai_system_row_id,
+        "archived",
+        actor_id,
         {"retention_until": str(lifecycle.retention_until)},
     )
     return lifecycle

@@ -18,7 +18,7 @@ than Policy's "only editable while draft".
 from datetime import UTC, date, datetime
 from enum import StrEnum
 
-from sqlalchemy import Date, DateTime, ForeignKey, Integer, String, Text
+from sqlalchemy import JSON, Date, DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.database import Base
@@ -36,6 +36,9 @@ class OrganizationContext(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     organization_description: Mapped[str | None] = mapped_column(Text, nullable=True)
     ai_usage_overview: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # The ISO/IEC 22989 AI roles the organization holds (clause 4.1) -- codes
+    # from app.core.ai_stakeholder_roles. Part of the approved context.
+    ai_roles: Mapped[list[str]] = mapped_column(JSON, default=list)
     status: Mapped[str] = mapped_column(String(20), default=OrganizationContextStatus.DRAFT)
     issues_sheet_id: Mapped[int] = mapped_column(ForeignKey("sheets.id"))
     interested_parties_sheet_id: Mapped[int] = mapped_column(ForeignKey("sheets.id"))

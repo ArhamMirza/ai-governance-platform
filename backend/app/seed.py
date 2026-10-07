@@ -55,6 +55,7 @@ from app.services import (
     internal_audit_service,
     management_review_service,
     objective_service,
+    organization_context_service,
     policy_service,
     procedure_service,
     risk_assessment_service,
@@ -360,6 +361,7 @@ def seed(db: Session) -> None:
         actor_id=None,
     )
 
+    _seed_ai_roles(db, support_chatbot.id)
     _seed_internal_audits(db)
     _seed_management_review(db)
     _seed_incidents(db, support_chatbot.id, fraud_model.id, resume_screener.id)
@@ -370,6 +372,16 @@ def seed(db: Session) -> None:
     _seed_objectives(db, vendor_policy.id, resume_screener.id, support_chatbot.id)
 
     print("Seed complete.")
+
+
+def _seed_ai_roles(db: Session, support_chatbot_id: int) -> None:
+    """The organization builds some systems and only uses others, so the
+    chatbot -- a bought-in product -- carries its own, narrower roles."""
+    print("Seeding AI roles...")
+    organization_context_service.update(
+        db, {"ai_roles": ["developer", "integrator", "ai_user"]}, actor_id=None
+    )
+    ai_system_lifecycle_service.set_ai_roles(db, support_chatbot_id, ["ai_user"], actor_id=None)
 
 
 def _seed_internal_audits(db: Session) -> None:

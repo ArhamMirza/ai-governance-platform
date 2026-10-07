@@ -1,6 +1,6 @@
 from datetime import UTC, date, datetime
 
-from sqlalchemy import Date, DateTime, ForeignKey, Integer, String, Text
+from sqlalchemy import JSON, Date, DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.database import Base
@@ -30,6 +30,9 @@ class AISystemLifecycle(Base):
     # lifecycle stage, distinct from monitoring_owner_id below (which only
     # covers day-2 operations once deployed).
     owner_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    # AI roles for this system alone. None = the same as the organization's
+    # (OrganizationContext.ai_roles); an empty list = none for this system.
+    ai_roles: Mapped[list[str] | None] = mapped_column(JSON, nullable=True)
 
     # Deployment record -- settable over the API so a CI/CD job can stamp it.
     deployment_environment: Mapped[str | None] = mapped_column(String(100), nullable=True)

@@ -26,6 +26,7 @@ function makeApplicability(overrides: Partial<EuAiActApplicability> = {}): EuAiA
     is_distributor: false,
     has_high_risk_systems: null,
     high_risk_system_count: 2,
+    suggested_roles: [],
     updated_by: null,
     updated_at: null,
     ...overrides,
@@ -85,6 +86,38 @@ describe("EuAiActApplicabilityPanel", () => {
       is_distributor: false,
       has_high_risk_systems: true,
     });
+  });
+
+  it("offers the roles the organization's AI roles point to, and ticks them on request", async () => {
+    vi.mocked(euAiActApi.getApplicability).mockResolvedValue(
+      makeApplicability({ suggested_roles: ["provider", "deployer"] }),
+    );
+    vi.mocked(euAiActApi.updateApplicability).mockResolvedValue(makeApplicability());
+    const user = userEvent.setup();
+
+    renderWithProviders(<EuAiActApplicabilityPanel />);
+
+    expect(
+      await screen.findByText(/Your AI roles suggest you may be a provider and a deployer/),
+    ).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Use this" }));
+
+    expect(screen.getByRole("checkbox", { name: /Provider/ })).toBeChecked();
+    expect(screen.getByRole("checkbox", { name: /Deployer/ })).toBeChecked();
+    expect(screen.getByRole("checkbox", { name: /Importer/ })).not.toBeChecked();
+    // Nothing is saved until the person confirms.
+    expect(euAiActApi.updateApplicability).not.toHaveBeenCalled();
+    // And no suggestion is left to repeat once they're ticked.
+    expect(screen.queryByRole("button", { name: "Use this" })).not.toBeInTheDocument();
+  });
+
+  it("makes no suggestion when the AI roles point to nothing", async () => {
+    vi.mocked(euAiActApi.getApplicability).mockResolvedValue(makeApplicability());
+
+    renderWithProviders(<EuAiActApplicabilityPanel />);
+
+    await screen.findByLabelText("Yes, we're in scope");
+    expect(screen.queryByText(/Your AI roles suggest/)).not.toBeInTheDocument();
   });
 });
 

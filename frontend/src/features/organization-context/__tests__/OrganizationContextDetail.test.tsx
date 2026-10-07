@@ -21,6 +21,7 @@ function context(overrides: Partial<OrganizationContext> = {}): OrganizationCont
     id: 1,
     organization_description: "A resume-screening vendor.",
     ai_usage_overview: "Ranks applicants for human review.",
+    ai_roles: [],
     status: "draft",
     approved_by: null,
     approved_at: null,

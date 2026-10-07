@@ -19,6 +19,9 @@ class AISystemLifecycleRead(BaseModel):
     entered_stage_at: datetime
 
     owner_id: int | None
+    # None = the same as the organization's AI roles.
+    ai_roles: list[str] | None
+    effective_ai_roles: list[str]
 
     deployment_environment: str | None
     deployment_version: str | None
@@ -51,6 +54,11 @@ class StageRevert(BaseModel):
 
 class OwnerUpdate(BaseModel):
     owner_id: int | None = None
+
+
+class AIRolesUpdate(BaseModel):
+    # None clears the override, so the system follows the organization's roles.
+    ai_roles: list[str] | None = None
 
 
 class DeploymentRecordUpdate(BaseModel):

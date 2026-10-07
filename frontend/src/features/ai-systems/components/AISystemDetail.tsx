@@ -5,6 +5,7 @@ import { useAISystemInventoryRows } from "../../ai-system-inventory/hooks";
 import { DocumentBrowser } from "../../evidence/components/DocumentBrowser";
 import { useAllImpactAssessments } from "../../impact-assessments/hooks";
 import { useRiskAssessments } from "../../risk-assessments/hooks";
+import { AISystemAIRoles } from "../../ai-roles/components/AISystemAIRoles";
 import { AISystemObjectives } from "../../objectives/components/AISystemObjectives";
 import { AISystemSuppliers } from "../../suppliers/components/AISystemSuppliers";
 import { useLifecycle } from "../hooks";
@@ -101,6 +102,9 @@ export function AISystemDetail({ rowId }: AISystemDetailProps) {
 
       <h3>AI Objectives</h3>
       <AISystemObjectives rowId={rowId} />
+
+      <h3>AI Roles</h3>
+      <AISystemAIRoles rowId={rowId} />
 
       <h3>Documents</h3>
       <DocumentBrowser entityType={ENTITY_TYPE} entityId={rowId} />

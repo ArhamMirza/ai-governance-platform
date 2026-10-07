@@ -19,9 +19,9 @@ from fastapi import UploadFile
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.core import review_cadence
+from app.core import ai_stakeholder_roles, review_cadence
 from app.core.concurrency import claim_transition, withdraw_transition
-from app.core.exceptions import InvalidStatusTransitionError
+from app.core.exceptions import InvalidStatusTransitionError, ValidationError
 from app.models.organization_context import OrganizationContext, OrganizationContextStatus
 from app.models.sheet import Sheet, SheetRow
 from app.schemas.sheet import ColumnDef
@@ -44,6 +44,23 @@ INTERESTED_PARTIES_COLUMNS = [
     ColumnDef(key="expectations", label="Expectations"),
     ColumnDef(key="requirements", label="Requirements"),
 ]
+
+
+def validated_ai_roles(codes: list[str]) -> list[str]:
+    """The codes de-duplicated, in the standard's order -- so the same set
+    of roles is always the same list, and picking them in a different order
+    isn't a change that withdraws the approval."""
+    unknown = ai_stakeholder_roles.unknown_codes(codes)
+    if unknown:
+        raise ValidationError(f"Unknown AI role: {', '.join(unknown)}.")
+    return [role.code for role in ai_stakeholder_roles.AI_ROLES if role.code in set(codes)]
+
+
+def current_ai_roles(db: Session) -> list[str]:
+    """The organization's AI roles, without provisioning the context record
+    just to read them."""
+    existing = db.scalar(select(OrganizationContext).order_by(OrganizationContext.id))
+    return list(existing.ai_roles) if existing is not None else []
 
 
 def get_or_create(db: Session) -> OrganizationContext:
@@ -89,13 +106,17 @@ def _withdraw_approval(db: Session, context: OrganizationContext) -> None:
 
 
 def update(db: Session, changes: dict, actor_id: int | None) -> OrganizationContext:
-    """Only ``organization_description`` and/or ``ai_usage_overview``, and
-    only the ones actually given -- a save of one narrative field must not
-    blank out the other, the way it would if every save always wrote both."""
+    """Only ``organization_description``, ``ai_usage_overview`` and/or
+    ``ai_roles``, and only the ones actually given -- a save of one field
+    must not blank out the others, the way it would if every save always
+    wrote all of them."""
     context = get_or_create(db)
+    if "ai_roles" in changes:
+        changes = {**changes, "ai_roles": validated_ai_roles(changes["ai_roles"] or [])}
     before = {
         "organization_description": context.organization_description,
         "ai_usage_overview": context.ai_usage_overview,
+        "ai_roles": context.ai_roles,
     }
     for field, value in changes.items():
         setattr(context, field, value)
@@ -156,9 +177,7 @@ def export_interested_parties_xlsx(db: Session) -> bytes:
     return sheet_service.export_xlsx(db, context.interested_parties_sheet_id)
 
 
-def import_interested_parties_upload(
-    db: Session, file: UploadFile, actor_id: int | None
-) -> Sheet:
+def import_interested_parties_upload(db: Session, file: UploadFile, actor_id: int | None) -> Sheet:
     context = get_or_create(db)
     outcome = sheet_service.import_upload(db, context.interested_parties_sheet_id, file)
     audit_service.log(db, ENTITY_TYPE, context.id, "interested_parties_uploaded", actor_id)
@@ -209,9 +228,7 @@ def add_interested_party(db: Session, data: dict, actor_id: int | None) -> Sheet
     return row
 
 
-def update_interested_party(
-    db: Session, row_id: int, data: dict, actor_id: int | None
-) -> SheetRow:
+def update_interested_party(db: Session, row_id: int, data: dict, actor_id: int | None) -> SheetRow:
     context = get_or_create(db)
     row = sheet_service.update_row(db, context.interested_parties_sheet_id, row_id, data)
     audit_service.log(

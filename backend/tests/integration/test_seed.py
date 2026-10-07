@@ -15,10 +15,12 @@ from app.seed import PLACEHOLDER_USER_ID, seed
 from app.services import (
     ai_incident_service,
     ai_system_inventory_service,
+    ai_system_lifecycle_service,
     corrective_action_service,
     internal_audit_service,
     management_review_service,
     objective_service,
+    organization_context_service,
     risk_assessment_service,
     supplier_service,
 )
@@ -137,6 +139,30 @@ def test_seed_populates_objectives_on_and_off_track(db_session: Session) -> None
     assert then["Resume Screener passes its bias test suite"] == "off_track"
     counts = objective_service.attention_counts(db_session, date.today())
     assert (counts.falling_short, counts.measurement_overdue) == (1, 0)
+
+
+def test_seed_records_the_organizations_ai_roles_and_the_chatbots_own(
+    db_session: Session,
+) -> None:
+    seed(db_session)
+
+    rows = {row.data["name"]: row for row in ai_system_inventory_service.list_rows(db_session)}
+    chatbot = ai_system_lifecycle_service.get_or_create(
+        db_session, rows["Customer Support Chatbot"].id
+    )
+    screener = ai_system_lifecycle_service.get_or_create(db_session, rows["Resume Screener"].id)
+
+    assert organization_context_service.current_ai_roles(db_session) == [
+        "developer",
+        "integrator",
+        "ai_user",
+    ]
+    assert ai_system_lifecycle_service.effective_ai_roles(db_session, chatbot) == ["ai_user"]
+    assert ai_system_lifecycle_service.effective_ai_roles(db_session, screener) == [
+        "developer",
+        "integrator",
+        "ai_user",
+    ]
 
 
 def test_seed_is_idempotent(db_session: Session) -> None:
