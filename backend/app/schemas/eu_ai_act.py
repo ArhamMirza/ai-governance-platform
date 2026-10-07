@@ -30,6 +30,9 @@ class EuAiActApplicabilityRead(BaseModel):
     # A hint for the high-risk question, from the inventory's Risk Tier
     # column -- informative only, never used to decide applicability.
     high_risk_system_count: int
+    # A hint from the organization's AI roles (ISO/IEC 22989) while no EU
+    # AI Act role is recorded -- computed, never stored.
+    suggested_roles: list[str]
     updated_by: int | None
     updated_at: datetime | None
 

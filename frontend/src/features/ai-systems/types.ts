@@ -14,6 +14,9 @@ export interface AISystemLifecycle {
   entered_stage_at: string;
 
   owner_id: number | null;
+  /** null = the same as the organization's AI roles. */
+  ai_roles: string[] | null;
+  effective_ai_roles: string[];
 
   deployment_environment: string | null;
   deployment_version: string | null;
@@ -36,6 +39,11 @@ export interface AISystemLifecycle {
   requirements: GateRequirement[];
   can_advance: boolean;
   can_archive: boolean;
+}
+
+export interface AIRolesInput {
+  /** null clears the override, so the system follows the organization's roles. */
+  ai_roles: string[] | null;
 }
 
 export interface OwnerInput {

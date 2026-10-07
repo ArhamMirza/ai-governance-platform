@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { StatusBadge } from "../../../shared/components/StatusBadge";
 import { useServerSyncedText } from "../../../shared/hooks/useServerSyncedText";
 import { AuditLogViewer } from "../../audit-log/components/AuditLogViewer";
+import { OrganizationAIRoles } from "../../ai-roles/components/OrganizationAIRoles";
 import { useCanApprove } from "../../audit-log/useCanApprove";
 import { DataGrid } from "../../sheets/components/DataGrid";
 import { interestedPartiesAdapter, organizationIssuesAdapter } from "../api";
@@ -33,7 +34,7 @@ function ApprovalWithdrawalNotice({ status }: { status: string }) {
     <p className="approval-withdrawal-notice" role="status">
       <strong>Approved.</strong>
       <span>
-        Changing the description, the issues or the interested parties withdraws this approval
+        Changing the description, the AI roles, the issues or the interested parties withdraws this approval
         and returns it to draft for re-approval.
       </span>
     </p>
@@ -138,6 +139,8 @@ export function OrganizationContextDetail() {
         placeholder="How the organization develops, deploys or uses AI overall."
         onSave={(text) => updateContext.mutate({ ai_usage_overview: text || null })}
       />
+
+      <OrganizationAIRoles context={context} />
 
       <h3>Internal and External Issues</h3>
       <DataGrid

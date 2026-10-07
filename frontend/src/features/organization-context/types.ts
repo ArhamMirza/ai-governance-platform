@@ -4,6 +4,8 @@ export interface OrganizationContext {
   id: number;
   organization_description: string | null;
   ai_usage_overview: string | null;
+  /** ISO/IEC 22989 AI role codes the organization holds. */
+  ai_roles: string[];
   status: OrganizationContextStatus;
   approved_by: number | null;
   approved_at: string | null;
@@ -18,4 +20,5 @@ export interface OrganizationContext {
 export interface OrganizationContextUpdateInput {
   organization_description?: string | null;
   ai_usage_overview?: string | null;
+  ai_roles?: string[];
 }

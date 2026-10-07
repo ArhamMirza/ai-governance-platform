@@ -29,6 +29,8 @@ function makeLifecycle(overrides: Partial<AISystemLifecycle> = {}): AISystemLife
     next_stage_label: "Design",
     entered_stage_at: "2026-01-01T00:00:00Z",
     owner_id: null,
+    ai_roles: null,
+    effective_ai_roles: [],
     deployment_environment: null,
     deployment_version: null,
     deployed_at: null,

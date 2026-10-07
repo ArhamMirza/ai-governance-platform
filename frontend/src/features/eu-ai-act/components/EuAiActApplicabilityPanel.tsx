@@ -40,8 +40,29 @@ function ApplicabilityForm({ current }: { current: EuAiActApplicability }) {
       has_high_risk_systems: scope === "yes" ? highRisk : null,
     });
 
+  const suggested = current.suggested_roles.filter(
+    (key) => !roles[`is_${key}` as keyof typeof roles],
+  );
+  // Ticks the roles the organization's AI roles point to and moves on to the
+  // role question. Still only a draft of the answer until it's saved.
+  const applySuggestion = () => {
+    setScope("yes");
+    setRoles({
+      ...roles,
+      ...Object.fromEntries(suggested.map((key) => [`is_${key}`, true])),
+    });
+  };
+
   return (
     <div className="criteria-editor">
+      {suggested.length > 0 && (
+        <p className="approval-note" role="status">
+          Your AI roles suggest you may be {suggested.map((key) => `a ${key}`).join(" and ")}.{" "}
+          <button type="button" onClick={applySuggestion}>
+            Use this
+          </button>
+        </p>
+      )}
       <fieldset>
         <legend>Does the EU AI Act apply to your organization?</legend>
         <p className="approval-note">

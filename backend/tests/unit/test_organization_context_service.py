@@ -10,7 +10,7 @@ a risk item.
 import pytest
 from sqlalchemy.orm import Session
 
-from app.core.exceptions import InvalidStatusTransitionError
+from app.core.exceptions import InvalidStatusTransitionError, ValidationError
 from app.models.audit_log import AuditLogEntry
 from app.models.organization_context import OrganizationContextStatus
 from app.services import organization_context_service as service
@@ -317,3 +317,67 @@ def test_exporting_interested_parties_returns_xlsx_bytes(db_session: Session) ->
     content = service.export_interested_parties_xlsx(db_session)
 
     assert content[:2] == b"PK"
+
+
+# ---------- the organization's AI roles (ISO/IEC 22989) ----------
+
+
+def test_ai_roles_start_empty_and_can_be_saved(db_session: Session) -> None:
+    assert service.get_or_create(db_session).ai_roles == []
+
+    context = service.update(db_session, {"ai_roles": ["developer", "ai_user"]}, actor_id=None)
+
+    assert context.ai_roles == ["developer", "ai_user"]
+    assert service.current_ai_roles(db_session) == ["developer", "ai_user"]
+
+
+def test_ai_roles_are_kept_in_the_standards_order_without_duplicates(
+    db_session: Session,
+) -> None:
+    context = service.update(
+        db_session, {"ai_roles": ["ai_user", "developer", "ai_user"]}, actor_id=None
+    )
+
+    assert context.ai_roles == ["developer", "ai_user"]
+
+
+def test_an_unknown_ai_role_is_refused_and_nothing_is_saved(db_session: Session) -> None:
+    with pytest.raises(ValidationError):
+        service.update(db_session, {"ai_roles": ["developer", "wizard"]}, actor_id=None)
+
+    assert service.current_ai_roles(db_session) == []
+
+
+def test_saving_one_field_leaves_the_ai_roles_alone(db_session: Session) -> None:
+    service.update(db_session, {"ai_roles": ["developer"]}, actor_id=None)
+
+    service.update(db_session, {"organization_description": "We build things."}, actor_id=None)
+
+    assert service.current_ai_roles(db_session) == ["developer"]
+
+
+def test_changing_the_ai_roles_after_approval_withdraws_it(db_session: Session) -> None:
+    approved(db_session)
+
+    context = service.update(db_session, {"ai_roles": ["developer"]}, actor_id=None)
+
+    assert context.status == OrganizationContextStatus.DRAFT
+
+
+def test_resaving_the_same_ai_roles_does_not_withdraw_approval(db_session: Session) -> None:
+    service.update(db_session, {"ai_roles": ["developer", "ai_user"]}, actor_id=None)
+    service.submit_for_review(db_session, actor_id=None)
+    service.approve(db_session, actor_id=None)
+
+    # The same set picked in a different order.
+    context = service.update(db_session, {"ai_roles": ["ai_user", "developer"]}, actor_id=None)
+
+    assert context.status == OrganizationContextStatus.APPROVED
+
+
+def test_reading_the_ai_roles_does_not_provision_the_context(db_session: Session) -> None:
+    assert service.current_ai_roles(db_session) == []
+
+    from app.models.organization_context import OrganizationContext
+
+    assert db_session.query(OrganizationContext).count() == 0

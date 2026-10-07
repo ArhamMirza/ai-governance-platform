@@ -6,6 +6,7 @@ from app.core.lifecycle_stages import LifecycleStage, label, next_stage
 from app.dependencies import get_current_actor_id, get_current_approver_id
 from app.models.ai_system_lifecycle import AISystemLifecycle
 from app.schemas.ai_system_lifecycle import (
+    AIRolesUpdate,
     AISystemLifecycleRead,
     ArchivedAISystemRead,
     DeploymentRecordUpdate,
@@ -37,6 +38,8 @@ def _to_read(db: Session, lifecycle: AISystemLifecycle) -> AISystemLifecycleRead
         next_stage_label=label(upcoming) if upcoming else None,
         entered_stage_at=lifecycle.entered_stage_at,
         owner_id=lifecycle.owner_id,
+        ai_roles=lifecycle.ai_roles,
+        effective_ai_roles=ai_system_lifecycle_service.effective_ai_roles(db, lifecycle),
         deployment_environment=lifecycle.deployment_environment,
         deployment_version=lifecycle.deployment_version,
         deployed_at=lifecycle.deployed_at,
@@ -138,6 +141,17 @@ def set_monitoring(
     lifecycle = ai_system_lifecycle_service.set_monitoring(
         db, row_id, data.monitoring_owner_id, data.incident_escalation_path, actor_id
     )
+    return _to_read(db, lifecycle)
+
+
+@router.put("/{row_id}/lifecycle/ai-roles", response_model=AISystemLifecycleRead)
+def set_ai_roles(
+    row_id: int,
+    data: AIRolesUpdate,
+    db: Session = Depends(get_db),
+    actor_id: int | None = Depends(get_current_actor_id),
+) -> AISystemLifecycleRead:
+    lifecycle = ai_system_lifecycle_service.set_ai_roles(db, row_id, data.ai_roles, actor_id)
     return _to_read(db, lifecycle)
 
 

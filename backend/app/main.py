@@ -16,6 +16,7 @@ from app.dependencies import get_current_user
 from app.routers import (
     ai_assist,
     ai_incidents,
+    ai_roles,
     ai_system_inventory,
     ai_system_lifecycle,
     assistant,
@@ -146,3 +147,4 @@ app.include_router(competence.router, prefix="/api/v1", dependencies=_protected)
 app.include_router(suppliers.router, prefix="/api/v1", dependencies=_protected)
 app.include_router(eu_ai_act.router, prefix="/api/v1", dependencies=_protected)
 app.include_router(objectives.router, prefix="/api/v1", dependencies=_protected)
+app.include_router(ai_roles.router, prefix="/api/v1", dependencies=_protected)

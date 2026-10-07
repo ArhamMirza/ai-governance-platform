@@ -1,5 +1,6 @@
 import { httpClient } from "../../shared/api/httpClient";
 import type {
+  AIRolesInput,
   AISystemLifecycle,
   ArchivedAISystem,
   DeploymentRecordInput,
@@ -19,6 +20,8 @@ export const aiSystemLifecycleApi = {
     httpClient.put<AISystemLifecycle>(`${base(rowId)}/deployment-record`, data),
   setMonitoring: (rowId: number, data: MonitoringInput) =>
     httpClient.put<AISystemLifecycle>(`${base(rowId)}/monitoring`, data),
+  setAIRoles: (rowId: number, data: AIRolesInput) =>
+    httpClient.put<AISystemLifecycle>(`${base(rowId)}/ai-roles`, data),
   setOwner: (rowId: number, data: OwnerInput) =>
     httpClient.put<AISystemLifecycle>(`${base(rowId)}/owner`, data),
   requestDeploymentApproval: (rowId: number) =>

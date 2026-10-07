@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { aiSystemLifecycleApi, uploadStageDocument } from "./api";
 import type {
+  AIRolesInput,
   DeploymentRecordInput,
   MonitoringInput,
   OwnerInput,
@@ -62,6 +63,14 @@ export function useSetMonitoring(rowId: number) {
   const invalidate = useInvalidateLifecycle(rowId);
   return useMutation({
     mutationFn: (data: MonitoringInput) => aiSystemLifecycleApi.setMonitoring(rowId, data),
+    onSuccess: invalidate,
+  });
+}
+
+export function useSetAIRoles(rowId: number) {
+  const invalidate = useInvalidateLifecycle(rowId);
+  return useMutation({
+    mutationFn: (data: AIRolesInput) => aiSystemLifecycleApi.setAIRoles(rowId, data),
     onSuccess: invalidate,
   });
 }
