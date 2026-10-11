@@ -765,7 +765,7 @@ def test_every_attention_item_belongs_to_a_known_area() -> None:
         **{**{name: 1 for name in ATTENTION_PARAMS}, "management_review_overdue": True}
     )
 
-    assert len(items) == 26
+    assert len(items) == 27
     assert {item.group for item in items} == set(dashboard_service.ATTENTION_GROUP_ORDER)
 
 

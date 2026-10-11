@@ -41,6 +41,7 @@ from app.services import (
     ai_system_inventory_service,
     ai_system_lifecycle_service,
     change_service,
+    communication_service,
     competence_service,
     compliance_status_service,
     corrective_action_service,
@@ -110,6 +111,7 @@ def _attention(
     objectives_falling_short_count: int,
     objective_measurements_overdue_count: int,
     changes_overdue_count: int,
+    communications_overdue_count: int,
 ) -> list[AttentionItem]:
     """Actionable items, grouped by area and most urgent first. Zero-count
     items are dropped so the panel only ever shows things that need doing."""
@@ -297,6 +299,13 @@ def _attention(
             group=PLANNING_GROUP,
             label="Planned changes to the management system past their date",
             count=changes_overdue_count,
+            severity="warning",
+        ),
+        AttentionItem(
+            key="communications_overdue",
+            group=PLANNING_GROUP,
+            label="Planned communications overdue",
+            count=communications_overdue_count,
             severity="warning",
         ),
     ]
@@ -607,6 +616,7 @@ def get_summary(db: Session, actor_id: int) -> DashboardSummary:
             objectives_falling_short_count=objective_counts.falling_short,
             objective_measurements_overdue_count=objective_counts.measurement_overdue,
             changes_overdue_count=change_service.overdue_count(db, today),
+            communications_overdue_count=communication_service.overdue_count(db, today),
         ),
         matrix=risk_analytics_service.matrix_cells(all_risk_rows),
         criteria=risk_criteria_service.get_criteria(db),

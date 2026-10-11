@@ -99,6 +99,16 @@ const changesNavItem: NavItem = {
   ),
 };
 
+const communicationsNavItem: NavItem = {
+  to: "/communications",
+  label: "Communication",
+  icon: (
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+    </svg>
+  ),
+};
+
 const dashboardNavItem: NavItem = {
   to: "/",
   label: "Dashboard",
@@ -293,6 +303,7 @@ function navGroupsFor(role: string | undefined): NavGroup[] {
         competenceNavItem,
         objectivesNavItem,
         changesNavItem,
+        communicationsNavItem,
       ],
     },
     { label: "Documentation", items: [policiesNavItem, proceduresNavItem, handbookNavItem] },

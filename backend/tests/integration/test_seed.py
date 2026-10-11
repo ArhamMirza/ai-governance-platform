@@ -17,6 +17,7 @@ from app.services import (
     ai_system_inventory_service,
     ai_system_lifecycle_service,
     change_service,
+    communication_service,
     compliance_status_service,
     corrective_action_service,
     internal_audit_service,
@@ -205,6 +206,22 @@ def test_seed_populates_changes_as_they_stood_at_the_management_review(
     # At last month's review the fairness gate was under way, and not yet late.
     assert then["Introduce a fairness gate in the release pipeline"] == ("in_progress", False)
     assert change_service.overdue_count(db_session) == 1
+
+
+def test_seed_populates_a_communication_plan_with_one_lapsed_item(db_session: Session) -> None:
+    seed(db_session)
+
+    dates = communication_service.dates_by_item(db_session)
+    standings = {
+        item.topic: communication_service.standing(item, dates[item.id])
+        for item in communication_service.list_items(db_session)
+    }
+
+    assert standings["Quarterly AI governance update"].overdue is False
+    assert standings["Annual AI transparency notice"].overdue is True
+    event_driven = standings["Notification of a serious AI incident"]
+    assert (event_driven.next_due, event_driven.overdue) == (None, False)
+    assert communication_service.overdue_count(db_session) == 1
 
 
 def test_seed_is_idempotent(db_session: Session) -> None:

@@ -24,6 +24,7 @@ from app.repositories import (
 )
 from app.schemas.ai_incident import AIIncidentCreate, AIIncidentUpdate
 from app.schemas.change import ChangeCreate, ChangeStatusUpdate
+from app.schemas.communication import CommunicationCreate, CommunicationRecordCreate
 from app.schemas.competence import CompetenceRequirementCreate
 from app.schemas.corrective_action import CorrectiveActionCreate, CorrectiveActionUpdate
 from app.schemas.eu_ai_act import EuAiActApplicabilityUpdate
@@ -48,6 +49,7 @@ from app.services import (
     ai_system_inventory_service,
     ai_system_lifecycle_service,
     change_service,
+    communication_service,
     competence_service,
     corrective_action_service,
     eu_ai_act_service,
@@ -373,6 +375,7 @@ def seed(db: Session) -> None:
     )
     _seed_objectives(db, vendor_policy.id, resume_screener.id, support_chatbot.id)
     _seed_changes(db, resume_screener.id, support_chatbot.id)
+    _seed_communications(db)
 
     print("Seed complete.")
 
@@ -983,6 +986,72 @@ def _seed_changes(db: Session, resume_screener_id: int, support_chatbot_id: int)
     )
     change_service.set_ai_systems(db, vendor.id, [support_chatbot_id], actor_id=None)
     _tag(db, change_service.ENTITY_TYPE, vendor.id, "iso_42001:6.3")
+
+
+def _seed_communications(db: Session) -> None:
+    """The communication plan (7.4): a quarterly internal update that is up
+    to date, an annual external notice that has lapsed, and an
+    event-driven notification that is never "due"."""
+    print("Seeding the communication plan...")
+    today = date.today()
+
+    def done(item_id: int, days_ago: int, summary: str) -> None:
+        communication_service.record_communication(
+            db,
+            item_id,
+            CommunicationRecordCreate(
+                communicated_on=today - timedelta(days=days_ago), summary=summary
+            ),
+            actor_id=None,
+        )
+
+    update = communication_service.create_item(
+        db,
+        CommunicationCreate(
+            topic="Quarterly AI governance update",
+            audience="Leadership team and the board",
+            direction="internal",
+            method="Board pack and a 20-minute briefing",
+            responsible_id=PLACEHOLDER_USER_ID,
+            notes="Risks, incidents, objectives and planned changes since the last update.",
+            interval_months=3,
+            first_due=today - timedelta(days=170),
+        ),
+        actor_id=None,
+    )
+    done(update.id, 160, "Presented the first quarter's incidents and objectives.")
+    done(update.id, 70, "Presented the fairness gate plan and the supplier review results.")
+    _tag(db, communication_service.ENTITY_TYPE, update.id, "iso_42001:7.4")
+
+    notice = communication_service.create_item(
+        db,
+        CommunicationCreate(
+            topic="Annual AI transparency notice",
+            audience="Enterprise customers and applicants",
+            direction="external",
+            method="Published on the website and emailed to customers",
+            responsible_id=PLACEHOLDER_USER_ID,
+            interval_months=12,
+            first_due=today - timedelta(days=400),
+        ),
+        actor_id=None,
+    )
+    done(notice.id, 395, "Published the first transparency notice.")
+    _tag(db, communication_service.ENTITY_TYPE, notice.id, "iso_42001:7.4", "iso_42001:A.8.5")
+
+    incident = communication_service.create_item(
+        db,
+        CommunicationCreate(
+            topic="Notification of a serious AI incident",
+            audience="Affected customers and the market surveillance authority",
+            direction="external",
+            method="Direct email, then a report to the authority",
+            responsible_id=PLACEHOLDER_USER_ID,
+            notes="Done only when a serious incident occurs; deadlines follow EU AI Act Art. 73.",
+        ),
+        actor_id=None,
+    )
+    _tag(db, communication_service.ENTITY_TYPE, incident.id, "iso_42001:7.4", "iso_42001:A.8.4")
 
 
 def main() -> None:

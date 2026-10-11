@@ -37,6 +37,7 @@ from app.core import review_cadence
 from app.models.ai_incident import AIIncident
 from app.models.ai_objective import AIObjective
 from app.models.audit_program import AuditProgram
+from app.models.communication import CommunicationPlanItem, CommunicationStatus
 from app.models.competence_requirement import CompetenceRequirement
 from app.models.corrective_action import CorrectiveAction, CorrectiveActionStatus
 from app.models.eu_ai_act_applicability import EuAiActApplicability
@@ -67,6 +68,7 @@ from app.schemas.compliance_status import (
 from app.services import (
     ai_incident_service,
     change_service,
+    communication_service,
     competence_service,
     corrective_action_service,
     eu_ai_act_service,
@@ -324,6 +326,23 @@ def _resolve_management_system_change(
     return _Resolved(record.title, True, labels[standing.state])
 
 
+def _resolve_communication_plan_item(
+    db: Session, entity_id: int, today: date
+) -> _Resolved | None:
+    record = db.get(CommunicationPlanItem, entity_id)
+    if record is None:
+        return None
+    dates = [r.communicated_on for r in communication_service.list_records(db, entity_id)]
+    standing = communication_service.standing(record, dates, today)
+    if standing.overdue:
+        return _Resolved(record.topic, False, f"Communication overdue since {standing.next_due}")
+    if record.status == CommunicationStatus.RETIRED:
+        return _Resolved(record.topic, True, "Communication retired")
+    if standing.last_communicated_on is None:
+        return _Resolved(record.topic, True, "Planned, not yet carried out")
+    return _Resolved(record.topic, True, f"Last communicated {standing.last_communicated_on}")
+
+
 def _format_value(value: float, unit: str | None) -> str:
     number = f"{value:g}"
     if not unit:
@@ -379,6 +398,7 @@ _RESOLVERS = {
     "Supplier": _resolve_supplier,
     "AIObjective": _resolve_ai_objective,
     "ManagementSystemChange": _resolve_management_system_change,
+    "CommunicationPlanItem": _resolve_communication_plan_item,
 }
 
 
