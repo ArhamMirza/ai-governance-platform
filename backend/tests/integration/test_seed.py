@@ -1,4 +1,5 @@
 from datetime import date
+from types import SimpleNamespace
 
 from sqlalchemy.orm import Session
 
@@ -19,6 +20,7 @@ from app.services import (
     change_service,
     communication_service,
     compliance_status_service,
+    concern_service,
     corrective_action_service,
     internal_audit_service,
     management_review_service,
@@ -249,6 +251,27 @@ def test_seed_shares_the_approved_retention_policy_with_employees(db_session: Se
 
     assert [(item.kind, item.title) for item in library] == [("policy", "Data Retention Policy")]
     assert [d.filename for d in library[0].documents] == ["data-retention-policy-v1.pdf"]
+
+
+def test_seed_populates_concerns_one_of_which_is_overdue_for_acknowledgement(
+    db_session: Session,
+) -> None:
+    seed(db_session)
+
+    concerns = {c.channel + "/" + c.status: c for c in concern_service.list_concerns(db_session)}
+    standing = concern_service.standing(db_session)
+
+    assert set(concerns) == {
+        "employee_portal/under_review",
+        "employee_portal/resolved",
+        "phone/received",
+    }
+    assert concerns["employee_portal/resolved"].is_anonymous is True
+    assert concerns["employee_portal/resolved"].reporter_id is None
+    assert (standing.open_count, standing.awaiting_triage_count) == (2, 1)
+    # The demo tracking code finds the anonymous concern.
+    found = concern_service.lookup(db_session, SimpleNamespace(id=999), "kmnp 2345 hjkw")
+    assert found.id == concerns["employee_portal/resolved"].id
 
 
 def test_seed_is_idempotent(db_session: Session) -> None:

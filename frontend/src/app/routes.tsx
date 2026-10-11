@@ -5,6 +5,8 @@ import { AISystemInventoryPage } from "../pages/AISystemInventoryPage";
 import { ArchivePage } from "../pages/ArchivePage";
 import { ChangeDetailPage } from "../pages/ChangeDetailPage";
 import { ChangesPage } from "../pages/ChangesPage";
+import { ConcernDetailPage } from "../pages/ConcernDetailPage";
+import { ConcernsPage } from "../pages/ConcernsPage";
 import { CommunicationDetailPage } from "../pages/CommunicationDetailPage";
 import { CommunicationsPage } from "../pages/CommunicationsPage";
 import { AuditDetailPage } from "../pages/AuditDetailPage";
@@ -53,6 +55,8 @@ export function AppRoutes() {
         <Route path="/ai-systems/:rowId" element={<AISystemDetailPage />} />
         <Route path="/data-inventory" element={<DataInventoryPage />} />
         <Route path="/changes" element={<ChangesPage />} />
+        <Route path="/concerns" element={<ConcernsPage />} />
+        <Route path="/concerns/:concernId" element={<ConcernDetailPage />} />
         <Route path="/communications" element={<CommunicationsPage />} />
         <Route path="/communications/:communicationId" element={<CommunicationDetailPage />} />
         <Route path="/changes/:changeId" element={<ChangeDetailPage />} />

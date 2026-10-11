@@ -39,6 +39,7 @@ from app.models.ai_objective import AIObjective
 from app.models.audit_program import AuditProgram
 from app.models.communication import CommunicationPlanItem, CommunicationStatus
 from app.models.competence_requirement import CompetenceRequirement
+from app.models.concern import ConcernSettings
 from app.models.corrective_action import CorrectiveAction, CorrectiveActionStatus
 from app.models.eu_ai_act_applicability import EuAiActApplicability
 from app.models.evidence import Evidence
@@ -73,6 +74,7 @@ from app.services import (
     change_service,
     communication_service,
     competence_service,
+    concern_service,
     corrective_action_service,
     eu_ai_act_service,
     internal_audit_service,
@@ -375,6 +377,27 @@ def _resolve_communication_plan_item(
     return _Resolved(record.topic, True, f"Last communicated {standing.last_communicated_on}")
 
 
+def _resolve_concern_settings(db: Session, entity_id: int, today: date) -> _Resolved | None:
+    """The concern reporting process (A.3.3): in place once it's described to
+    employees, and not holding up concerns -- one left unacknowledged past the
+    limit means the process isn't working."""
+    record = db.get(ConcernSettings, entity_id)
+    if record is None:
+        return None
+    label = "Concern reporting process"
+    if not (record.process_description or "").strip():
+        return _Resolved(label, False, "How to report a concern hasn't been described to staff")
+    standing = concern_service.standing(db, today)
+    if standing.awaiting_triage_count:
+        return _Resolved(
+            label,
+            False,
+            f"{standing.awaiting_triage_count} concern(s) not acknowledged within "
+            f"{record.acknowledge_within_days} days",
+        )
+    return _Resolved(label, True, f"Reporting process in place; {standing.open_count} open")
+
+
 def _format_value(value: float, unit: str | None) -> str:
     number = f"{value:g}"
     if not unit:
@@ -431,6 +454,7 @@ _RESOLVERS = {
     "AIObjective": _resolve_ai_objective,
     "ManagementSystemChange": _resolve_management_system_change,
     "CommunicationPlanItem": _resolve_communication_plan_item,
+    "ConcernSettings": _resolve_concern_settings,
 }
 
 

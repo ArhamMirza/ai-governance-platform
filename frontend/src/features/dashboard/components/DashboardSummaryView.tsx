@@ -52,6 +52,7 @@ const ATTENTION_LINKS: Record<string, string> = {
   objective_measurements_overdue: "/objectives",
   changes_overdue: "/changes",
   communications_overdue: "/communications",
+  concerns_awaiting_triage: "/concerns",
 };
 
 const STATUS_TONES: Record<string, Segment["tone"]> = {
