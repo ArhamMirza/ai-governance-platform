@@ -1275,7 +1275,8 @@ td button {
 }
 
 .status-badge[data-status="in_review"],
-.status-badge[data-status="in_progress"] {
+.status-badge[data-status="in_progress"],
+.status-badge[data-status="under_review"] {
   background: var(--warning-subtle);
   border-color: var(--warning-line);
   color: var(--warning-text);
@@ -1285,7 +1286,8 @@ td button {
    gets its own values; "in_progress" shares the lifecycle rule above. */
 .status-badge[data-status="on_track"],
 .status-badge[data-status="achieved"],
-.status-badge[data-status="implemented"] {
+.status-badge[data-status="implemented"],
+.status-badge[data-status="resolved"] {
   background: var(--success-subtle);
   border-color: var(--success-line);
   color: var(--success-text);
@@ -5290,4 +5292,52 @@ select {
 
 .objective-chart-dot[data-meets="false"] {
   fill: var(--danger);
+}
+
+/* ---------- Concerns ---------- */
+
+/* The one-off tracking code: large, monospaced, selectable -- it's copied or
+   written down and can't be shown again. */
+.tracking-code {
+  display: inline-block;
+  margin: 4px 0 10px;
+  padding: 10px 16px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--bg-sunken);
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  user-select: all;
+}
+
+.reporter-concern {
+  margin: 0 0 14px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-surface);
+}
+
+.reporter-concern blockquote {
+  margin: 8px 0 0;
+  padding-left: 12px;
+  border-left: 3px solid var(--primary-line);
+  color: var(--text);
+}
+
+.button-link {
+  display: inline-block;
+  padding: 8px 16px;
+  border-radius: var(--radius-sm);
+  background: var(--primary);
+  color: var(--text-inverse);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.button-link:hover {
+  background: var(--primary-hover);
 }

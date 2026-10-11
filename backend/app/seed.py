@@ -16,8 +16,11 @@ from types import SimpleNamespace
 
 from sqlalchemy.orm import Session
 
+from app.core import concern_tracking
 from app.core.database import SessionLocal
+from app.models.concern import Concern
 from app.repositories import (
+    concern_repository,
     framework_control_repository,
     governance_role_repository,
     policy_repository,
@@ -26,6 +29,12 @@ from app.schemas.ai_incident import AIIncidentCreate, AIIncidentUpdate
 from app.schemas.change import ChangeCreate, ChangeStatusUpdate
 from app.schemas.communication import CommunicationCreate, CommunicationRecordCreate
 from app.schemas.competence import CompetenceRequirementCreate
+from app.schemas.concern import (
+    ConcernLog,
+    ConcernSettingsUpdate,
+    ConcernStatusUpdate,
+    ConcernUpdate,
+)
 from app.schemas.corrective_action import CorrectiveActionCreate, CorrectiveActionUpdate
 from app.schemas.eu_ai_act import EuAiActApplicabilityUpdate
 from app.schemas.impact_assessment import ImpactAssessmentCreate, ImpactAssessmentUpdate
@@ -51,6 +60,7 @@ from app.services import (
     change_service,
     communication_service,
     competence_service,
+    concern_service,
     corrective_action_service,
     eu_ai_act_service,
     evidence_service,
@@ -70,6 +80,10 @@ from app.services import (
 # _seed_impact_assessment already uses -- the seed creates no users, and
 # none of these ids are real FKs.
 PLACEHOLDER_USER_ID = 1
+
+# The tracking code of the seeded anonymous concern, so a demo can show looking
+# one up. A real code is random and shown once; only its hash is ever stored.
+DEMO_TRACKING_CODE = "KMNP-2345-HJKW"
 
 
 def _tag(db: Session, entity_type: str, entity_id: int, *codes: str) -> None:
@@ -401,6 +415,7 @@ def seed(db: Session) -> None:
     _seed_objectives(db, vendor_policy.id, resume_screener.id, support_chatbot.id)
     _seed_changes(db, resume_screener.id, support_chatbot.id)
     _seed_communications(db)
+    _seed_concerns(db, resume_screener.id, support_chatbot.id)
 
     print("Seed complete.")
 
@@ -1077,6 +1092,130 @@ def _seed_communications(db: Session) -> None:
         actor_id=None,
     )
     _tag(db, communication_service.ENTITY_TYPE, incident.id, "iso_42001:7.4", "iso_42001:A.8.4")
+
+
+def _seed_concerns(db: Session, resume_screener_id: int, support_chatbot_id: int) -> None:
+    """Reporting of concerns (A.3.3): the process staff are told about, a named
+    concern under review, an anonymous one resolved (look it up with the demo
+    tracking code), and one logged by phone that has waited too long."""
+    print("Seeding concerns...")
+    today = date.today()
+    concern_service.update_settings(
+        db,
+        ConcernSettingsUpdate(
+            process_description=(
+                "If something about an AI system worries you -- unfair results, wrong answers, "
+                "misuse, or data handled badly -- tell us here. You can give your name or "
+                "stay anonymous: choose anonymous and we keep nothing that identifies you, "
+                "and give you a tracking code so you can see what happened. We acknowledge "
+                "every concern within 7 days. You can also phone the governance office."
+            ),
+            acknowledge_within_days=7,
+        ),
+        actor_id=None,
+    )
+    settings = concern_service.get_settings(db)
+    _tag(db, concern_service.SETTINGS_ENTITY_TYPE, settings.id, "iso_42001:A.3.3")
+
+    # A named concern from the employee home, being looked into.
+    named = concern_repository.create(
+        db,
+        Concern(
+            category="bias_or_fairness",
+            description=(
+                "The resume screener seems to rank applicants from two universities first, "
+                "whatever their experience."
+            ),
+            ai_system_row_id=resume_screener_id,
+            channel="employee_portal",
+            received_on=today - timedelta(days=12),
+            reporter_id=PLACEHOLDER_USER_ID,
+            is_anonymous=False,
+            status="received",
+        ),
+    )
+    concern_service.change_status(
+        db,
+        named.id,
+        ConcernStatusUpdate(action="acknowledge"),
+        PLACEHOLDER_USER_ID,
+        today=today - timedelta(days=10),
+    )
+    concern_service.update_concern(
+        db,
+        named.id,
+        ConcernUpdate(
+            internal_notes="Matches what the fairness test found; check the training sample.",
+            reply_to_reporter=(
+                "Thank you -- we're checking the ranking against a fairness test and "
+                "will tell you what we find."
+            ),
+        ),
+        PLACEHOLDER_USER_ID,
+    )
+
+    # An anonymous one that has been resolved.
+    anonymous = concern_repository.create(
+        db,
+        Concern(
+            category="transparency",
+            description=(
+                "The support chatbot doesn't say it's an AI, and customers think they're "
+                "talking to a person."
+            ),
+            ai_system_row_id=support_chatbot_id,
+            channel="employee_portal",
+            received_on=today - timedelta(days=40),
+            is_anonymous=True,
+            tracking_code_hash=concern_tracking.hash_code(DEMO_TRACKING_CODE),
+            status="received",
+        ),
+    )
+    concern_service.change_status(
+        db,
+        anonymous.id,
+        ConcernStatusUpdate(action="acknowledge"),
+        PLACEHOLDER_USER_ID,
+        today=today - timedelta(days=38),
+    )
+    concern_service.update_concern(
+        db,
+        anonymous.id,
+        ConcernUpdate(
+            reply_to_reporter=(
+                "You were right. The chat window now opens by saying it's an AI assistant, "
+                "and offers a person on request."
+            )
+        ),
+        PLACEHOLDER_USER_ID,
+    )
+    concern_service.change_status(
+        db,
+        anonymous.id,
+        ConcernStatusUpdate(action="resolve", outcome="substantiated", note="Disclosure added."),
+        PLACEHOLDER_USER_ID,
+        today=today - timedelta(days=25),
+    )
+
+    # One raised by phone and not yet picked up: past the 7-day limit.
+    concern_service.log_concern(
+        db,
+        ConcernLog(
+            category="safety_or_harm",
+            description=(
+                "A team lead says the fraud model flagged a customer's account and staff "
+                "froze it before anyone had checked."
+            ),
+            channel="phone",
+            received_on=today - timedelta(days=9),
+            ai_system_row_id=None,
+            system_note="The fraud detection tool",
+            reporter_note="Raised by Jordan in operations, who is happy to be contacted.",
+        ),
+        handler_id=PLACEHOLDER_USER_ID,
+        today=today,
+    )
+    print(f"  Demo tracking code for the anonymous concern: {DEMO_TRACKING_CODE}")
 
 
 def main() -> None:

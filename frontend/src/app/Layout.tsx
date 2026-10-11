@@ -3,6 +3,7 @@ import { NavLink } from "react-router-dom";
 
 import { AssistantPanel } from "../features/assistant/components/AssistantPanel";
 import { useCurrentUser, useLogout } from "../features/auth/hooks";
+import { useConcernAccess } from "../features/concerns/hooks";
 import { hasPermission } from "../features/auth/permissions";
 import { ThemeToggle } from "../shared/components/ThemeToggle";
 
@@ -218,6 +219,18 @@ const correctiveActionsNavItem: NavItem = {
   ),
 };
 
+const concernsNavItem: NavItem = {
+  to: "/concerns",
+  label: "Concerns",
+  icon: (
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 9v4" />
+      <path d="M12 17h.01" />
+      <path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z" />
+    </svg>
+  ),
+};
+
 const incidentsNavItem: NavItem = {
   to: "/incidents",
   label: "Incidents",
@@ -284,7 +297,7 @@ interface NavGroup {
 /** The nav is grouped the way the management system itself is structured --
  * what the organization is, what it has written down, what it runs, and how
  * that is assured -- rather than as one flat list of twelve destinations. */
-function navGroupsFor(role: string | undefined): NavGroup[] {
+function navGroupsFor(role: string | undefined, canHandleConcerns: boolean): NavGroup[] {
   // Each admin-only entry is gated on the permission its own page needs,
   // rather than one blanket admin check -- so the nav stays honest if the
   // permission table ever splits those roles apart.
@@ -316,6 +329,7 @@ function navGroupsFor(role: string | undefined): NavGroup[] {
       items: [
         riskNavItem,
         incidentsNavItem,
+        ...(canHandleConcerns ? [concernsNavItem] : []),
         correctiveActionsNavItem,
         internalAuditsNavItem,
         managementReviewNavItem,
@@ -331,7 +345,9 @@ function navGroupsFor(role: string | undefined): NavGroup[] {
 export function Layout({ children }: { children: ReactNode }) {
   const { data: user } = useCurrentUser();
   const logout = useLogout();
-  const groups = navGroupsFor(user?.role);
+  // Whether to show Concerns at all -- only the people handling them can read them.
+  const { data: concernAccess } = useConcernAccess();
+  const groups = navGroupsFor(user?.role, concernAccess?.can_handle === true);
 
   return (
     <div className="app-shell">

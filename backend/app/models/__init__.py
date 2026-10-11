@@ -16,6 +16,14 @@ from app.models.communication import (
 )
 from app.models.competence_record import CompetenceRecord
 from app.models.competence_requirement import CompetenceRequirement
+from app.models.concern import (
+    Concern,
+    ConcernCategory,
+    ConcernChannel,
+    ConcernOutcome,
+    ConcernSettings,
+    ConcernStatus,
+)
 from app.models.corrective_action import CorrectiveAction, CorrectiveActionStatus
 from app.models.data_inventory_record import DataInventoryRecord
 from app.models.document_chunk import ChunkSource, DocumentChunk, IndexStatus, SourceType
@@ -58,6 +66,12 @@ __all__ = [
     "AIIncidentSeverity",
     "AIIncidentStatus",
     "AIObjective",
+    "Concern",
+    "ConcernCategory",
+    "ConcernChannel",
+    "ConcernOutcome",
+    "ConcernSettings",
+    "ConcernStatus",
     "CommunicationDirection",
     "CommunicationPlanItem",
     "CommunicationRecord",

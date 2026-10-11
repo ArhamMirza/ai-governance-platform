@@ -29,6 +29,20 @@ def get_internal_user(user: User = Depends(get_current_user)) -> User:
     return user
 
 
+def require_concern_handler(user: User = Depends(get_internal_user)) -> User:
+    """Who may read and act on concerns: administrators. Not every editor --
+    a concern can name colleagues or describe misconduct.
+
+    The Chief AI Governance Officer, and anyone standing in for them, must
+    themselves be admin accounts (governance_role_service enforces it), so
+    "admins and the CAIGO" is simply "admins". A narrower set -- a dedicated
+    concerns officer who needn't be an admin -- would be a governance role
+    checked here instead."""
+    if user.role != UserRole.ADMIN:
+        raise AuthorizationError("Only administrators can handle concerns.")
+    return user
+
+
 def _require(action: Action):
     """A Depends() factory: returns the current user if their role permits
     `action`, otherwise raises 403. One factory call per distinct action

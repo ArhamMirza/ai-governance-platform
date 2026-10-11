@@ -7,8 +7,19 @@ from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
+from app.dependencies import get_current_user
+from app.models.concern import Concern
+from app.models.user import User
+from app.schemas.concern import (
+    ConcernLookup,
+    ConcernsProcess,
+    ConcernSubmit,
+    ConcernSubmitted,
+    ReporterConcernRead,
+    StaffAISystem,
+)
 from app.schemas.staff import StaffLibraryItem
-from app.services import staff_service
+from app.services import concern_service, staff_service
 
 router = APIRouter(prefix="/staff", tags=["staff"])
 
@@ -26,3 +37,66 @@ def download_document(evidence_id: int, db: Session = Depends(get_db)) -> FileRe
         filename=evidence.filename,
         media_type=evidence.content_type,
     )
+
+
+def _reporter_view(concern: Concern) -> ReporterConcernRead:
+    """What the person who raised it may see -- built field by field, so an
+    internal field added to Concern later can't leak through."""
+    return ReporterConcernRead(
+        id=concern.id,
+        category=concern.category,
+        description=concern.description,
+        received_on=concern.received_on,
+        status=concern.status,
+        acknowledged_on=concern.acknowledged_on,
+        closed_on=concern.closed_on,
+        outcome=concern.outcome,
+        reply_to_reporter=concern.reply_to_reporter,
+        is_anonymous=concern.is_anonymous,
+    )
+
+
+@router.get("/ai-systems", response_model=list[StaffAISystem])
+def ai_systems(db: Session = Depends(get_db)) -> list[StaffAISystem]:
+    """Which AI system a concern is about -- name and id, nothing else."""
+    return [
+        StaffAISystem(id=row_id, name=name)
+        for row_id, name in concern_service.in_service_ai_systems(db)
+    ]
+
+
+@router.get("/concerns-process", response_model=ConcernsProcess)
+def concerns_process(db: Session = Depends(get_db)) -> ConcernsProcess:
+    settings = concern_service.settings_or_default(db)
+    return ConcernsProcess(
+        process_description=settings.process_description,
+        acknowledge_within_days=settings.acknowledge_within_days,
+    )
+
+
+@router.post("/concerns", response_model=ConcernSubmitted, status_code=201)
+def submit_concern(
+    data: ConcernSubmit,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+) -> ConcernSubmitted:
+    concern, code = concern_service.submit(db, user, data)
+    return ConcernSubmitted(tracking_code=code, concern=_reporter_view(concern))
+
+
+@router.get("/concerns/mine", response_model=list[ReporterConcernRead])
+def my_concerns(
+    db: Session = Depends(get_db), user: User = Depends(get_current_user)
+) -> list[ReporterConcernRead]:
+    return [_reporter_view(concern) for concern in concern_service.list_mine(db, user)]
+
+
+# A POST, not a GET: the tracking code is a secret, and a URL ends up in
+# server logs, browser history and referrers.
+@router.post("/concerns/lookup", response_model=ReporterConcernRead)
+def lookup_concern(
+    data: ConcernLookup,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+) -> ReporterConcernRead:
+    return _reporter_view(concern_service.lookup(db, user, data.tracking_code))

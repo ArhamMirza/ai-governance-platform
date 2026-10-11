@@ -26,6 +26,7 @@ from app.routers import (
     communications,
     competence,
     compliance_status,
+    concerns,
     corrective_actions,
     dashboard,
     data_inventory,
@@ -156,4 +157,5 @@ app.include_router(eu_ai_act.router, prefix="/api/v1", dependencies=_protected)
 app.include_router(objectives.router, prefix="/api/v1", dependencies=_protected)
 app.include_router(ai_roles.router, prefix="/api/v1", dependencies=_protected)
 app.include_router(changes.router, prefix="/api/v1", dependencies=_protected)
+app.include_router(concerns.router, prefix="/api/v1", dependencies=_protected)
 app.include_router(communications.router, prefix="/api/v1", dependencies=_protected)
