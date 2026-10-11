@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.dependencies import get_current_actor_id, get_current_approver_id
 from app.schemas.policy import PolicyCreate, PolicyHistoryEntry, PolicyRead, PolicyUpdate
+from app.schemas.staff import SharingUpdate
 from app.services import policy_service
 
 router = APIRouter(prefix="/policies", tags=["policies"])
@@ -36,6 +37,16 @@ def update_policy(
     actor_id: int | None = Depends(get_current_actor_id),
 ) -> PolicyRead:
     return policy_service.update_policy(db, policy_id, data, actor_id)
+
+
+@router.put("/{policy_id}/sharing", response_model=PolicyRead)
+def set_sharing(
+    policy_id: int,
+    data: SharingUpdate,
+    db: Session = Depends(get_db),
+    actor_id: int | None = Depends(get_current_actor_id),
+) -> PolicyRead:
+    return policy_service.set_sharing(db, policy_id, data.shared_with_employees, actor_id)
 
 
 @router.delete("/{policy_id}", status_code=204)

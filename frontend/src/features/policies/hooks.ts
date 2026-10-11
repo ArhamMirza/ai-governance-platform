@@ -32,6 +32,21 @@ export function useCreatePolicy() {
   });
 }
 
+/** Changes only who can read it, so only the record and the employees'
+ * library need refreshing -- not its version history. */
+export function useSetPolicySharing(id: number) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (shared: boolean) => policiesApi.setSharing(id, shared),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: policiesKey });
+      queryClient.invalidateQueries({ queryKey: policyKey(id) });
+      queryClient.invalidateQueries({ queryKey: policyAuditLogKey(id) });
+      queryClient.invalidateQueries({ queryKey: ["staff", "library"] });
+    },
+  });
+}
+
 export function useUpdatePolicy(id: number) {
   const queryClient = useQueryClient();
   return useMutation({

@@ -1,13 +1,17 @@
 import { StatusBadge } from "../../../shared/components/StatusBadge";
 import { AuditLogViewer } from "../../audit-log/components/AuditLogViewer";
+import { useCurrentUser } from "../../auth/hooks";
+import { hasPermission } from "../../auth/permissions";
 import { useCanApprove } from "../../audit-log/useCanApprove";
 import { DocumentBrowser } from "../../evidence/components/DocumentBrowser";
 import { FrameworkTagPicker } from "../../framework-tags/components/FrameworkTagPicker";
 import { formatUserOption } from "../../users/formatUserOption";
+import { ShareWithEmployees } from "../../staff/components/ShareWithEmployees";
 import { useUserDirectory } from "../../users/hooks";
 import {
   useApprovePolicy,
   useRetirePolicy,
+  useSetPolicySharing,
   usePolicy,
   usePolicyVersions,
   useSubmitForReview,
@@ -32,6 +36,8 @@ export function PolicyDetail({ policyId }: PolicyDetailProps) {
   const approve = useApprovePolicy(policyId);
   const retire = useRetirePolicy(policyId);
   const updatePolicy = useUpdatePolicy(policyId);
+  const setSharing = useSetPolicySharing(policyId);
+  const { data: me } = useCurrentUser();
   const { canApprove, reason } = useCanApprove("Policy", policyId);
 
   if (isLoading) return <p>Loading policy...</p>;
@@ -95,6 +101,15 @@ export function PolicyDetail({ policyId }: PolicyDetailProps) {
       </div>
 
       <PolicyDraftPanel policy={policy} />
+
+      {hasPermission(me?.role, "edit") && (
+        <ShareWithEmployees
+          shared={policy.shared_with_employees}
+          approved={policy.status === "approved"}
+          pending={setSharing.isPending}
+          onChange={(shared) => setSharing.mutate(shared)}
+        />
+      )}
 
       <h3>Framework Tags</h3>
       <FrameworkTagPicker entityType="Policy" entityId={policyId} />

@@ -170,6 +170,9 @@ def seed(db: Session) -> None:
     policy_service.submit_for_review(db, retention_policy.id, actor_id=None)
     policy_service.approve_policy(db, retention_policy.id, actor_id=None)
     _tag(db, "Policy", retention_policy.id, "eu_ai_act:Art.10")
+    # What employees see on their home page: the approved retention policy and
+    # its signed document. The procedures stay internal.
+    policy_service.set_sharing(db, retention_policy.id, True, actor_id=None)
 
     vendor_policy = policy_service.create_policy(
         db,

@@ -1,6 +1,7 @@
 """Role -> action permission table.
 
-Three roles (app/models/user.py): admin, contributor, viewer. Deliberately a
+Four roles (app/models/user.py): admin, contributor, viewer, and employee --
+which holds no action at all, because it is not an internal user. Deliberately a
 flat lookup table rather than a hierarchy class, so "what can a contributor
 do" is answerable by reading one dict, not tracing inheritance.
 """
@@ -27,6 +28,7 @@ class Action(StrEnum):
 
 ROLE_PERMISSIONS: dict[str, frozenset[Action]] = {
     UserRole.VIEWER: frozenset({Action.VIEW}),
+    UserRole.EMPLOYEE: frozenset(),
     UserRole.CONTRIBUTOR: frozenset({Action.VIEW, Action.EDIT}),
     UserRole.ADMIN: frozenset(
         {

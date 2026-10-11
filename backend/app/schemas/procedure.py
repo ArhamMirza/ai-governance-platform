@@ -33,6 +33,7 @@ class ProcedureRead(BaseModel):
     policy_id: int | None
     effective_date: date | None
     next_review_date: date | None
+    shared_with_employees: bool
     created_at: datetime
     updated_at: datetime
 

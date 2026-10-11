@@ -1,15 +1,19 @@
 import { StatusBadge } from "../../../shared/components/StatusBadge";
 import { AuditLogViewer } from "../../audit-log/components/AuditLogViewer";
+import { useCurrentUser } from "../../auth/hooks";
+import { hasPermission } from "../../auth/permissions";
 import { useCanApprove } from "../../audit-log/useCanApprove";
 import { DocumentBrowser } from "../../evidence/components/DocumentBrowser";
 import { FrameworkTagPicker } from "../../framework-tags/components/FrameworkTagPicker";
 import { formatUserOption } from "../../users/formatUserOption";
+import { ShareWithEmployees } from "../../staff/components/ShareWithEmployees";
 import { useUserDirectory } from "../../users/hooks";
 import {
   useApproveProcedure,
   useProcedure,
   useProcedureVersions,
   useRetireProcedure,
+  useSetProcedureSharing,
   useSubmitForReview,
   useUpdateProcedure,
 } from "../hooks";
@@ -32,6 +36,8 @@ export function ProcedureDetail({ procedureId }: ProcedureDetailProps) {
   const approve = useApproveProcedure(procedureId);
   const retire = useRetireProcedure(procedureId);
   const updateProcedure = useUpdateProcedure(procedureId);
+  const setSharing = useSetProcedureSharing(procedureId);
+  const { data: me } = useCurrentUser();
   const { canApprove, reason } = useCanApprove("Procedure", procedureId);
 
   if (isLoading) return <p>Loading procedure...</p>;
@@ -97,6 +103,15 @@ export function ProcedureDetail({ procedureId }: ProcedureDetailProps) {
       </div>
 
       <ProcedureDraftPanel procedure={procedure} />
+
+      {hasPermission(me?.role, "edit") && (
+        <ShareWithEmployees
+          shared={procedure.shared_with_employees}
+          approved={procedure.status === "approved"}
+          pending={setSharing.isPending}
+          onChange={(shared) => setSharing.mutate(shared)}
+        />
+      )}
 
       <h3>Framework Tags</h3>
       <FrameworkTagPicker entityType="Procedure" entityId={procedureId} />

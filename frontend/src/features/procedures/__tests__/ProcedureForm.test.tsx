@@ -22,6 +22,7 @@ const mockPolicy: Policy = {
   owner_id: null,
   effective_date: null,
   next_review_date: null,
+  shared_with_employees: false,
   created_at: "2026-01-01T00:00:00Z",
   updated_at: "2026-01-01T00:00:00Z",
 };
@@ -44,6 +45,7 @@ describe("ProcedureForm", () => {
       policy_id: null,
       effective_date: null,
       next_review_date: null,
+      shared_with_employees: false,
       created_at: "2026-01-01T00:00:00Z",
       updated_at: "2026-01-01T00:00:00Z",
     };
@@ -79,6 +81,7 @@ describe("ProcedureForm", () => {
       policy_id: 5,
       effective_date: null,
       next_review_date: null,
+      shared_with_employees: false,
       created_at: "2026-01-01T00:00:00Z",
       updated_at: "2026-01-01T00:00:00Z",
     });

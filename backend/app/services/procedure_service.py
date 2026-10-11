@@ -83,6 +83,25 @@ def update_procedure(
     return procedure
 
 
+def set_sharing(
+    db: Session, procedure_id: int, shared_with_employees: bool, actor_id: int | None
+) -> Procedure:
+    """Whether employees can read this procedure on their home page. See
+    policy_service.set_sharing."""
+    procedure = _get_or_raise(db, procedure_id)
+    procedure.shared_with_employees = shared_with_employees
+    procedure = procedure_repository.save(db, procedure)
+    audit_service.log(
+        db,
+        "Procedure",
+        procedure.id,
+        "sharing_updated",
+        actor_id,
+        {"shared_with_employees": shared_with_employees},
+    )
+    return procedure
+
+
 def submit_for_review(db: Session, procedure_id: int, actor_id: int | None) -> Procedure:
     procedure = _get_or_raise(db, procedure_id)
     if procedure.status != ProcedureStatus.DRAFT:
