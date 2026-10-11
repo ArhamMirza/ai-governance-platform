@@ -8,6 +8,12 @@ from app.models.ai_system_lifecycle import AISystemLifecycle
 from app.models.audit_finding import AuditFinding, AuditFindingType
 from app.models.audit_log import AuditLogEntry
 from app.models.audit_program import AuditProgram, AuditProgramStatus, AuditScheduleType
+from app.models.communication import (
+    CommunicationDirection,
+    CommunicationPlanItem,
+    CommunicationRecord,
+    CommunicationStatus,
+)
 from app.models.competence_record import CompetenceRecord
 from app.models.competence_requirement import CompetenceRequirement
 from app.models.corrective_action import CorrectiveAction, CorrectiveActionStatus
@@ -52,6 +58,10 @@ __all__ = [
     "AIIncidentSeverity",
     "AIIncidentStatus",
     "AIObjective",
+    "CommunicationDirection",
+    "CommunicationPlanItem",
+    "CommunicationRecord",
+    "CommunicationStatus",
     "ChangeAISystem",
     "ChangeStatus",
     "ChangeType",

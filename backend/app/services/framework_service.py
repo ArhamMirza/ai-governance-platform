@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 
 from app.core.exceptions import NotFoundError, ValidationError
 from app.models.ai_objective import AIObjective
+from app.models.communication import CommunicationPlanItem
 from app.models.evidence import Evidence
 from app.models.framework_control import FrameworkControl
 from app.models.framework_soa_entry import SoaApplicability
@@ -71,6 +72,7 @@ def delete_tags(db: Session, entity_type: str, entity_id: int) -> None:
 _LABELLED_ENTITY_TYPES = {
     "AIObjective": (AIObjective, lambda record: record.title),
     "ManagementSystemChange": (ManagementSystemChange, lambda record: record.title),
+    "CommunicationPlanItem": (CommunicationPlanItem, lambda record: record.topic),
     "OrganizationContext": (OrganizationContext, lambda record: "Context of the organization"),
     "Policy": (Policy, lambda record: record.title),
     "Procedure": (Procedure, lambda record: record.title),

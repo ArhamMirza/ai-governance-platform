@@ -9,6 +9,11 @@ from sqlalchemy.orm import Session
 from app.repositories import framework_control_repository
 from app.schemas.ai_incident import AIIncidentCreate
 from app.schemas.change import ChangeCreate, ChangeStatusUpdate
+from app.schemas.communication import (
+    CommunicationCreate,
+    CommunicationRecordCreate,
+    CommunicationUpdate,
+)
 from app.schemas.competence import CompetenceRecordCreate, CompetenceRequirementCreate
 from app.schemas.corrective_action import CorrectiveActionCreate
 from app.schemas.internal_audit import AuditProgramCreate
@@ -19,6 +24,7 @@ from app.schemas.supplier import SupplierCreate
 from app.services import (
     ai_incident_service,
     change_service,
+    communication_service,
     competence_service,
     compliance_status_service,
     corrective_action_service,
@@ -739,3 +745,69 @@ def test_an_overdue_change_that_has_been_implemented_is_satisfied(db_session: Se
 
     assert row.status == "satisfied"
     assert row.tagged_items[0].detail == "Change implemented"
+
+
+def make_tagged_communication(db: Session, control_id: int, **overrides) -> int:
+    data = {
+        "topic": "Quarterly AI governance update",
+        "audience": "Leadership team",
+        "interval_months": 3,
+        "first_due": UTC_TODAY + timedelta(days=30),
+    }
+    data.update(overrides)
+    item = communication_service.create_item(db, CommunicationCreate(**data), actor_id=None)
+    framework_service.set_tags(db, "CommunicationPlanItem", item.id, [control_id], actor_id=None)
+    return item.id
+
+
+def test_a_communication_not_yet_due_is_satisfied(db_session: Session) -> None:
+    control_id = clause_control_id(db_session)
+    make_tagged_communication(db_session, control_id)
+
+    row = status_for(db_session, control_id)
+
+    assert row.status == "satisfied"
+    assert row.tagged_items[0].detail == "Planned, not yet carried out"
+
+
+def test_a_communication_past_its_due_date_is_partial(db_session: Session) -> None:
+    control_id = clause_control_id(db_session)
+    make_tagged_communication(db_session, control_id, first_due=UTC_TODAY - timedelta(days=3))
+
+    row = status_for(db_session, control_id)
+
+    assert row.status == "partial"
+    assert "Communication overdue since" in row.tagged_items[0].detail
+
+
+def test_doing_an_overdue_communication_makes_it_satisfied(db_session: Session) -> None:
+    control_id = clause_control_id(db_session)
+    item_id = make_tagged_communication(
+        db_session, control_id, first_due=UTC_TODAY - timedelta(days=3)
+    )
+    communication_service.record_communication(
+        db_session,
+        item_id,
+        CommunicationRecordCreate(communicated_on=UTC_TODAY - timedelta(days=1)),
+        actor_id=None,
+    )
+
+    row = status_for(db_session, control_id)
+
+    assert row.status == "satisfied"
+    assert row.tagged_items[0].detail.startswith("Last communicated")
+
+
+def test_a_retired_communication_never_holds_a_clause_back(db_session: Session) -> None:
+    control_id = clause_control_id(db_session)
+    item_id = make_tagged_communication(
+        db_session, control_id, first_due=UTC_TODAY - timedelta(days=3)
+    )
+    communication_service.update_item(
+        db_session, item_id, CommunicationUpdate(status="retired"), actor_id=None
+    )
+
+    row = status_for(db_session, control_id)
+
+    assert row.status == "satisfied"
+    assert row.tagged_items[0].detail == "Communication retired"
