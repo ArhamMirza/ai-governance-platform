@@ -28,6 +28,12 @@ from app.models.index_queue import IndexQueueEntry
 from app.models.internal_audit import InternalAudit, InternalAuditStatus
 from app.models.management_review_meeting import ManagementReviewMeeting
 from app.models.management_review_settings import ManagementReviewSettings
+from app.models.management_system_change import (
+    ChangeAISystem,
+    ChangeStatus,
+    ChangeType,
+    ManagementSystemChange,
+)
 from app.models.objective_measurement import ObjectiveMeasurement
 from app.models.organization_context import OrganizationContext, OrganizationContextStatus
 from app.models.policy import Policy
@@ -46,6 +52,10 @@ __all__ = [
     "AIIncidentSeverity",
     "AIIncidentStatus",
     "AIObjective",
+    "ChangeAISystem",
+    "ChangeStatus",
+    "ChangeType",
+    "ManagementSystemChange",
     "AIObjectiveAISystem",
     "AISystemLifecycle",
     "AiAssistSettings",

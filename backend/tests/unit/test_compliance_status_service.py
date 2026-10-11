@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 
 from app.repositories import framework_control_repository
 from app.schemas.ai_incident import AIIncidentCreate
+from app.schemas.change import ChangeCreate, ChangeStatusUpdate
 from app.schemas.competence import CompetenceRecordCreate, CompetenceRequirementCreate
 from app.schemas.corrective_action import CorrectiveActionCreate
 from app.schemas.internal_audit import AuditProgramCreate
@@ -17,6 +18,7 @@ from app.schemas.policy import PolicyCreate
 from app.schemas.supplier import SupplierCreate
 from app.services import (
     ai_incident_service,
+    change_service,
     competence_service,
     compliance_status_service,
     corrective_action_service,
@@ -400,9 +402,7 @@ def test_an_overdue_management_review_is_partial(db_session: Session) -> None:
 def make_incident(db: Session, **overrides) -> int:
     defaults = dict(title="Harmful output", description="x", detected_on=date.today())
     defaults.update(overrides)
-    incident = ai_incident_service.create_incident(
-        db, AIIncidentCreate(**defaults), actor_id=None
-    )
+    incident = ai_incident_service.create_incident(db, AIIncidentCreate(**defaults), actor_id=None)
     return incident.id
 
 
@@ -632,9 +632,7 @@ def test_a_closed_objective_is_satisfied(db_session: Session) -> None:
 
 def tagged_context(db: Session, control_id: int):
     context = organization_context_service.get_or_create(db)
-    framework_service.set_tags(
-        db, "OrganizationContext", context.id, [control_id], actor_id=None
-    )
+    framework_service.set_tags(db, "OrganizationContext", context.id, [control_id], actor_id=None)
     return context
 
 
@@ -694,3 +692,50 @@ def test_editing_an_approved_context_reopens_its_clause(db_session: Session) -> 
     organization_context_service.update(db_session, {"aims_scope": "Everything."}, actor_id=None)
 
     assert status_for(db_session, control_id).status == "partial"
+
+
+def make_tagged_change(db: Session, control_id: int, **overrides) -> int:
+    data = {
+        "title": "Move the screener to a new base model",
+        "raised_on": UTC_TODAY - timedelta(days=30),
+        "planned_date": UTC_TODAY + timedelta(days=30),
+    }
+    data.update(overrides)
+    change = change_service.create_change(db, ChangeCreate(**data), actor_id=None)
+    framework_service.set_tags(db, "ManagementSystemChange", change.id, [control_id], actor_id=None)
+    return change.id
+
+
+def test_a_change_on_schedule_is_satisfied(db_session: Session) -> None:
+    control_id = clause_control_id(db_session)
+    make_tagged_change(db_session, control_id)
+
+    row = status_for(db_session, control_id)
+
+    assert row.status == "satisfied"
+    assert row.tagged_items[0].detail.startswith("Change planned for")
+
+
+def test_a_change_past_its_planned_date_is_partial(db_session: Session) -> None:
+    control_id = clause_control_id(db_session)
+    make_tagged_change(db_session, control_id, planned_date=UTC_TODAY - timedelta(days=3))
+
+    row = status_for(db_session, control_id)
+
+    assert row.status == "partial"
+    assert "Change overdue since" in row.tagged_items[0].detail
+
+
+def test_an_overdue_change_that_has_been_implemented_is_satisfied(db_session: Session) -> None:
+    control_id = clause_control_id(db_session)
+    change_id = make_tagged_change(
+        db_session, control_id, planned_date=UTC_TODAY - timedelta(days=3)
+    )
+    change_service.change_status(
+        db_session, change_id, ChangeStatusUpdate(action="implement"), actor_id=None
+    )
+
+    row = status_for(db_session, control_id)
+
+    assert row.status == "satisfied"
+    assert row.tagged_items[0].detail == "Change implemented"

@@ -16,6 +16,7 @@ from app.services import (
     ai_incident_service,
     ai_system_inventory_service,
     ai_system_lifecycle_service,
+    change_service,
     compliance_status_service,
     corrective_action_service,
     internal_audit_service,
@@ -179,6 +180,31 @@ def test_seed_records_the_organizations_ai_roles_and_the_chatbots_own(
         "integrator",
         "ai_user",
     ]
+
+
+def test_seed_populates_changes_as_they_stood_at_the_management_review(
+    db_session: Session,
+) -> None:
+    seed(db_session)
+
+    meeting = management_review_service.list_meetings(db_session)[0]
+    now = {
+        c.title: (s.state, s.overdue)
+        for c, s in change_service.standings_as_of(db_session, date.today())
+    }
+    then = {
+        c.title: (s.state, s.overdue)
+        for c, s in change_service.standings_as_of(db_session, meeting.meeting_date)
+    }
+
+    assert now == {
+        "Introduce a fairness gate in the release pipeline": ("implemented", False),
+        "Move the Resume Screener to a new base model": ("in_progress", False),
+        "Replace the support chatbot vendor": ("planned", True),
+    }
+    # At last month's review the fairness gate was under way, and not yet late.
+    assert then["Introduce a fairness gate in the release pipeline"] == ("in_progress", False)
+    assert change_service.overdue_count(db_session) == 1
 
 
 def test_seed_is_idempotent(db_session: Session) -> None:

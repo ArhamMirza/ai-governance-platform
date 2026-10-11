@@ -23,6 +23,7 @@ from app.repositories import (
     policy_repository,
 )
 from app.schemas.ai_incident import AIIncidentCreate, AIIncidentUpdate
+from app.schemas.change import ChangeCreate, ChangeStatusUpdate
 from app.schemas.competence import CompetenceRequirementCreate
 from app.schemas.corrective_action import CorrectiveActionCreate, CorrectiveActionUpdate
 from app.schemas.eu_ai_act import EuAiActApplicabilityUpdate
@@ -46,6 +47,7 @@ from app.services import (
     ai_incident_service,
     ai_system_inventory_service,
     ai_system_lifecycle_service,
+    change_service,
     competence_service,
     corrective_action_service,
     eu_ai_act_service,
@@ -370,6 +372,7 @@ def seed(db: Session) -> None:
         db, resume_screener.id, fraud_model.id, support_chatbot.id, resume_assessment.id
     )
     _seed_objectives(db, vendor_policy.id, resume_screener.id, support_chatbot.id)
+    _seed_changes(db, resume_screener.id, support_chatbot.id)
 
     print("Seed complete.")
 
@@ -906,6 +909,80 @@ def _seed_objectives(
     )
     objective_service.set_ai_systems(db, notice.id, [support_chatbot_id], actor_id=None)
     _tag(db, objective_service.ENTITY_TYPE, notice.id, "iso_42001:6.2", "iso_42001:A.9.3")
+
+
+def _seed_changes(db: Session, resume_screener_id: int, support_chatbot_id: int) -> None:
+    """Three changes: one carried out since last month's management review
+    (still in progress then), one under way, and one that has slipped past
+    its date."""
+    print("Seeding planned changes...")
+    today = date.today()
+
+    def start(change_id: int, days_ago: int) -> None:
+        change_service.change_status(
+            db,
+            change_id,
+            ChangeStatusUpdate(action="start"),
+            actor_id=None,
+            today=today - timedelta(days=days_ago),
+        )
+
+    gate = change_service.create_change(
+        db,
+        ChangeCreate(
+            title="Introduce a fairness gate in the release pipeline",
+            change_type="process",
+            reason="The internal audit found fairness testing was not enforced before release.",
+            consequences="Releases may be delayed by up to a day while the suite runs.",
+            resources_needed="One ML engineer, as approved at management review.",
+            owner_id=PLACEHOLDER_USER_ID,
+            raised_on=today - timedelta(days=70),
+            planned_date=today - timedelta(days=10),
+        ),
+        actor_id=None,
+    )
+    start(gate.id, 50)
+    change_service.change_status(
+        db,
+        gate.id,
+        ChangeStatusUpdate(action="implement", note="Live on all Resume Screener releases."),
+        actor_id=None,
+        today=today - timedelta(days=5),
+    )
+    change_service.set_ai_systems(db, gate.id, [resume_screener_id], actor_id=None)
+    _tag(db, change_service.ENTITY_TYPE, gate.id, "iso_42001:6.3")
+
+    model = change_service.create_change(
+        db,
+        ChangeCreate(
+            title="Move the Resume Screener to a new base model",
+            change_type="ai_system",
+            reason="The current model's vendor is retiring it.",
+            consequences="Rankings may shift; the bias suite and impact assessment are re-run.",
+            owner_id=PLACEHOLDER_USER_ID,
+            raised_on=today - timedelta(days=25),
+            planned_date=today + timedelta(days=40),
+        ),
+        actor_id=None,
+    )
+    start(model.id, 8)
+    change_service.set_ai_systems(db, model.id, [resume_screener_id], actor_id=None)
+    _tag(db, change_service.ENTITY_TYPE, model.id, "iso_42001:6.3")
+
+    vendor = change_service.create_change(
+        db,
+        ChangeCreate(
+            title="Replace the support chatbot vendor",
+            change_type="ai_system",
+            reason="The vendor review found unresolved concerns.",
+            owner_id=PLACEHOLDER_USER_ID,
+            raised_on=today - timedelta(days=40),
+            planned_date=today - timedelta(days=12),
+        ),
+        actor_id=None,
+    )
+    change_service.set_ai_systems(db, vendor.id, [support_chatbot_id], actor_id=None)
+    _tag(db, change_service.ENTITY_TYPE, vendor.id, "iso_42001:6.3")
 
 
 def main() -> None:

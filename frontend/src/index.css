@@ -1284,7 +1284,8 @@ td button {
 /* AI objective standing (see app.core.objective_tracking) -- computed, so it
    gets its own values; "in_progress" shares the lifecycle rule above. */
 .status-badge[data-status="on_track"],
-.status-badge[data-status="achieved"] {
+.status-badge[data-status="achieved"],
+.status-badge[data-status="implemented"] {
   background: var(--success-subtle);
   border-color: var(--success-line);
   color: var(--success-text);

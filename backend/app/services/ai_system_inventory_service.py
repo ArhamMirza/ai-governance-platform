@@ -130,6 +130,7 @@ def delete_row(db: Session, row_id: int, actor_id: int | None) -> None:
     from app.services import (
         ai_incident_service,
         ai_system_lifecycle_service,
+        change_service,
         data_inventory_service,
         impact_assessment_service,
         objective_service,
@@ -160,6 +161,7 @@ def delete_row(db: Session, row_id: int, actor_id: int | None) -> None:
     ai_incident_service.unlink_ai_system(db, row_id, actor_id)
     supplier_service.unlink_ai_system(db, row_id, actor_id)
     objective_service.unlink_ai_system(db, row_id, actor_id)
+    change_service.unlink_ai_system(db, row_id, actor_id)
     ai_system_lifecycle_service.delete_for_ai_system(db, row_id)
     evidence_service.delete_all_for_entity(db, AI_SYSTEM_DOCUMENT_ENTITY_TYPE, row_id)
 

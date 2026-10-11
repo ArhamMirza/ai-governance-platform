@@ -22,6 +22,7 @@ from app.routers import (
     assistant,
     audit_log,
     auth,
+    changes,
     competence,
     compliance_status,
     corrective_actions,
@@ -148,3 +149,4 @@ app.include_router(suppliers.router, prefix="/api/v1", dependencies=_protected)
 app.include_router(eu_ai_act.router, prefix="/api/v1", dependencies=_protected)
 app.include_router(objectives.router, prefix="/api/v1", dependencies=_protected)
 app.include_router(ai_roles.router, prefix="/api/v1", dependencies=_protected)
+app.include_router(changes.router, prefix="/api/v1", dependencies=_protected)

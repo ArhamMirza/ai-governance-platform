@@ -1,5 +1,6 @@
 import { AuditLogViewer } from "../../audit-log/components/AuditLogViewer";
 import { DocumentBrowser } from "../../evidence/components/DocumentBrowser";
+import { ChangesAsOf } from "../../changes/components/ChangesAsOf";
 import { FrameworkTagPicker } from "../../framework-tags/components/FrameworkTagPicker";
 import { ObjectivesAsOf } from "../../objectives/components/ObjectivesAsOf";
 import { formatUserOption } from "../../users/formatUserOption";
@@ -77,6 +78,8 @@ export function ManagementReviewMeetingDetail({ meetingId }: ManagementReviewMee
       </div>
 
       <ObjectivesAsOf asOf={meeting.meeting_date} />
+
+      <ChangesAsOf asOf={meeting.meeting_date} />
 
       {ISO_FIELDS.map((field) => (
         <div key={field.key}>
