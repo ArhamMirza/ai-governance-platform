@@ -9,6 +9,7 @@ from app.schemas.procedure import (
     ProcedureRead,
     ProcedureUpdate,
 )
+from app.schemas.staff import SharingUpdate
 from app.services import procedure_service
 
 router = APIRouter(prefix="/procedures", tags=["procedures"])
@@ -41,6 +42,16 @@ def update_procedure(
     actor_id: int | None = Depends(get_current_actor_id),
 ) -> ProcedureRead:
     return procedure_service.update_procedure(db, procedure_id, data, actor_id)
+
+
+@router.put("/{procedure_id}/sharing", response_model=ProcedureRead)
+def set_sharing(
+    procedure_id: int,
+    data: SharingUpdate,
+    db: Session = Depends(get_db),
+    actor_id: int | None = Depends(get_current_actor_id),
+) -> ProcedureRead:
+    return procedure_service.set_sharing(db, procedure_id, data.shared_with_employees, actor_id)
 
 
 @router.delete("/{procedure_id}", status_code=204)

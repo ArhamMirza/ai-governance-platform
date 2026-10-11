@@ -9,7 +9,7 @@ const userFormSchema = z.object({
   name: z.string().min(1, "Name is required"),
   email: z.string().min(3, "Email is required"),
   password: z.string().min(8, "Password must be at least 8 characters"),
-  role: z.enum(["admin", "contributor", "viewer"]),
+  role: z.enum(["admin", "contributor", "viewer", "employee"]),
 });
 
 type UserFormValues = z.infer<typeof userFormSchema>;
@@ -65,6 +65,7 @@ export function UserForm({ onCreated }: UserFormProps) {
       <div>
         <label htmlFor="user-role">Role</label>
         <select id="user-role" {...register("role")}>
+          <option value="employee">Employee (staff home only)</option>
           <option value="viewer">Viewer</option>
           <option value="contributor">Contributor</option>
           <option value="admin">Admin</option>

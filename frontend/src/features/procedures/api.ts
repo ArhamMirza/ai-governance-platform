@@ -13,6 +13,10 @@ export const proceduresApi = {
   update: (id: number, data: ProcedureUpdateInput) =>
     httpClient.put<Procedure>(`/procedures/${id}`, data),
   remove: (id: number) => httpClient.delete<void>(`/procedures/${id}`),
+  setSharing: (id: number, sharedWithEmployees: boolean) =>
+    httpClient.put<Procedure>(`/procedures/${id}/sharing`, {
+      shared_with_employees: sharedWithEmployees,
+    }),
   submitForReview: (id: number) =>
     httpClient.post<Procedure>(`/procedures/${id}/submit-for-review`),
   approve: (id: number) => httpClient.post<Procedure>(`/procedures/${id}/approve`),

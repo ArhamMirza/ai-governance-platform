@@ -31,6 +31,20 @@ export function useCreateProcedure() {
   });
 }
 
+/** Changes only who can read it, so only the record and the employees'
+ * library need refreshing -- not its version history. */
+export function useSetProcedureSharing(id: number) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (shared: boolean) => proceduresApi.setSharing(id, shared),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: proceduresKey });
+      queryClient.invalidateQueries({ queryKey: procedureKey(id) });
+      queryClient.invalidateQueries({ queryKey: ["staff", "library"] });
+    },
+  });
+}
+
 export function useUpdateProcedure(id: number) {
   const queryClient = useQueryClient();
   return useMutation({

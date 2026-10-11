@@ -1,7 +1,7 @@
 from datetime import UTC, date, datetime
 from enum import StrEnum
 
-from sqlalchemy import Date, DateTime, Integer, String, Text
+from sqlalchemy import Boolean, Date, DateTime, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.database import Base
@@ -28,6 +28,11 @@ class Policy(Base):
     # policies to be reviewed at planned intervals, not approved once. Null on
     # anything approved before this was introduced, which never reads as due.
     next_review_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    # Whether employees (who have no other access to the platform) can read
+    # it, and its documents, on their home page -- only once approved. A
+    # visibility choice rather than content, so changing it doesn't withdraw
+    # an approval. See app.services.staff_service.
+    shared_with_employees: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(UTC)
     )

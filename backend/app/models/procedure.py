@@ -1,7 +1,7 @@
 from datetime import UTC, date, datetime
 from enum import StrEnum
 
-from sqlalchemy import Date, DateTime, ForeignKey, Integer, String, Text
+from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.database import Base
@@ -30,6 +30,8 @@ class Procedure(Base):
     # Set on approval, same yearly cadence as a policy's -- see
     # app.core.review_cadence and Policy.next_review_date.
     next_review_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    # See Policy.shared_with_employees.
+    shared_with_employees: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(UTC)
     )

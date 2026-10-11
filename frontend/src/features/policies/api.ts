@@ -8,6 +8,10 @@ export const policiesApi = {
   update: (id: number, data: PolicyUpdateInput) =>
     httpClient.put<Policy>(`/policies/${id}`, data),
   remove: (id: number) => httpClient.delete<void>(`/policies/${id}`),
+  setSharing: (id: number, sharedWithEmployees: boolean) =>
+    httpClient.put<Policy>(`/policies/${id}/sharing`, {
+      shared_with_employees: sharedWithEmployees,
+    }),
   submitForReview: (id: number) => httpClient.post<Policy>(`/policies/${id}/submit-for-review`),
   approve: (id: number) => httpClient.post<Policy>(`/policies/${id}/approve`),
   retire: (id: number) => httpClient.post<Policy>(`/policies/${id}/retire`),

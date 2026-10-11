@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.core.exceptions import AuthenticationError, AuthorizationError
 from app.core.permissions import Action, has_permission
-from app.models.user import User
+from app.models.user import User, UserRole
 from app.services import auth_service
 
 SESSION_COOKIE_NAME = "session_token"
@@ -18,6 +18,17 @@ def get_current_user(request: Request, db: Session = Depends(get_db)) -> User:
     return user
 
 
+def get_internal_user(user: User = Depends(get_current_user)) -> User:
+    """Any signed-in user of the platform proper -- everyone but an employee.
+    Every business router is mounted behind this (see app.main._protected), so
+    an employee's login reaches only the routes that opt in with plain
+    get_current_user, and a router added later is closed to them by default.
+    A 403 rather than a 404: the route exists, they just can't use it."""
+    if user.role == UserRole.EMPLOYEE:
+        raise AuthorizationError("This account can only use the employee home.")
+    return user
+
+
 def _require(action: Action):
     """A Depends() factory: returns the current user if their role permits
     `action`, otherwise raises 403. One factory call per distinct action
@@ -26,9 +37,7 @@ def _require(action: Action):
 
     def dependency(user: User = Depends(get_current_user)) -> User:
         if not has_permission(user.role, action):
-            raise AuthorizationError(
-                f"Your role ('{user.role}') doesn't permit this action."
-            )
+            raise AuthorizationError(f"Your role ('{user.role}') doesn't permit this action.")
         return user
 
     return dependency

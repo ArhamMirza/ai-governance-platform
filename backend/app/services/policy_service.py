@@ -74,6 +74,27 @@ def update_policy(
     return policy
 
 
+def set_sharing(
+    db: Session, policy_id: int, shared_with_employees: bool, actor_id: int | None
+) -> Policy:
+    """Whether employees can read this policy on their home page. Allowed in
+    any status -- it's who can see the record, not what it says, so it
+    doesn't withdraw an approval; employees only ever see it once approved
+    (see staff_service)."""
+    policy = _get_or_raise(db, policy_id)
+    policy.shared_with_employees = shared_with_employees
+    policy = policy_repository.save(db, policy)
+    audit_service.log(
+        db,
+        "Policy",
+        policy.id,
+        "sharing_updated",
+        actor_id,
+        {"shared_with_employees": shared_with_employees},
+    )
+    return policy
+
+
 def submit_for_review(db: Session, policy_id: int, actor_id: int | None) -> Policy:
     policy = _get_or_raise(db, policy_id)
     if policy.status != PolicyStatus.DRAFT:

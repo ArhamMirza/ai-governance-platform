@@ -12,7 +12,7 @@ from app.core.exceptions import (
     ServiceUnavailableError,
     ValidationError,
 )
-from app.dependencies import get_current_user
+from app.dependencies import get_current_user, get_internal_user
 from app.routers import (
     ai_assist,
     ai_incidents,
@@ -52,6 +52,7 @@ from app.routers import (
     risk_assessments,
     risk_criteria,
     risk_item_suggestions,
+    staff_portal,
     suppliers,
     users,
 )
@@ -105,12 +106,16 @@ def rate_limited_handler(request: Request, exc: RateLimitedError) -> JSONRespons
 
 
 # Every business router requires a logged-in session (reads included, not
-# just writes) via this shared dependency. health and auth stay public --
-# auth obviously so, since it's how you get a session in the first place.
-_protected = [Depends(get_current_user)]
+# just writes) via this shared dependency, and refuses an employee login:
+# employees reach only the staff portal below. health and auth stay public
+# -- auth obviously so, since it's how you get a session in the first place.
+_protected = [Depends(get_internal_user)]
 
 app.include_router(health.router, prefix="/api/v1")
 app.include_router(auth.router, prefix="/api/v1")
+app.include_router(
+    staff_portal.router, prefix="/api/v1", dependencies=[Depends(get_current_user)]
+)
 app.include_router(policies.router, prefix="/api/v1", dependencies=_protected)
 app.include_router(policy_drafts.router, prefix="/api/v1", dependencies=_protected)
 app.include_router(procedures.router, prefix="/api/v1", dependencies=_protected)

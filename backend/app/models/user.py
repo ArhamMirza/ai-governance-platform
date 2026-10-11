@@ -11,6 +11,11 @@ class UserRole(StrEnum):
     ADMIN = "admin"
     CONTRIBUTOR = "contributor"
     VIEWER = "viewer"
+    # Staff who use AI systems but not this platform: a login that reaches
+    # only the employee home (app.routers.staff_portal). It holds no Action
+    # in app.core.permissions, and every other router refuses it -- see
+    # app.dependencies.get_internal_user.
+    EMPLOYEE = "employee"
 
 
 class User(Base):

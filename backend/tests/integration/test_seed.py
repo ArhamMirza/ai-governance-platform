@@ -25,6 +25,7 @@ from app.services import (
     objective_service,
     organization_context_service,
     risk_assessment_service,
+    staff_service,
     supplier_service,
 )
 
@@ -239,6 +240,15 @@ def test_seed_tags_ai_systems_to_the_resource_controls(db_session: Session) -> N
     assert status["A.4.5"].status == "partial"
     missing = [i.detail for i in status["A.4.5"].tagged_items if not i.current]
     assert missing == ["Not recorded yet: Compute Infrastructure, Hosting Environment"]
+
+
+def test_seed_shares_the_approved_retention_policy_with_employees(db_session: Session) -> None:
+    seed(db_session)
+
+    library = staff_service.library(db_session)
+
+    assert [(item.kind, item.title) for item in library] == [("policy", "Data Retention Policy")]
+    assert [d.filename for d in library[0].documents] == ["data-retention-policy-v1.pdf"]
 
 
 def test_seed_is_idempotent(db_session: Session) -> None:

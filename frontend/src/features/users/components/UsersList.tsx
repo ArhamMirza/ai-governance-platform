@@ -10,6 +10,7 @@ const ROLE_LABELS: Record<string, string> = {
   admin: "Admin",
   contributor: "Contributor",
   viewer: "Viewer",
+  employee: "Employee",
 };
 
 /** Nobody may approve in a deactivated owner's place, so whatever they hold
@@ -95,6 +96,7 @@ export function UsersList() {
                       onChange={(e) => handleRoleChange(user.id, e.target.value)}
                       disabled={updateUser.isPending}
                     >
+                      <option value="employee">Employee</option>
                       <option value="viewer">Viewer</option>
                       <option value="contributor">Contributor</option>
                       <option value="admin">Admin</option>
