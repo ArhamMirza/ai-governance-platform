@@ -35,6 +35,8 @@ function contextRecord(overrides: Partial<OrganizationContext> = {}): Organizati
     organization_description: null,
     ai_usage_overview: null,
     ai_roles: [],
+    aims_scope: null,
+    aims_scope_exclusions: null,
     status: "draft",
     approved_by: null,
     approved_at: null,

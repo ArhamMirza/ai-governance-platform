@@ -106,3 +106,20 @@ def test_a_long_cell_is_truncated(db_session: Session) -> None:
     assert block is not None
     assert "x" * pinned_context.MAX_CELL_CHARS in block["text"]
     assert "x" * (pinned_context.MAX_CELL_CHARS + 1) not in block["text"]
+
+
+def test_organization_context_includes_the_scope_and_its_exclusions(db_session: Session) -> None:
+    organization_context_service.update(
+        db_session,
+        {
+            "aims_scope": "All production AI systems.",
+            "aims_scope_exclusions": "Prototypes without customer data.",
+        },
+        actor_id=None,
+    )
+
+    source = pinned_context.organization_context(db_session)
+
+    assert source is not None
+    assert "Scope of the AI management system: All production AI systems." in source["text"]
+    assert "Excluded from the scope: Prototypes without customer data." in source["text"]

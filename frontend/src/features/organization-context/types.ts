@@ -6,6 +6,9 @@ export interface OrganizationContext {
   ai_usage_overview: string | null;
   /** ISO/IEC 22989 AI role codes the organization holds. */
   ai_roles: string[];
+  /** Clause 4.3: what the AI management system covers, and what it leaves out. */
+  aims_scope: string | null;
+  aims_scope_exclusions: string | null;
   status: OrganizationContextStatus;
   approved_by: number | null;
   approved_at: string | null;
@@ -21,4 +24,6 @@ export interface OrganizationContextUpdateInput {
   organization_description?: string | null;
   ai_usage_overview?: string | null;
   ai_roles?: string[];
+  aims_scope?: string | null;
+  aims_scope_exclusions?: string | null;
 }

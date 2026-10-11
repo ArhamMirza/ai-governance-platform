@@ -106,8 +106,8 @@ def _withdraw_approval(db: Session, context: OrganizationContext) -> None:
 
 
 def update(db: Session, changes: dict, actor_id: int | None) -> OrganizationContext:
-    """Only ``organization_description``, ``ai_usage_overview`` and/or
-    ``ai_roles``, and only the ones actually given -- a save of one field
+    """Only ``organization_description``, ``ai_usage_overview``,
+    ``ai_roles`` and/or the scope fields, and only the ones actually given -- a save of one field
     must not blank out the others, the way it would if every save always
     wrote all of them."""
     context = get_or_create(db)
@@ -117,6 +117,8 @@ def update(db: Session, changes: dict, actor_id: int | None) -> OrganizationCont
         "organization_description": context.organization_description,
         "ai_usage_overview": context.ai_usage_overview,
         "ai_roles": context.ai_roles,
+        "aims_scope": context.aims_scope,
+        "aims_scope_exclusions": context.aims_scope_exclusions,
     }
     for field, value in changes.items():
         setattr(context, field, value)

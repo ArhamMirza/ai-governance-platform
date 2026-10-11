@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { StatusBadge } from "../../../shared/components/StatusBadge";
 import { useServerSyncedText } from "../../../shared/hooks/useServerSyncedText";
 import { AuditLogViewer } from "../../audit-log/components/AuditLogViewer";
+import { FrameworkTagPicker } from "../../framework-tags/components/FrameworkTagPicker";
 import { OrganizationAIRoles } from "../../ai-roles/components/OrganizationAIRoles";
 import { useCanApprove } from "../../audit-log/useCanApprove";
 import { DataGrid } from "../../sheets/components/DataGrid";
@@ -34,7 +35,7 @@ function ApprovalWithdrawalNotice({ status }: { status: string }) {
     <p className="approval-withdrawal-notice" role="status">
       <strong>Approved.</strong>
       <span>
-        Changing the description, the AI roles, the issues or the interested parties withdraws this approval
+        Changing the description, the scope, the AI roles, the issues or the interested parties withdraws this approval
         and returns it to draft for re-approval.
       </span>
     </p>
@@ -140,6 +141,26 @@ export function OrganizationContextDetail() {
         onSave={(text) => updateContext.mutate({ ai_usage_overview: text || null })}
       />
 
+      <h3>Scope of the AI Management System</h3>
+      <p className="approval-note">
+        Clause 4.3: which organizational units, locations, AI systems and activities the AI
+        management system covers, and what it deliberately leaves out.
+      </p>
+      <NarrativeField
+        id="aims-scope"
+        label="What the AI management system covers"
+        value={context.aims_scope ?? ""}
+        placeholder="The units, locations, AI systems and activities in scope."
+        onSave={(text) => updateContext.mutate({ aims_scope: text || null })}
+      />
+      <NarrativeField
+        id="aims-scope-exclusions"
+        label="What is excluded, and why"
+        value={context.aims_scope_exclusions ?? ""}
+        placeholder="Anything outside the scope, with the reason."
+        onSave={(text) => updateContext.mutate({ aims_scope_exclusions: text || null })}
+      />
+
       <OrganizationAIRoles context={context} />
 
       <h3>Internal and External Issues</h3>
@@ -160,6 +181,9 @@ export function OrganizationContextDetail() {
         alsoInvalidate={[["organization-context"], ["audit-log", "OrganizationContext"]]}
       />
       {partiesQuery.isError && <p>Failed to load interested parties.</p>}
+
+      <h3>Framework Tags</h3>
+      <FrameworkTagPicker entityType="OrganizationContext" entityId={context.id} />
 
       <AuditLogViewer entityType="OrganizationContext" entityId={context.id} />
     </article>

@@ -24,6 +24,7 @@ from app.services import (
     internal_audit_service,
     management_review_service,
     objective_service,
+    organization_context_service,
     policy_service,
     supplier_service,
 )
@@ -627,3 +628,69 @@ def test_a_closed_objective_is_satisfied(db_session: Session) -> None:
 
     assert row.status == "satisfied"
     assert row.tagged_items[0].detail == "Objective achieved"
+
+
+def tagged_context(db: Session, control_id: int):
+    context = organization_context_service.get_or_create(db)
+    framework_service.set_tags(
+        db, "OrganizationContext", context.id, [control_id], actor_id=None
+    )
+    return context
+
+
+def approve_context(db: Session) -> None:
+    organization_context_service.update(
+        db, {"organization_description": "We build things."}, actor_id=None
+    )
+    organization_context_service.submit_for_review(db, actor_id=None)
+    organization_context_service.approve(db, actor_id=None)
+
+
+def test_a_draft_context_is_partial_and_an_in_review_one_is_awaiting_approval(
+    db_session: Session,
+) -> None:
+    control_id = clause_control_id(db_session)
+    tagged_context(db_session, control_id)
+
+    row = status_for(db_session, control_id)
+    assert row.status == "partial"
+    assert "still in draft" in row.tagged_items[0].detail
+
+    organization_context_service.submit_for_review(db_session, actor_id=None)
+    row = status_for(db_session, control_id)
+    assert row.status == "partial"
+    assert "awaiting approval" in row.tagged_items[0].detail
+
+
+def test_an_approved_context_satisfies_its_clause(db_session: Session) -> None:
+    control_id = clause_control_id(db_session)
+    tagged_context(db_session, control_id)
+    approve_context(db_session)
+
+    row = status_for(db_session, control_id)
+
+    assert row.status == "satisfied"
+    assert row.tagged_items[0].label == "Context of the organization"
+
+
+def test_an_approved_context_past_its_review_date_is_partial(db_session: Session) -> None:
+    control_id = clause_control_id(db_session)
+    context = tagged_context(db_session, control_id)
+    approve_context(db_session)
+    context.next_review_date = date.today() - timedelta(days=3)
+    db_session.commit()
+
+    row = status_for(db_session, control_id)
+
+    assert row.status == "partial"
+    assert "review date" in row.tagged_items[0].detail
+
+
+def test_editing_an_approved_context_reopens_its_clause(db_session: Session) -> None:
+    control_id = clause_control_id(db_session)
+    tagged_context(db_session, control_id)
+    approve_context(db_session)
+
+    organization_context_service.update(db_session, {"aims_scope": "Everything."}, actor_id=None)
+
+    assert status_for(db_session, control_id).status == "partial"

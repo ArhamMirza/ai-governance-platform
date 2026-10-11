@@ -9,6 +9,8 @@ class OrganizationContextUpdate(BaseModel):
     organization_description: str | None = None
     ai_usage_overview: str | None = None
     ai_roles: list[str] | None = None
+    aims_scope: str | None = None
+    aims_scope_exclusions: str | None = None
 
 
 class OrganizationContextRead(BaseModel):
@@ -18,6 +20,8 @@ class OrganizationContextRead(BaseModel):
     organization_description: str | None
     ai_usage_overview: str | None
     ai_roles: list[str]
+    aims_scope: str | None
+    aims_scope_exclusions: str | None
     status: OrganizationContextStatus
     approved_by: int | None
     approved_at: datetime | None

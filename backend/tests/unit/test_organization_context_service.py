@@ -381,3 +381,74 @@ def test_reading_the_ai_roles_does_not_provision_the_context(db_session: Session
     from app.models.organization_context import OrganizationContext
 
     assert db_session.query(OrganizationContext).count() == 0
+
+
+# ---------- the scope of the AI management system (4.3) ----------
+
+
+def test_the_scope_starts_empty_and_is_saved_with_its_exclusions(db_session: Session) -> None:
+    context = service.get_or_create(db_session)
+    assert (context.aims_scope, context.aims_scope_exclusions) == (None, None)
+
+    context = service.update(
+        db_session,
+        {
+            "aims_scope": "All AI systems built or bought by the Berlin and Lisbon offices.",
+            "aims_scope_exclusions": "Research prototypes that never touch production data.",
+        },
+        actor_id=None,
+    )
+
+    assert context.aims_scope.startswith("All AI systems")
+    assert context.aims_scope_exclusions.startswith("Research prototypes")
+
+
+def test_saving_the_scope_leaves_the_other_fields_alone(db_session: Session) -> None:
+    service.update(
+        db_session,
+        {"organization_description": "We build things.", "ai_roles": ["developer"]},
+        actor_id=None,
+    )
+
+    service.update(db_session, {"aims_scope": "Everything."}, actor_id=None)
+
+    context = service.get_or_create(db_session)
+    assert context.organization_description == "We build things."
+    assert context.ai_roles == ["developer"]
+    assert context.aims_scope_exclusions is None
+
+
+def test_changing_the_scope_after_approval_withdraws_it(db_session: Session) -> None:
+    approved(db_session)
+
+    context = service.update(db_session, {"aims_scope": "Everything."}, actor_id=None)
+
+    assert context.status == OrganizationContextStatus.DRAFT
+
+
+def test_changing_only_the_exclusions_after_approval_withdraws_it(db_session: Session) -> None:
+    approved(db_session)
+
+    context = service.update(db_session, {"aims_scope_exclusions": "Prototypes."}, actor_id=None)
+
+    assert context.status == OrganizationContextStatus.DRAFT
+
+
+def test_resaving_the_same_exclusions_does_not_withdraw_approval(db_session: Session) -> None:
+    service.update(db_session, {"aims_scope_exclusions": "Prototypes."}, actor_id=None)
+    service.submit_for_review(db_session, actor_id=None)
+    service.approve(db_session, actor_id=None)
+
+    context = service.update(db_session, {"aims_scope_exclusions": "Prototypes."}, actor_id=None)
+
+    assert context.status == OrganizationContextStatus.APPROVED
+
+
+def test_resaving_the_same_scope_does_not_withdraw_approval(db_session: Session) -> None:
+    service.update(db_session, {"aims_scope": "Everything."}, actor_id=None)
+    service.submit_for_review(db_session, actor_id=None)
+    service.approve(db_session, actor_id=None)
+
+    context = service.update(db_session, {"aims_scope": "Everything."}, actor_id=None)
+
+    assert context.status == OrganizationContextStatus.APPROVED

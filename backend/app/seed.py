@@ -361,7 +361,7 @@ def seed(db: Session) -> None:
         actor_id=None,
     )
 
-    _seed_ai_roles(db, support_chatbot.id)
+    _seed_organization_context(db, support_chatbot.id)
     _seed_internal_audits(db)
     _seed_management_review(db)
     _seed_incidents(db, support_chatbot.id, fraud_model.id, resume_screener.id)
@@ -374,12 +374,42 @@ def seed(db: Session) -> None:
     print("Seed complete.")
 
 
-def _seed_ai_roles(db: Session, support_chatbot_id: int) -> None:
-    """The organization builds some systems and only uses others, so the
-    chatbot -- a bought-in product -- carries its own, narrower roles."""
-    print("Seeding AI roles...")
+def _seed_organization_context(db: Session, support_chatbot_id: int) -> None:
+    """The approved context of the organization (clauses 4.1-4.3). It builds
+    some AI systems and only uses others, so the chatbot -- a bought-in
+    product -- carries its own, narrower AI roles."""
+    print("Seeding the context of the organization...")
     organization_context_service.update(
-        db, {"ai_roles": ["developer", "integrator", "ai_user"]}, actor_id=None
+        db,
+        {
+            "organization_description": (
+                "A mid-sized HR-technology company that builds hiring software and "
+                "runs it for enterprise customers."
+            ),
+            "ai_usage_overview": (
+                "We build and operate a resume screener and a fraud model, and use a "
+                "bought-in chatbot for customer support."
+            ),
+            "aims_scope": (
+                "All AI systems the company builds, deploys or buys for use in "
+                "production, across the engineering, support and risk teams."
+            ),
+            "aims_scope_exclusions": (
+                "Experimental notebooks and prototypes that never process customer data."
+            ),
+            "ai_roles": ["developer", "integrator", "ai_user"],
+        },
+        actor_id=None,
+    )
+    organization_context_service.submit_for_review(db, actor_id=None)
+    context = organization_context_service.approve(db, actor_id=None)
+    _tag(
+        db,
+        organization_context_service.ENTITY_TYPE,
+        context.id,
+        "iso_42001:4.1",
+        "iso_42001:4.2",
+        "iso_42001:4.3",
     )
     ai_system_lifecycle_service.set_ai_roles(db, support_chatbot_id, ["ai_user"], actor_id=None)
 

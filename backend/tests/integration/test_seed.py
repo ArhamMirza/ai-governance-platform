@@ -16,6 +16,7 @@ from app.services import (
     ai_incident_service,
     ai_system_inventory_service,
     ai_system_lifecycle_service,
+    compliance_status_service,
     corrective_action_service,
     internal_audit_service,
     management_review_service,
@@ -139,6 +140,21 @@ def test_seed_populates_objectives_on_and_off_track(db_session: Session) -> None
     assert then["Resume Screener passes its bias test suite"] == "off_track"
     counts = objective_service.attention_counts(db_session, date.today())
     assert (counts.falling_short, counts.measurement_overdue) == (1, 0)
+
+
+def test_seed_approves_the_context_and_tags_its_clauses(db_session: Session) -> None:
+    seed(db_session)
+
+    context = organization_context_service.get_or_create(db_session)
+    rows = {
+        row.code: row.status
+        for row in compliance_status_service.get_status(db_session, "iso_42001")
+        if row.code in ("4.1", "4.2", "4.3")
+    }
+
+    assert context.status == "approved"
+    assert context.aims_scope and context.aims_scope_exclusions
+    assert rows == {"4.1": "satisfied", "4.2": "satisfied", "4.3": "satisfied"}
 
 
 def test_seed_records_the_organizations_ai_roles_and_the_chatbots_own(

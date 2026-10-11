@@ -5,7 +5,6 @@ so Policy, Procedure, Risk/Impact Assessment and Evidence share one tagging
 mechanism instead of each carrying their own free-text column.
 """
 
-
 from sqlalchemy.orm import Session
 
 from app.core.exceptions import NotFoundError, ValidationError
@@ -15,6 +14,7 @@ from app.models.framework_control import FrameworkControl
 from app.models.framework_soa_entry import SoaApplicability
 from app.models.framework_tag import FrameworkTag
 from app.models.impact_assessment import ImpactAssessment
+from app.models.organization_context import OrganizationContext
 from app.models.policy import Policy
 from app.models.procedure import Procedure
 from app.models.risk_assessment import RiskAssessment
@@ -58,9 +58,7 @@ def set_tags(
         raise ValidationError(f"Unknown framework control id(s): {sorted(missing)}")
 
     framework_tag_repository.replace_for_entity(db, entity_type, entity_id, unique_ids)
-    audit_service.log(
-        db, entity_type, entity_id, ACTION, actor_id, {"control_ids": unique_ids}
-    )
+    audit_service.log(db, entity_type, entity_id, ACTION, actor_id, {"control_ids": unique_ids})
     return get_tags(db, entity_type, entity_id)
 
 
@@ -71,6 +69,7 @@ def delete_tags(db: Session, entity_type: str, entity_id: int) -> None:
 
 _LABELLED_ENTITY_TYPES = {
     "AIObjective": (AIObjective, lambda record: record.title),
+    "OrganizationContext": (OrganizationContext, lambda record: "Context of the organization"),
     "Policy": (Policy, lambda record: record.title),
     "Procedure": (Procedure, lambda record: record.title),
     "Evidence": (Evidence, lambda record: record.filename),
@@ -109,9 +108,7 @@ def _tagged_items_for_control(
         label = _resolve_label(db, tag.entity_type, tag.entity_id)
         if label is None:
             continue
-        items.append(
-            TaggedItem(entity_type=tag.entity_type, entity_id=tag.entity_id, label=label)
-        )
+        items.append(TaggedItem(entity_type=tag.entity_type, entity_id=tag.entity_id, label=label))
     return items
 
 

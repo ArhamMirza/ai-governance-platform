@@ -15,6 +15,14 @@ import type { OrganizationContext } from "../types";
 vi.mock("../api");
 vi.mock("../../audit-log/api");
 vi.mock("../../audit-log/useCanApprove");
+vi.mock("../../ai-roles/components/OrganizationAIRoles", () => ({
+  OrganizationAIRoles: () => null,
+}));
+vi.mock("../../framework-tags/components/FrameworkTagPicker", () => ({
+  FrameworkTagPicker: ({ entityType, entityId }: { entityType: string; entityId: number }) => (
+    <p>{`Tags for ${entityType} ${entityId}`}</p>
+  ),
+}));
 
 function context(overrides: Partial<OrganizationContext> = {}): OrganizationContext {
   return {
@@ -22,6 +30,8 @@ function context(overrides: Partial<OrganizationContext> = {}): OrganizationCont
     organization_description: "A resume-screening vendor.",
     ai_usage_overview: "Ranks applicants for human review.",
     ai_roles: [],
+    aims_scope: null,
+    aims_scope_exclusions: null,
     status: "draft",
     approved_by: null,
     approved_at: null,
@@ -101,6 +111,43 @@ describe("OrganizationContextDetail", () => {
         organization_description: "A hiring-technology company.",
       }),
     );
+  });
+
+  it("records the scope of the AI management system, saving only the field changed", async () => {
+    renderDetail({ aims_scope: "All production AI systems." });
+    vi.mocked(organizationContextApi.update).mockResolvedValue(context());
+
+    expect(await screen.findByLabelText("What the AI management system covers")).toHaveValue(
+      "All production AI systems.",
+    );
+    const exclusions = screen.getByLabelText("What is excluded, and why");
+    await userEvent.type(exclusions, "Prototypes without customer data.");
+    await userEvent.tab();
+
+    await waitFor(() =>
+      expect(organizationContextApi.update).toHaveBeenCalledWith({
+        aims_scope_exclusions: "Prototypes without customer data.",
+      }),
+    );
+  });
+
+  it("clears a scope field to null when it's emptied", async () => {
+    renderDetail({ aims_scope: "All production AI systems." });
+    vi.mocked(organizationContextApi.update).mockResolvedValue(context());
+
+    const scope = await screen.findByLabelText("What the AI management system covers");
+    await userEvent.clear(scope);
+    await userEvent.tab();
+
+    await waitFor(() =>
+      expect(organizationContextApi.update).toHaveBeenCalledWith({ aims_scope: null }),
+    );
+  });
+
+  it("lets the context be tagged to the clauses it satisfies", async () => {
+    renderDetail();
+
+    expect(await screen.findByText("Tags for OrganizationContext 1")).toBeInTheDocument();
   });
 
   it("does not save on blur when nothing changed", async () => {

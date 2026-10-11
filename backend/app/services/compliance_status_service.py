@@ -44,6 +44,7 @@ from app.models.evidence import Evidence
 from app.models.framework_control import Framework, FrameworkControl
 from app.models.framework_soa_entry import FrameworkSoaEntry, SoaApplicability
 from app.models.impact_assessment import ImpactAssessment, ImpactAssessmentStatus
+from app.models.organization_context import OrganizationContext, OrganizationContextStatus
 from app.models.policy import Policy, PolicyStatus
 from app.models.procedure import Procedure, ProcedureStatus
 from app.models.risk_assessment import RiskAssessment, RiskAssessmentStatus
@@ -142,6 +143,26 @@ def _resolve_procedure(db: Session, entity_id: int, today: date) -> _Resolved | 
         },
     )
     return _Resolved(record.title, current, detail)
+
+
+def _resolve_organization_context(db: Session, entity_id: int, today: date) -> _Resolved | None:
+    record = db.get(OrganizationContext, entity_id)
+    if record is None:
+        return None
+    current, detail = _approval_like_state(
+        status=record.status,
+        approved_status=OrganizationContextStatus.APPROVED,
+        next_review_date=record.next_review_date,
+        today=today,
+        noun="Context of the organization",
+        draft_like={
+            OrganizationContextStatus.DRAFT: "Context of the organization is still in draft",
+            OrganizationContextStatus.IN_REVIEW: (
+                "Context of the organization is awaiting approval"
+            ),
+        },
+    )
+    return _Resolved("Context of the organization", current, detail)
 
 
 def _resolve_impact_assessment(db: Session, entity_id: int, today: date) -> _Resolved | None:
@@ -327,6 +348,7 @@ _RESOLVERS = {
     "Policy": _resolve_policy,
     "Procedure": _resolve_procedure,
     "ImpactAssessment": _resolve_impact_assessment,
+    "OrganizationContext": _resolve_organization_context,
     "RiskAssessment": _resolve_risk_assessment,
     "AuditProgram": _resolve_audit_program,
     "Evidence": _resolve_evidence,
