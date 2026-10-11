@@ -70,8 +70,8 @@ def _rendered_rows(rows: list[SheetRow], columns: list[str]) -> str:
 
 def organization_context(db: Session) -> dict | None:
     """The organization's ISO/IEC 42001 Clause 4 context, as one pinned
-    source: its description, its overall use of AI, its internal/external
-    issues and its interested parties."""
+    source: its description, its overall use of AI, the scope of the AI
+    management system, its internal/external issues and its interested parties."""
     from app.services import organization_context_service
 
     context = organization_context_service.get_or_create(db)
@@ -80,6 +80,10 @@ def organization_context(db: Session) -> dict | None:
         parts.append(f"Organization description: {context.organization_description.strip()}")
     if (context.ai_usage_overview or "").strip():
         parts.append(f"Overall use of AI: {context.ai_usage_overview.strip()}")
+    if (context.aims_scope or "").strip():
+        parts.append(f"Scope of the AI management system: {context.aims_scope.strip()}")
+    if (context.aims_scope_exclusions or "").strip():
+        parts.append(f"Excluded from the scope: {context.aims_scope_exclusions.strip()}")
 
     issues = organization_context_service.list_issues(db)
     rendered_issues = _rendered_rows(issues, ["category", "issue", "planned_response"])
