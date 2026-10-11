@@ -3,6 +3,8 @@ import { Route, Routes } from "react-router-dom";
 import { AISystemDetailPage } from "../pages/AISystemDetailPage";
 import { AISystemInventoryPage } from "../pages/AISystemInventoryPage";
 import { ArchivePage } from "../pages/ArchivePage";
+import { ChangeDetailPage } from "../pages/ChangeDetailPage";
+import { ChangesPage } from "../pages/ChangesPage";
 import { AuditDetailPage } from "../pages/AuditDetailPage";
 import { AuditProgramDetailPage } from "../pages/AuditProgramDetailPage";
 import { AuditProgramsPage } from "../pages/AuditProgramsPage";
@@ -48,6 +50,8 @@ export function AppRoutes() {
         <Route path="/ai-systems" element={<AISystemInventoryPage />} />
         <Route path="/ai-systems/:rowId" element={<AISystemDetailPage />} />
         <Route path="/data-inventory" element={<DataInventoryPage />} />
+        <Route path="/changes" element={<ChangesPage />} />
+        <Route path="/changes/:changeId" element={<ChangeDetailPage />} />
         <Route path="/objectives" element={<ObjectivesPage />} />
         <Route path="/objectives/:objectiveId" element={<ObjectiveDetailPage />} />
         <Route path="/suppliers" element={<SuppliersPage />} />

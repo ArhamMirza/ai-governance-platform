@@ -44,6 +44,7 @@ from app.models.evidence import Evidence
 from app.models.framework_control import Framework, FrameworkControl
 from app.models.framework_soa_entry import FrameworkSoaEntry, SoaApplicability
 from app.models.impact_assessment import ImpactAssessment, ImpactAssessmentStatus
+from app.models.management_system_change import ManagementSystemChange
 from app.models.organization_context import OrganizationContext, OrganizationContextStatus
 from app.models.policy import Policy, PolicyStatus
 from app.models.procedure import Procedure, ProcedureStatus
@@ -65,6 +66,7 @@ from app.schemas.compliance_status import (
 )
 from app.services import (
     ai_incident_service,
+    change_service,
     competence_service,
     corrective_action_service,
     eu_ai_act_service,
@@ -304,6 +306,24 @@ def _resolve_supplier(db: Session, entity_id: int, today: date) -> _Resolved | N
     return _Resolved(record.name, True, f"Supplier {record.status}")
 
 
+def _resolve_management_system_change(
+    db: Session, entity_id: int, today: date
+) -> _Resolved | None:
+    record = db.get(ManagementSystemChange, entity_id)
+    if record is None:
+        return None
+    standing = change_service.standing(record, today)
+    if standing.overdue:
+        return _Resolved(record.title, False, f"Change overdue since {record.planned_date}")
+    labels = {
+        "planned": f"Change planned for {record.planned_date}",
+        "in_progress": f"Change in progress, planned for {record.planned_date}",
+        "implemented": "Change implemented",
+        "cancelled": "Change cancelled",
+    }
+    return _Resolved(record.title, True, labels[standing.state])
+
+
 def _format_value(value: float, unit: str | None) -> str:
     number = f"{value:g}"
     if not unit:
@@ -358,6 +378,7 @@ _RESOLVERS = {
     "CompetenceRequirement": _resolve_competence_requirement,
     "Supplier": _resolve_supplier,
     "AIObjective": _resolve_ai_objective,
+    "ManagementSystemChange": _resolve_management_system_change,
 }
 
 

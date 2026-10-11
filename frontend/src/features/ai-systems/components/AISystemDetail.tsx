@@ -6,6 +6,7 @@ import { DocumentBrowser } from "../../evidence/components/DocumentBrowser";
 import { useAllImpactAssessments } from "../../impact-assessments/hooks";
 import { useRiskAssessments } from "../../risk-assessments/hooks";
 import { AISystemAIRoles } from "../../ai-roles/components/AISystemAIRoles";
+import { AISystemChanges } from "../../changes/components/AISystemChanges";
 import { AISystemObjectives } from "../../objectives/components/AISystemObjectives";
 import { AISystemSuppliers } from "../../suppliers/components/AISystemSuppliers";
 import { useLifecycle } from "../hooks";
@@ -102,6 +103,9 @@ export function AISystemDetail({ rowId }: AISystemDetailProps) {
 
       <h3>AI Objectives</h3>
       <AISystemObjectives rowId={rowId} />
+
+      <h3>Planned Changes</h3>
+      <AISystemChanges rowId={rowId} />
 
       <h3>AI Roles</h3>
       <AISystemAIRoles rowId={rowId} />

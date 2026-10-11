@@ -50,6 +50,7 @@ const ATTENTION_LINKS: Record<string, string> = {
   art25_possible_provider: "/suppliers",
   objectives_off_track: "/objectives",
   objective_measurements_overdue: "/objectives",
+  changes_overdue: "/changes",
 };
 
 const STATUS_TONES: Record<string, Segment["tone"]> = {

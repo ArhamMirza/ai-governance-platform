@@ -40,6 +40,7 @@ from app.services import (
     ai_incident_service,
     ai_system_inventory_service,
     ai_system_lifecycle_service,
+    change_service,
     competence_service,
     compliance_status_service,
     corrective_action_service,
@@ -64,6 +65,7 @@ HIGH_RISK_TIER = "high"
 INCIDENTS_GROUP = "Incidents & corrective actions"
 RISK_GROUP = "Risk & assessments"
 OBJECTIVES_GROUP = "Objectives & performance"
+PLANNING_GROUP = "Management system planning"
 AUDIT_GROUP = "Audits & management review"
 INVENTORY_GROUP = "AI systems, data & suppliers"
 COMPLIANCE_GROUP = "Framework coverage"
@@ -73,6 +75,7 @@ ATTENTION_GROUP_ORDER = [
     RISK_GROUP,
     OBJECTIVES_GROUP,
     AUDIT_GROUP,
+    PLANNING_GROUP,
     INVENTORY_GROUP,
     COMPLIANCE_GROUP,
     PEOPLE_GROUP,
@@ -106,6 +109,7 @@ def _attention(
     possible_provider_count: int,
     objectives_falling_short_count: int,
     objective_measurements_overdue_count: int,
+    changes_overdue_count: int,
 ) -> list[AttentionItem]:
     """Actionable items, grouped by area and most urgent first. Zero-count
     items are dropped so the panel only ever shows things that need doing."""
@@ -286,6 +290,13 @@ def _attention(
             group=OBJECTIVES_GROUP,
             label="AI objectives overdue for measurement",
             count=objective_measurements_overdue_count,
+            severity="warning",
+        ),
+        AttentionItem(
+            key="changes_overdue",
+            group=PLANNING_GROUP,
+            label="Planned changes to the management system past their date",
+            count=changes_overdue_count,
             severity="warning",
         ),
     ]
@@ -595,6 +606,7 @@ def get_summary(db: Session, actor_id: int) -> DashboardSummary:
             possible_provider_count=supplier_service.possible_provider_count(db),
             objectives_falling_short_count=objective_counts.falling_short,
             objective_measurements_overdue_count=objective_counts.measurement_overdue,
+            changes_overdue_count=change_service.overdue_count(db, today),
         ),
         matrix=risk_analytics_service.matrix_cells(all_risk_rows),
         criteria=risk_criteria_service.get_criteria(db),
