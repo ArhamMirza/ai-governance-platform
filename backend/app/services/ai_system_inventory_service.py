@@ -40,12 +40,32 @@ DEFAULT_COLUMNS = [
     ColumnDef(key="oversight_roles", label="Oversight Roles"),
 ]
 
+# Which inventory columns document each resource control, so an AI system
+# tagged to one of them only counts as covering it once those are filled in
+# (see compliance_status_service._resolve_ai_system).
+RESOURCE_CONTROL_COLUMNS: dict[str, list[str]] = {
+    "A.4.2": ["resource_documentation"],
+    "A.4.3": ["data_resources"],
+    "A.4.4": ["tooling_frameworks", "tooling_documentation"],
+    "A.4.5": ["compute_infrastructure", "hosting_environment"],
+    "A.4.6": ["development_team", "oversight_roles"],
+}
+
 # New A.4 columns not present in an already-provisioned inventory sheet get
 # appended to it by a one-off data migration -- a fresh install just gets
 # them from DEFAULT_COLUMNS above on first use.
-RESOURCE_COLUMN_KEYS = [c.key for c in DEFAULT_COLUMNS if c.key not in {
-    "name", "description", "purpose", "lifecycle_stage", "risk_tier",
-}]
+RESOURCE_COLUMN_KEYS = [
+    c.key
+    for c in DEFAULT_COLUMNS
+    if c.key
+    not in {
+        "name",
+        "description",
+        "purpose",
+        "lifecycle_stage",
+        "risk_tier",
+    }
+]
 
 
 def get_or_create_sheet(db: Session) -> Sheet:
@@ -94,9 +114,7 @@ def add_row(db: Session, data: dict, actor_id: int | None) -> SheetRow:
 
     sheet = get_or_create_sheet(db)
     # Every system starts at Inception; the stage only moves through a gate.
-    row = sheet_service.add_row(
-        db, sheet.id, {**data, STAGE_COLUMN_KEY: LifecycleStage.INCEPTION}
-    )
+    row = sheet_service.add_row(db, sheet.id, {**data, STAGE_COLUMN_KEY: LifecycleStage.INCEPTION})
     ai_system_lifecycle_service.get_or_create(db, row.id)
     audit_service.log(db, ENTITY_TYPE, sheet.id, "row_added", actor_id, {"row_id": row.id})
     return row
@@ -132,6 +150,7 @@ def delete_row(db: Session, row_id: int, actor_id: int | None) -> None:
         ai_system_lifecycle_service,
         change_service,
         data_inventory_service,
+        framework_service,
         impact_assessment_service,
         objective_service,
         risk_assessment_service,
@@ -164,6 +183,7 @@ def delete_row(db: Session, row_id: int, actor_id: int | None) -> None:
     change_service.unlink_ai_system(db, row_id, actor_id)
     ai_system_lifecycle_service.delete_for_ai_system(db, row_id)
     evidence_service.delete_all_for_entity(db, AI_SYSTEM_DOCUMENT_ENTITY_TYPE, row_id)
+    framework_service.delete_tags(db, AI_SYSTEM_DOCUMENT_ENTITY_TYPE, row_id)
 
     sheet = get_or_create_sheet(db)
     sheet_service.delete_row(db, sheet.id, row_id)

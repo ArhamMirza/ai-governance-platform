@@ -50,8 +50,10 @@ from app.models.organization_context import OrganizationContext, OrganizationCon
 from app.models.policy import Policy, PolicyStatus
 from app.models.procedure import Procedure, ProcedureStatus
 from app.models.risk_assessment import RiskAssessment, RiskAssessmentStatus
+from app.models.sheet import SheetRow
 from app.models.supplier import Supplier
 from app.repositories import (
+    ai_system_lifecycle_repository,
     framework_control_repository,
     framework_soa_repository,
     framework_tag_repository,
@@ -67,6 +69,7 @@ from app.schemas.compliance_status import (
 )
 from app.services import (
     ai_incident_service,
+    ai_system_inventory_service,
     change_service,
     communication_service,
     competence_service,
@@ -147,6 +150,35 @@ def _resolve_procedure(db: Session, entity_id: int, today: date) -> _Resolved | 
         },
     )
     return _Resolved(record.title, current, detail)
+
+
+def _resolve_ai_system(db: Session, entity_id: int, control_code: str) -> _Resolved | None:
+    """An AI system tagged to a control. It stops counting once archived,
+    and for the resource controls (A.4.2-A.4.6) only counts once the
+    inventory columns that document that resource are filled in -- tagging
+    it to A.4.5 with no compute or hosting recorded isn't coverage."""
+    inventory = ai_system_inventory_service.get_or_create_sheet(db)
+    row = db.get(SheetRow, entity_id)
+    if row is None or row.sheet_id != inventory.id:
+        return None
+    name = str(row.data.get("name") or f"AI System #{entity_id}")
+    lifecycle = ai_system_lifecycle_repository.get_for_ai_system(db, entity_id)
+    if lifecycle is not None and lifecycle.archived_at is not None:
+        return _Resolved(name, False, "AI system has been archived")
+
+    required = ai_system_inventory_service.RESOURCE_CONTROL_COLUMNS.get(control_code)
+    if required is not None:
+        labels = {column["key"]: column["label"] for column in inventory.columns}
+        missing = [
+            labels.get(key, key)
+            for key in required
+            if not str(row.data.get(key) or "").strip()
+        ]
+        if missing:
+            return _Resolved(name, False, f"Not recorded yet: {', '.join(missing)}")
+        return _Resolved(name, True, "Resource information recorded")
+    stage = str(row.data.get(ai_system_inventory_service.STAGE_COLUMN_KEY) or "").strip()
+    return _Resolved(name, True, f"AI system in {stage}" if stage else "AI system recorded")
 
 
 def _resolve_organization_context(db: Session, entity_id: int, today: date) -> _Resolved | None:
@@ -403,8 +435,12 @@ _RESOLVERS = {
 
 
 def _resolve_tagged_item(
-    db: Session, entity_type: str, entity_id: int, today: date
+    db: Session, entity_type: str, entity_id: int, today: date, control_code: str = ""
 ) -> _Resolved | None:
+    # The only resolver whose answer depends on which control it's tagged
+    # to, so it takes the code; the rest judge the record alone.
+    if entity_type == ai_system_inventory_service.AI_SYSTEM_DOCUMENT_ENTITY_TYPE:
+        return _resolve_ai_system(db, entity_id, control_code)
     resolver = _RESOLVERS.get(entity_type)
     if resolver is None:
         # An entity type with no rule of its own still gets a generic label
@@ -471,7 +507,9 @@ def get_status(db: Session, framework: str | None = None) -> list[ControlComplia
 
         items: list[TaggedItemStatus] = []
         for tag in tags_by_control.get(control.id, []):
-            resolved = _resolve_tagged_item(db, tag.entity_type, tag.entity_id, today)
+            resolved = _resolve_tagged_item(
+                db, tag.entity_type, tag.entity_id, today, control.code
+            )
             if resolved is None:
                 continue  # The tagged record itself is gone -- not coverage.
             items.append(

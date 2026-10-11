@@ -20,6 +20,7 @@ from app.models.organization_context import OrganizationContext
 from app.models.policy import Policy
 from app.models.procedure import Procedure
 from app.models.risk_assessment import RiskAssessment
+from app.models.sheet import SheetRow
 from app.repositories import (
     framework_control_repository,
     framework_soa_repository,
@@ -73,6 +74,11 @@ _LABELLED_ENTITY_TYPES = {
     "AIObjective": (AIObjective, lambda record: record.title),
     "ManagementSystemChange": (ManagementSystemChange, lambda record: record.title),
     "CommunicationPlanItem": (CommunicationPlanItem, lambda record: record.topic),
+    # An AI system is an inventory row; its name is the label.
+    "AISystem": (
+        SheetRow,
+        lambda record: str(record.data.get("name") or f"AI System #{record.id}"),
+    ),
     "OrganizationContext": (OrganizationContext, lambda record: "Context of the organization"),
     "Policy": (Policy, lambda record: record.title),
     "Procedure": (Procedure, lambda record: record.title),

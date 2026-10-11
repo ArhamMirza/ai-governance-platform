@@ -213,6 +213,14 @@ def seed(db: Session) -> None:
             "purpose": "Filter job applicants",
             "lifecycle_stage": "deployed",
             "risk_tier": "high",
+            "resource_documentation": "Architecture overview and data flow diagram in the wiki.",
+            "data_resources": "Applicant records, 2020-2025, from the applicant tracking system.",
+            "tooling_frameworks": "PyTorch, scikit-learn, MLflow",
+            "tooling_documentation": "Tooling register v3 (approved versions and licences).",
+            "compute_infrastructure": "Two GPU nodes for training; CPU-only for inference.",
+            "hosting_environment": "EU-region private cloud, single tenant.",
+            "development_team": "ML platform team (4 engineers, 1 data scientist).",
+            "oversight_roles": "AI System Owner, Risk Owner, and a recruiter panel.",
         },
         actor_id=None,
     )
@@ -235,9 +243,23 @@ def seed(db: Session) -> None:
             "purpose": "Transaction fraud scoring",
             "lifecycle_stage": "testing",
             "risk_tier": "high",
+            # Documented only in part -- no compute or hosting recorded yet.
+            "resource_documentation": "Model card and feature list in the wiki.",
+            "data_resources": "Labelled transactions from DataVista, 2023-2025.",
         },
         actor_id=None,
     )
+
+    # A.4.2-A.4.6 are evidenced by what the inventory records for each system:
+    # the Resume Screener documents all of them, the Fraud Detection Model
+    # only some, so A.4.5 shows what's still missing.
+    _tag(
+        db,
+        "AISystem",
+        resume_screener.id,
+        *(f"iso_42001:A.4.{n}" for n in (2, 3, 4, 5, 6)),
+    )
+    _tag(db, "AISystem", fraud_model.id, "iso_42001:A.4.2", "iso_42001:A.4.5")
 
     print("Seeding impact assessments...")
     # Impact assessment precedes risk assessment (ISO 42001 clause 8.4), and
