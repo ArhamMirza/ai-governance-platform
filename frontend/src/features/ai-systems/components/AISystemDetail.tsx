@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { AuditLogViewer } from "../../audit-log/components/AuditLogViewer";
 import { useAISystemInventoryRows } from "../../ai-system-inventory/hooks";
 import { DocumentBrowser } from "../../evidence/components/DocumentBrowser";
+import { FrameworkTagPicker } from "../../framework-tags/components/FrameworkTagPicker";
 import { useAllImpactAssessments } from "../../impact-assessments/hooks";
 import { useRiskAssessments } from "../../risk-assessments/hooks";
 import { AISystemAIRoles } from "../../ai-roles/components/AISystemAIRoles";
@@ -112,6 +113,13 @@ export function AISystemDetail({ rowId }: AISystemDetailProps) {
 
       <h3>Documents</h3>
       <DocumentBrowser entityType={ENTITY_TYPE} entityId={rowId} />
+
+      <h3>Framework Tags</h3>
+      <p className="approval-note">
+        Tag this system to the controls its record evidences. For the resource controls
+        (A.4.2 to A.4.6) it only counts once the matching inventory columns are filled in.
+      </p>
+      <FrameworkTagPicker entityType={ENTITY_TYPE} entityId={rowId} />
 
       <AuditLogViewer entityType={ENTITY_TYPE} entityId={rowId} />
     </article>

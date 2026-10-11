@@ -224,6 +224,23 @@ def test_seed_populates_a_communication_plan_with_one_lapsed_item(db_session: Se
     assert communication_service.overdue_count(db_session) == 1
 
 
+def test_seed_tags_ai_systems_to_the_resource_controls(db_session: Session) -> None:
+    seed(db_session)
+
+    status = {
+        row.code: row
+        for row in compliance_status_service.get_status(db_session, "iso_42001")
+        if row.code.startswith("A.4.")
+    }
+
+    for code in ("A.4.2", "A.4.3", "A.4.4", "A.4.6"):
+        assert status[code].status == "satisfied", code
+    # The Fraud Detection Model has no compute or hosting recorded.
+    assert status["A.4.5"].status == "partial"
+    missing = [i.detail for i in status["A.4.5"].tagged_items if not i.current]
+    assert missing == ["Not recorded yet: Compute Infrastructure, Hosting Environment"]
+
+
 def test_seed_is_idempotent(db_session: Session) -> None:
     seed(db_session)
     seed(db_session)
