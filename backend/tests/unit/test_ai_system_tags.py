@@ -25,9 +25,9 @@ RESOURCE_COLUMNS = {
 }
 
 
-def control_id(db: Session, code: str) -> int:
+def control_id(db: Session, code: str, framework: str = "iso_42001") -> int:
     return next(
-        c.id for c in framework_control_repository.list_all(db, "iso_42001") if c.code == code
+        c.id for c in framework_control_repository.list_all(db, framework) if c.code == code
     )
 
 
@@ -56,7 +56,7 @@ def test_a_system_with_its_resources_recorded_covers_the_resource_control(
 
     assert row.status == "satisfied"
     assert row.tagged_items[0].label == "Resume Screener"
-    assert row.tagged_items[0].detail == "Resource information recorded"
+    assert row.tagged_items[0].detail == "Recorded in the inventory"
 
 
 def test_each_resource_control_looks_at_its_own_columns(db_session: Session) -> None:
@@ -101,6 +101,74 @@ def test_whitespace_alone_is_not_a_recorded_resource(db_session: Session) -> Non
     cid = tag(db_session, row_id, "A.4.2")
 
     assert status_for(db_session, cid).status == "partial"
+
+
+def test_event_logs_need_both_what_is_logged_and_how_long_it_is_kept(
+    db_session: Session,
+) -> None:
+    row_id = make_system(db_session, event_logging="Every decision, to the SIEM")
+    cid = tag(db_session, row_id, "A.6.2.8")
+
+    row = status_for(db_session, cid)
+    assert row.status == "partial"
+    assert row.tagged_items[0].detail == "Not recorded yet: Log Retention"
+
+    ai_system_inventory_service.update_row(
+        db_session,
+        row_id,
+        {
+            "name": "Resume Screener",
+            "event_logging": "Every decision, to the SIEM",
+            "log_retention": "Two years",
+        },
+        actor_id=None,
+    )
+    assert status_for(db_session, cid).status == "satisfied"
+
+
+def test_information_for_users_and_for_customers_are_judged_separately(
+    db_session: Session,
+) -> None:
+    row_id = make_system(db_session, user_information="Help-centre article on limits")
+    framework_service.set_tags(
+        db_session,
+        "AISystem",
+        row_id,
+        [control_id(db_session, "A.8.2"), control_id(db_session, "A.10.4")],
+        actor_id=None,
+    )
+
+    by_code = {
+        r.code: r
+        for r in compliance_status_service.get_status(db_session)
+        if r.code in ("A.8.2", "A.10.4")
+    }
+
+    assert by_code["A.8.2"].status == "satisfied"
+    # Judged on its column, not just on the system being in service.
+    assert by_code["A.8.2"].tagged_items[0].detail == "Recorded in the inventory"
+    assert by_code["A.10.4"].status == "partial"
+    assert by_code["A.10.4"].tagged_items[0].detail == (
+        "Not recorded yet: Information for Customers"
+    )
+
+
+def test_the_eu_ai_act_logging_articles_use_the_same_columns(db_session: Session) -> None:
+    row_id = make_system(db_session, event_logging="Inputs and outputs, to the SIEM")
+    record_keeping = control_id(db_session, "Art.12", "eu_ai_act")
+    logs = control_id(db_session, "Art.19", "eu_ai_act")
+    framework_service.set_tags(
+        db_session, "AISystem", row_id, [record_keeping, logs], actor_id=None
+    )
+
+    by_id = {
+        r.id: r
+        for r in compliance_status_service.get_status(db_session)
+        if r.id in (record_keeping, logs)
+    }
+
+    assert by_id[record_keeping].tagged_items[0].current is True
+    assert by_id[logs].tagged_items[0].detail == "Not recorded yet: Log Retention"
 
 
 def test_a_system_tagged_to_any_other_control_counts_while_it_is_in_service(

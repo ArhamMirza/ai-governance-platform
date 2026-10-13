@@ -238,6 +238,15 @@ def seed(db: Session) -> None:
             "hosting_environment": "EU-region private cloud, single tenant.",
             "development_team": "ML platform team (4 engineers, 1 data scientist).",
             "oversight_roles": "AI System Owner, Risk Owner, and a recruiter panel.",
+            "event_logging": (
+                "Every ranking with its inputs, model version and the reviewing recruiter, "
+                "sent to the central log store."
+            ),
+            "log_retention": "Two years; readable by the AI System Owner and internal audit.",
+            "user_information": (
+                "Recruiter guide on the intranet: what the score means, its known limits, "
+                "and that it never rejects anyone on its own."
+            ),
         },
         actor_id=None,
     )
@@ -249,6 +258,13 @@ def seed(db: Session) -> None:
             "purpose": "Customer self-service",
             "lifecycle_stage": "deployed",
             "risk_tier": "limited",
+            # What customers and agents are told is recorded; how its
+            # conversations are logged isn't yet, so A.6.2.8 shows the gap.
+            "user_information": "Support-agent handbook section on handing over from the bot.",
+            "customer_information": (
+                "Chat window says it is an AI assistant, what it can't help with, "
+                "and how to reach a person."
+            ),
         },
         actor_id=None,
     )
@@ -267,14 +283,26 @@ def seed(db: Session) -> None:
         actor_id=None,
     )
 
-    # A.4.2-A.4.6 are evidenced by what the inventory records for each system:
-    # the Resume Screener documents all of them, the Fraud Detection Model
-    # only some, so A.4.5 shows what's still missing.
+    # A.4.2-A.4.6, event logs (A.6.2.8) and information for users and
+    # customers (A.8.2 / A.10.4) are evidenced by what the inventory records
+    # for each system: the Resume Screener documents all of its own, the
+    # Fraud Detection Model only some resources and the chatbot no logging,
+    # so A.4.5 and A.6.2.8 show what's still missing.
     _tag(
         db,
         "AISystem",
         resume_screener.id,
         *(f"iso_42001:A.4.{n}" for n in (2, 3, 4, 5, 6)),
+        "iso_42001:A.6.2.8",
+        "iso_42001:A.8.2",
+    )
+    _tag(
+        db,
+        "AISystem",
+        support_chatbot.id,
+        "iso_42001:A.6.2.8",
+        "iso_42001:A.8.2",
+        "iso_42001:A.10.4",
     )
     _tag(db, "AISystem", fraud_model.id, "iso_42001:A.4.2", "iso_42001:A.4.5")
 

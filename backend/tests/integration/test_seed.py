@@ -244,6 +244,27 @@ def test_seed_tags_ai_systems_to_the_resource_controls(db_session: Session) -> N
     assert missing == ["Not recorded yet: Compute Infrastructure, Hosting Environment"]
 
 
+def test_seed_tags_ai_systems_to_logging_and_information_controls(
+    db_session: Session,
+) -> None:
+    seed(db_session)
+
+    status = {
+        row.code: row
+        for row in compliance_status_service.get_status(db_session, "iso_42001")
+        if row.code in ("A.6.2.8", "A.8.2", "A.10.4")
+    }
+
+    assert status["A.8.2"].status == "satisfied"
+    assert status["A.10.4"].status == "satisfied"
+    # The chatbot's logging isn't recorded; the Resume Screener's is.
+    assert status["A.6.2.8"].status == "partial"
+    missing = [(i.label, i.detail) for i in status["A.6.2.8"].tagged_items if not i.current]
+    assert missing == [
+        ("Customer Support Chatbot", "Not recorded yet: Event Logging, Log Retention")
+    ]
+
+
 def test_seed_shares_the_approved_retention_policy_with_employees(db_session: Session) -> None:
     seed(db_session)
 
