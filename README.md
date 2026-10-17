@@ -62,6 +62,21 @@ cd backend && pytest --cov=app
 cd frontend && npm test
 ```
 
+## Governing staff use of AI tools
+
+The platform can also govern what employees do with AI, not only document it:
+
+- **Register of AI tools** — which third-party tools are approved, with what
+  data they may be given. Employees ask for a tool from their staff login; the
+  Chief AI Governance Officer decides.
+- **Data rules (DLP)** — what must not be pasted or typed into AI tools. The
+  rules are evaluated in the employee's browser; the text never reaches the server.
+- **Browser extension** (`extension/`, Chrome and Edge) — carries it out:
+  warns on or blocks unapproved AI sites, checks text before it is sent, and
+  reports daily counts (never the text). See
+  [extension/README.md](extension/README.md) for what it can and can't do and
+  how to roll it out.
+
 ## Git Workflow
 
 - `main` is protected and always kept working — changes land via Pull Request,
@@ -78,8 +93,8 @@ cd frontend && npm test
 ## CI/CD
 
 - **CI** (`.github/workflows/ci.yml`): every PR and push to `main` runs backend
-  lint (`ruff`) + tests (`pytest`) and frontend lint (`oxlint`) + tests
-  (`vitest`) + production build. Branch protection requires these checks to
+  lint (`ruff`) + tests (`pytest`), frontend lint (`oxlint`) + tests
+  (`vitest`) + production build, and the same for the browser extension. Branch protection requires these checks to
   pass before a PR can merge.
 - **Releases** (`.github/workflows/release.yml`): pushing a tag matching
   `v*.*.*` (e.g. `v0.1.0`) auto-creates a GitHub Release with notes generated

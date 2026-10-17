@@ -1,5 +1,5 @@
 import { QueryClientProvider } from "@tanstack/react-query";
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { describe, expect, it, vi } from "vitest";
@@ -107,6 +107,59 @@ describe("RequestAIToolForm", () => {
       purpose: PURPOSE,
       data_involved: null,
     });
+  });
+
+  it("starts from a link: a tool that isn't listed is filled in to be typed or sent as it is", async () => {
+    vi.mocked(staffAiToolsApi.requestable).mockResolvedValue([]);
+    vi.mocked(staffAiToolsApi.request).mockResolvedValue({} as never);
+    const user = userEvent.setup();
+    renderWithProviders(<RequestAIToolForm initial={{ name: "Mystery AI", domain: "mystery.ai" }} />);
+
+    expect(screen.getByLabelText("Name of the tool")).toHaveValue("Mystery AI");
+    expect(screen.getByLabelText("Its website, if you know it")).toHaveValue("mystery.ai");
+    await user.type(screen.getByLabelText("What would you use it for?"), PURPOSE);
+    await user.click(screen.getByRole("button", { name: "Send request" }));
+
+    expect(staffAiToolsApi.request).toHaveBeenCalledWith(
+      expect.objectContaining({ tool_id: null, tool_name: "Mystery AI", domain: "mystery.ai" }),
+    );
+  });
+
+  it("starts from a link: a tool the platform knows is selected, whatever the case", async () => {
+    vi.mocked(staffAiToolsApi.requestable).mockResolvedValue([
+      { id: 7, name: "Claude", vendor: "Anthropic" },
+      { id: 8, name: "Gemini", vendor: "Google" },
+    ]);
+    vi.mocked(staffAiToolsApi.request).mockResolvedValue({} as never);
+    const user = userEvent.setup();
+    renderWithProviders(<RequestAIToolForm initial={{ name: "claude", domain: "claude.ai" }} />);
+
+    await waitFor(() => expect(screen.getByLabelText("Which tool?")).toHaveValue("7"));
+    expect(screen.queryByLabelText("Name of the tool")).not.toBeInTheDocument();
+    await user.type(screen.getByLabelText("What would you use it for?"), PURPOSE);
+    await user.click(screen.getByRole("button", { name: "Send request" }));
+
+    expect(staffAiToolsApi.request).toHaveBeenCalledWith(
+      expect.objectContaining({ tool_id: 7, tool_name: "Claude", domain: null }),
+    );
+  });
+
+  it("starts from a link naming a tool that isn't known, and leaves the choice open", async () => {
+    vi.mocked(staffAiToolsApi.requestable).mockResolvedValue([{ id: 7, name: "Claude", vendor: null }]);
+    renderWithProviders(<RequestAIToolForm initial={{ name: "Other", domain: "other.ai" }} />);
+
+    await screen.findByRole("option", { name: "Claude" });
+
+    expect(screen.getByLabelText("Which tool?")).toHaveValue("");
+    expect(screen.getByLabelText("Name of the tool")).toHaveValue("Other");
+  });
+
+  it("starts empty with no link", async () => {
+    vi.mocked(staffAiToolsApi.requestable).mockResolvedValue([]);
+    renderWithProviders(<RequestAIToolForm />);
+
+    expect(screen.getByLabelText("Name of the tool")).toHaveValue("");
+    expect(screen.getByLabelText("Its website, if you know it")).toHaveValue("");
   });
 
   it("needs a name for a tool that isn't listed, and a real reason", async () => {

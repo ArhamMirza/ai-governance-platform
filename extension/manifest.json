@@ -1,0 +1,23 @@
+{
+  "manifest_version": 3,
+  "name": "AI Governance",
+  "version": "0.0.0",
+  "description": "Applies your organization's AI-use policy: which AI tools are approved, and what must not be typed into them.",
+  "minimum_chrome_version": "110",
+  "permissions": [
+    "declarativeNetRequest",
+    "storage",
+    "alarms",
+    "scripting",
+    "identity",
+    "identity.email",
+    "webNavigation"
+  ],
+  "host_permissions": ["<all_urls>"],
+  "background": { "service_worker": "background.js", "type": "module" },
+  "action": { "default_title": "AI Governance", "default_popup": "popup.html" },
+  "storage": { "managed_schema": "managed_schema.json" },
+  "web_accessible_resources": [
+    { "resources": ["blocked.html", "blocked.js", "page.css"], "matches": ["<all_urls>"] }
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "type": "object",
+  "properties": {
+    "serverUrl": {
+      "title": "Platform address",
+      "description": "The AI Governance Platform's API address, e.g. https://governance.example.com (plain http is accepted for localhost only).",
+      "type": "string"
+    },
+    "portalUrl": {
+      "title": "Employee portal address",
+      "description": "Where employees sign in to request a tool. Leave empty if it is the same as the platform address.",
+      "type": "string"
+    },
+    "enrollmentKey": {
+      "title": "Enrollment key",
+      "description": "The key created on the platform's AI use settings page.",
+      "type": "string"
+    }
+  }
+}

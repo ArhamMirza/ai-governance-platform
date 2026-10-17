@@ -1,4 +1,5 @@
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 
@@ -24,13 +25,16 @@ const requestSchema = z
 type RequestValues = z.infer<typeof requestSchema>;
 
 interface RequestAIToolFormProps {
+  /** What to start the form with, e.g. from the link on the browser extension's
+   * "not approved" page. A name matching a known tool selects it. */
+  initial?: { name?: string; domain?: string };
   /** Called with the tool's name once the request has been sent. */
   onRequested?: (toolName: string) => void;
 }
 
 /** An employee asks for an AI tool to be allowed. The Chief AI Governance
  * Officer decides; the answer shows under their requests. */
-export function RequestAIToolForm({ onRequested }: RequestAIToolFormProps) {
+export function RequestAIToolForm({ initial, onRequested }: RequestAIToolFormProps) {
   const { data: known } = useRequestableAITools();
   const request = useRequestAITool();
   const {
@@ -38,11 +42,27 @@ export function RequestAIToolForm({ onRequested }: RequestAIToolFormProps) {
     handleSubmit,
     reset,
     watch,
+    setValue,
     formState: { errors },
   } = useForm<RequestValues>({
     resolver: zodResolver(requestSchema),
-    defaultValues: { tool: SOMETHING_ELSE, tool_name: "", domain: "", purpose: "", data_involved: "" },
+    defaultValues: {
+      tool: SOMETHING_ELSE,
+      tool_name: initial?.name ?? "",
+      domain: initial?.domain ?? "",
+      purpose: "",
+      data_involved: "",
+    },
   });
+  const initialName = initial?.name;
+
+  // The list of known tools arrives after the form does; once it has, a tool
+  // the link named is selected rather than typed in again.
+  useEffect(() => {
+    if (!initialName || !known) return;
+    const match = known.find((tool) => tool.name.toLowerCase() === initialName.toLowerCase());
+    if (match) setValue("tool", String(match.id));
+  }, [initialName, known, setValue]);
   const picked = watch("tool") !== SOMETHING_ELSE;
 
   const onSubmit = handleSubmit((values) => {

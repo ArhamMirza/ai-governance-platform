@@ -1,0 +1,22 @@
+{
+  "name": "ai-governance-extension",
+  "private": true,
+  "version": "0.1.0",
+  "license": "Apache-2.0",
+  "type": "module",
+  "description": "Browser extension (Chrome and Edge) that applies the organization's AI-use policy.",
+  "scripts": {
+    "build": "tsc --noEmit && node build.mjs",
+    "lint": "oxlint",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@types/chrome": "^0.1.40",
+    "@types/node": "^26.6.2",
+    "esbuild": "^0.28.0",
+    "jsdom": "^29.1.1",
+    "oxlint": "^1.75.0",
+    "typescript": "~7.0.2",
+    "vitest": "^5.0.1"
+  }
+}
