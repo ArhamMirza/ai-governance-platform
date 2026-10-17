@@ -19,6 +19,7 @@ from app.routers import (
     ai_roles,
     ai_system_inventory,
     ai_system_lifecycle,
+    ai_tools,
     assistant,
     audit_log,
     auth,
@@ -160,4 +161,5 @@ app.include_router(ai_roles.router, prefix="/api/v1", dependencies=_protected)
 app.include_router(changes.router, prefix="/api/v1", dependencies=_protected)
 app.include_router(concerns.router, prefix="/api/v1", dependencies=_protected)
 app.include_router(improvements.router, prefix="/api/v1", dependencies=_protected)
+app.include_router(ai_tools.router, prefix="/api/v1", dependencies=_protected)
 app.include_router(communications.router, prefix="/api/v1", dependencies=_protected)

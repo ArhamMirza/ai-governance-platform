@@ -40,6 +40,7 @@ from app.services import (
     ai_incident_service,
     ai_system_inventory_service,
     ai_system_lifecycle_service,
+    ai_tool_service,
     change_service,
     communication_service,
     competence_service,
@@ -116,6 +117,8 @@ def _attention(
     communications_overdue_count: int,
     concerns_awaiting_triage_count: int,
     improvements_overdue_count: int,
+    ai_tool_requests_pending_count: int,
+    ai_tools_review_overdue_count: int,
 ) -> list[AttentionItem]:
     """Actionable items, grouped by area and most urgent first. Zero-count
     items are dropped so the panel only ever shows things that need doing."""
@@ -310,6 +313,20 @@ def _attention(
             group=PLANNING_GROUP,
             label="Planned communications overdue",
             count=communications_overdue_count,
+            severity="warning",
+        ),
+        AttentionItem(
+            key="ai_tool_requests_pending",
+            group=INVENTORY_GROUP,
+            label="Requests for AI tools awaiting a decision",
+            count=ai_tool_requests_pending_count,
+            severity="warning",
+        ),
+        AttentionItem(
+            key="ai_tools_review_overdue",
+            group=INVENTORY_GROUP,
+            label="Approved AI tools past their review date",
+            count=ai_tools_review_overdue_count,
             severity="warning",
         ),
         AttentionItem(
@@ -639,6 +656,8 @@ def get_summary(db: Session, actor_id: int) -> DashboardSummary:
                 db, today
             ).awaiting_triage_count,
             improvements_overdue_count=improvement_service.overdue_count(db, today),
+            ai_tool_requests_pending_count=ai_tool_service.pending_request_count(db),
+            ai_tools_review_overdue_count=ai_tool_service.review_overdue_count(db, today),
         ),
         matrix=risk_analytics_service.matrix_cells(all_risk_rows),
         criteria=risk_criteria_service.get_criteria(db),

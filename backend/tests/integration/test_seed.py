@@ -17,6 +17,7 @@ from app.services import (
     ai_incident_service,
     ai_system_inventory_service,
     ai_system_lifecycle_service,
+    ai_tool_service,
     change_service,
     communication_service,
     compliance_status_service,
@@ -312,9 +313,7 @@ def test_seed_populates_the_improvement_register(db_session: Session) -> None:
 
     standings = {
         improvement.title: (standing.state, standing.overdue)
-        for improvement, standing in improvement_service.standings_as_of(
-            db_session, date.today()
-        )
+        for improvement, standing in improvement_service.standings_as_of(db_session, date.today())
     }
     assert standings == {
         "Name risk owners as individuals, not teams": ("accepted", False),
@@ -349,3 +348,26 @@ def test_the_script_entry_point_comes_after_everything_it_calls() -> None:
     assert isinstance(guard, ast.If)
     assert ast.unparse(guard.test) == "__name__ == '__main__'"
 
+
+def test_seed_populates_the_ai_tool_register(db_session: Session) -> None:
+    seed(db_session)
+
+    tools = {t.name: t for t in ai_tool_service.list_tools(db_session)}
+    assert {n: t.status for n, t in tools.items() if t.status != "catalogued"} == {
+        "Microsoft Copilot": "approved",
+        "Perplexity": "restricted",
+        "ChatGPT": "approved",
+    }
+    assert len(tools) == 12
+    assert ai_tool_service.review_overdue(tools["ChatGPT"])
+    assert not ai_tool_service.review_overdue(tools["Microsoft Copilot"])
+    assert ai_tool_service.pending_request_count(db_session) == 1
+    statuses = {r.tool_name: r.status for r in ai_tool_service.list_requests(db_session)}
+    assert statuses == {"Claude": "requested", "Character.AI": "rejected"}
+    status = next(
+        row
+        for row in compliance_status_service.get_status(db_session, "iso_42001")
+        if row.code == "A.9.2"
+    )
+    assert status.status == "partial"
+    assert [i.label for i in status.tagged_items if not i.current] == ["ChatGPT"]

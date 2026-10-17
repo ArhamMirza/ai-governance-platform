@@ -52,6 +52,8 @@ const ATTENTION_LINKS: Record<string, string> = {
   objective_measurements_overdue: "/objectives",
   changes_overdue: "/changes",
   improvements_overdue: "/improvements",
+  ai_tool_requests_pending: "/ai-tools",
+  ai_tools_review_overdue: "/ai-tools",
   communications_overdue: "/communications",
   concerns_awaiting_triage: "/concerns",
 };

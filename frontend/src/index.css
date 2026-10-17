@@ -1275,6 +1275,7 @@ td button {
 }
 
 .status-badge[data-status="in_review"],
+.status-badge[data-status="restricted"],
 .status-badge[data-status="in_progress"],
 .status-badge[data-status="under_review"],
 .status-badge[data-status="accepted"] {
@@ -1302,7 +1303,9 @@ td button {
   color: var(--danger-text);
 }
 
-.status-badge[data-status="retired"] {
+.status-badge[data-status="retired"],
+.status-badge[data-status="revoked"],
+.status-badge[data-status="rejected"] {
   background: var(--danger-subtle);
   border-color: var(--danger-line);
   color: var(--danger-text);
@@ -1310,6 +1313,8 @@ td button {
 
 .status-badge[data-status="draft"],
 .status-badge[data-status="proposed"],
+.status-badge[data-status="catalogued"],
+.status-badge[data-status="requested"],
 .status-badge[data-status="declined"] {
   background: var(--bg-sunken);
   border-color: var(--border-strong);
@@ -5343,4 +5348,12 @@ select {
 
 .button-link:hover {
   background: var(--primary-hover);
+}
+
+/* ---------- AI tools ---------- */
+
+.plain-list {
+  margin: 0 0 14px;
+  padding: 0;
+  list-style: none;
 }

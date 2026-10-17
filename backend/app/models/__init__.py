@@ -5,6 +5,13 @@ from app.models.ai_incident import AIIncident, AIIncidentSeverity, AIIncidentSta
 from app.models.ai_objective import AIObjective, ObjectiveKind, ObjectiveStatus, TargetDirection
 from app.models.ai_objective_ai_system import AIObjectiveAISystem
 from app.models.ai_system_lifecycle import AISystemLifecycle
+from app.models.ai_tool import (
+    AITool,
+    AIToolRequest,
+    AIToolRequestStatus,
+    AIToolStatus,
+    DataClassification,
+)
 from app.models.audit_finding import AuditFinding, AuditFindingType
 from app.models.audit_log import AuditLogEntry
 from app.models.audit_program import AuditProgram, AuditProgramStatus, AuditScheduleType
@@ -67,6 +74,11 @@ __all__ = [
     "AIIncidentSeverity",
     "AIIncidentStatus",
     "AIObjective",
+    "AITool",
+    "AIToolRequest",
+    "AIToolRequestStatus",
+    "AIToolStatus",
+    "DataClassification",
     "Concern",
     "ConcernCategory",
     "ConcernChannel",

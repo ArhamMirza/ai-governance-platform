@@ -1,6 +1,8 @@
 import { Route, Routes } from "react-router-dom";
 
 import { AISystemDetailPage } from "../pages/AISystemDetailPage";
+import { AIToolDetailPage } from "../pages/AIToolDetailPage";
+import { AIToolsPage } from "../pages/AIToolsPage";
 import { AISystemInventoryPage } from "../pages/AISystemInventoryPage";
 import { ArchivePage } from "../pages/ArchivePage";
 import { ChangeDetailPage } from "../pages/ChangeDetailPage";
@@ -63,6 +65,8 @@ export function AppRoutes() {
         <Route path="/communications/:communicationId" element={<CommunicationDetailPage />} />
         <Route path="/changes/:changeId" element={<ChangeDetailPage />} />
         <Route path="/improvements" element={<ImprovementsPage />} />
+        <Route path="/ai-tools" element={<AIToolsPage />} />
+        <Route path="/ai-tools/:toolId" element={<AIToolDetailPage />} />
         <Route path="/improvements/:improvementId" element={<ImprovementDetailPage />} />
         <Route path="/objectives" element={<ObjectivesPage />} />
         <Route path="/objectives/:objectiveId" element={<ObjectiveDetailPage />} />
