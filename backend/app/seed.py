@@ -29,6 +29,7 @@ from app.repositories import (
 )
 from app.schemas.ai_incident import AIIncidentCreate, AIIncidentUpdate
 from app.schemas.ai_tool import AIToolDecision, AIToolRequestCreate, AIToolRequestDecision
+from app.schemas.ai_use import AgentEvents, AIUseSettingsUpdate, DLPRuleCreate
 from app.schemas.change import ChangeCreate, ChangeStatusUpdate
 from app.schemas.communication import CommunicationCreate, CommunicationRecordCreate
 from app.schemas.competence import CompetenceRequirementCreate
@@ -62,11 +63,13 @@ from app.services import (
     ai_system_inventory_service,
     ai_system_lifecycle_service,
     ai_tool_service,
+    ai_usage_service,
     change_service,
     communication_service,
     competence_service,
     concern_service,
     corrective_action_service,
+    dlp_rule_service,
     eu_ai_act_service,
     evidence_service,
     framework_service,
@@ -456,6 +459,7 @@ def seed(db: Session) -> None:
     _seed_concerns(db, resume_screener.id, support_chatbot.id)
     _seed_improvements(db)
     _seed_ai_tools(db)
+    _seed_ai_use_controls(db)
 
     print("Seed complete.")
 
@@ -1408,6 +1412,111 @@ def _seed_ai_tools(db: Session) -> None:
         ),
         None,
         today=today - timedelta(days=18),
+    )
+
+
+def _seed_ai_use_controls(db: Session) -> None:
+    """What the browser extension enforces (A.9.2): the notice staff are given,
+    five data-loss-prevention rules, and a fortnight of counts from a few
+    people -- numbers only, as the extension would send them."""
+    print("Seeding the AI-use controls...")
+    today = date.today()
+    ai_usage_service.update_settings(
+        db,
+        AIUseSettingsUpdate(
+            unapproved_site_action="warn",
+            retention_days=90,
+            staff_notice=(
+                "To keep company information safe we count how often AI websites are visited "
+                "and warn you when you open one that has not been approved. We also check what "
+                "you paste or type into an AI site for card numbers, keys and a short list of "
+                "confidential terms. The text itself is checked on your own computer and is "
+                "never sent to us or stored. We keep only counts: who, which AI site, what "
+                "kind of event and how many times, for 90 days."
+            ),
+        ),
+        None,
+    )
+    settings = ai_usage_service.get_settings(db)
+    _tag(db, "AIUseSettings", settings.id, "iso_42001:A.9.2")
+
+    def rule(name: str, **fields) -> int:
+        return dlp_rule_service.create_rule(db, DLPRuleCreate(name=name, **fields), None).id
+
+    cards = rule(
+        "Payment card numbers",
+        kind="builtin",
+        builtin_key="credit_card",
+        classification="confidential",
+        action="block",
+    )
+    rule(
+        "Keys and access tokens",
+        kind="builtin",
+        builtin_key="api_key",
+        classification="confidential",
+        action="block",
+    )
+    cnic = rule(
+        "Pakistan CNIC numbers",
+        kind="builtin",
+        builtin_key="pk_cnic",
+        classification="confidential",
+        action="warn",
+    )
+    rule(
+        "Client and project names",
+        kind="keywords",
+        keywords=["Project Falcon", "Acme Corp"],
+        classification="confidential",
+        action="warn",
+    )
+    rule(
+        "Internal ticket numbers",
+        kind="regex",
+        pattern=r"\bPROJ-\d{4}\b",
+        classification="internal",
+        action="monitor",
+    )
+
+    def counts(email: str, rows: list[tuple[int, str, str, str, int | None, int]]) -> None:
+        events = [
+            {
+                "day": (today - timedelta(days=ago)).isoformat(),
+                "domain": domain,
+                "event_type": event_type,
+                "action": action,
+                "rule_id": rule_id,
+                "count": count,
+            }
+            for ago, domain, event_type, action, rule_id, count in rows
+        ]
+        ai_usage_service.record_events(
+            db, AgentEvents.model_validate({"user_email": email, "events": events}), today
+        )
+
+    counts(
+        "elena@example.com",
+        [
+            (1, "chat.deepseek.com", "unapproved_site", "warned", None, 3),
+            (2, "claude.ai", "unapproved_site", "warned", None, 5),
+            (4, "claude.ai", "unapproved_site", "warned", None, 2),
+            (2, "claude.ai", "dlp_match", "blocked", cards, 1),
+            (9, "chatgpt.com", "dlp_match", "overridden", cnic, 1),
+        ],
+    )
+    counts(
+        "omar@example.com",
+        [
+            (0, "grok.com", "blocked_site", "blocked", None, 2),
+            (3, "chat.deepseek.com", "unapproved_site", "warned", None, 4),
+            (5, "claude.ai", "dlp_match", "warned", cnic, 2),
+            (11, "meta.ai", "unapproved_site", "warned", None, 1),
+        ],
+    )
+    counts(
+        "sana@example.com",
+        [(6, "claude.ai", "unapproved_site", "warned", None, 1)],
     )
 
 

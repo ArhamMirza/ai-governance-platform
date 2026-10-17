@@ -17,6 +17,7 @@ from app.schemas.ai_tool import (
     StaffAIToolRequestRead,
     StaffRequestableTool,
 )
+from app.schemas.ai_use import StaffAIUseNotice
 from app.schemas.concern import (
     ConcernLookup,
     ConcernsProcess,
@@ -26,7 +27,7 @@ from app.schemas.concern import (
     StaffAISystem,
 )
 from app.schemas.staff import StaffLibraryItem
-from app.services import ai_tool_service, concern_service, staff_service
+from app.services import ai_tool_service, ai_usage_service, concern_service, staff_service
 
 router = APIRouter(prefix="/staff", tags=["staff"])
 
@@ -168,3 +169,12 @@ def my_ai_tool_requests(
 ) -> list[StaffAIToolRequestRead]:
     return [_own_request_view(r) for r in ai_tool_service.list_my_requests(db, user.id)]
 
+
+@router.get("/ai-use-notice", response_model=StaffAIUseNotice)
+def ai_use_notice(db: Session = Depends(get_db)) -> StaffAIUseNotice:
+    """What staff are told about how their use of AI tools is monitored."""
+    settings = ai_usage_service.settings_or_default(db)
+    return StaffAIUseNotice(
+        staff_notice=settings.staff_notice,
+        unapproved_site_action=settings.unapproved_site_action,
+    )

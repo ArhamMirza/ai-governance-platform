@@ -8,6 +8,7 @@ mechanism instead of each carrying their own free-text column.
 from sqlalchemy.orm import Session
 
 from app.core.exceptions import NotFoundError, ValidationError
+from app.models.ai_dlp import AIUseSettings, DLPRule
 from app.models.ai_objective import AIObjective
 from app.models.ai_tool import AITool
 from app.models.communication import CommunicationPlanItem
@@ -80,6 +81,8 @@ _LABELLED_ENTITY_TYPES = {
     "ConcernSettings": (ConcernSettings, lambda record: "Concern reporting process"),
     "Improvement": (Improvement, lambda record: record.title),
     "AITool": (AITool, lambda record: record.name),
+    "DLPRule": (DLPRule, lambda record: record.name),
+    "AIUseSettings": (AIUseSettings, lambda record: "AI use controls"),
     # An AI system is an inventory row; its name is the label.
     "AISystem": (
         SheetRow,

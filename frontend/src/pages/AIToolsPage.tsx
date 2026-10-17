@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { AIToolForm } from "../features/ai-tools/components/AIToolForm";
 import { AIToolList } from "../features/ai-tools/components/AIToolList";
 import { RequestQueue } from "../features/ai-tools/components/RequestQueue";
+import { AIToolsSubNav } from "../features/ai-use/components/AIToolsSubNav";
 import { useCurrentUser } from "../features/auth/hooks";
 import { hasPermission } from "../features/auth/permissions";
 
@@ -29,6 +30,7 @@ export function AIToolsPage() {
           </button>
         )}
       </div>
+      <AIToolsSubNav />
       {showForm && <AIToolForm onCreated={(id) => navigate(`/ai-tools/${id}`)} />}
 
       <h2>Requests</h2>

@@ -20,7 +20,14 @@ from app.schemas.procedure import ProcedureCreate
 from app.services import policy_service, procedure_service
 
 # The routes an employee login is for. Everything else under /api/v1 must refuse it.
-EMPLOYEE_PREFIXES = ("/api/v1/auth/", "/api/v1/health", "/api/v1/staff/")
+EMPLOYEE_PREFIXES = (
+    "/api/v1/auth/",
+    "/api/v1/health",
+    "/api/v1/staff/",
+    # Not the signed-in app at all: the browser extension's routes take the
+    # organization's key, and test_ai_use_api checks each one refuses a caller without it.
+    "/api/v1/agent/",
+)
 
 
 def upload(client: TestClient, entity_type: str, entity_id: int, filename: str = "policy.pdf"):

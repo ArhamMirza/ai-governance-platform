@@ -1,5 +1,14 @@
 from app.models.ai_assist import AiAssistSettings, AiUsage
 from app.models.ai_conversation import AiConversation, AiMessage, MessageRole
+from app.models.ai_dlp import (
+    AIUsageAction,
+    AIUsageEvent,
+    AIUsageEventType,
+    AIUseSettings,
+    DLPAction,
+    DLPRule,
+    DLPRuleKind,
+)
 from app.models.ai_draft import AiDraft, DraftStatus
 from app.models.ai_incident import AIIncident, AIIncidentSeverity, AIIncidentStatus
 from app.models.ai_objective import AIObjective, ObjectiveKind, ObjectiveStatus, TargetDirection
@@ -74,6 +83,13 @@ __all__ = [
     "AIIncidentSeverity",
     "AIIncidentStatus",
     "AIObjective",
+    "AIUsageAction",
+    "AIUsageEvent",
+    "AIUsageEventType",
+    "AIUseSettings",
+    "DLPAction",
+    "DLPRule",
+    "DLPRuleKind",
     "AITool",
     "AIToolRequest",
     "AIToolRequestStatus",
