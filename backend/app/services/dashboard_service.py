@@ -48,6 +48,7 @@ from app.services import (
     corrective_action_service,
     data_inventory_service,
     governance_role_service,
+    improvement_service,
     internal_audit_service,
     management_review_service,
     objective_service,
@@ -114,6 +115,7 @@ def _attention(
     changes_overdue_count: int,
     communications_overdue_count: int,
     concerns_awaiting_triage_count: int,
+    improvements_overdue_count: int,
 ) -> list[AttentionItem]:
     """Actionable items, grouped by area and most urgent first. Zero-count
     items are dropped so the panel only ever shows things that need doing."""
@@ -308,6 +310,13 @@ def _attention(
             group=PLANNING_GROUP,
             label="Planned communications overdue",
             count=communications_overdue_count,
+            severity="warning",
+        ),
+        AttentionItem(
+            key="improvements_overdue",
+            group=PLANNING_GROUP,
+            label="Improvements past their target date",
+            count=improvements_overdue_count,
             severity="warning",
         ),
         AttentionItem(
@@ -629,6 +638,7 @@ def get_summary(db: Session, actor_id: int) -> DashboardSummary:
             concerns_awaiting_triage_count=concern_service.standing(
                 db, today
             ).awaiting_triage_count,
+            improvements_overdue_count=improvement_service.overdue_count(db, today),
         ),
         matrix=risk_analytics_service.matrix_cells(all_risk_rows),
         criteria=risk_criteria_service.get_criteria(db),

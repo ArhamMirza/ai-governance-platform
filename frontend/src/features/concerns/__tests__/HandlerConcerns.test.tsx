@@ -18,6 +18,11 @@ vi.mock("../api");
 vi.mock("../../ai-system-inventory/hooks");
 vi.mock("../../users/hooks");
 vi.mock("../../audit-log/components/AuditLogViewer", () => ({ AuditLogViewer: () => null }));
+vi.mock("../../improvements/components/SourceImprovements", () => ({
+  SourceImprovements: ({ from }: { from: object }) => (
+    <pre data-testid="improvement-source">{JSON.stringify(from)}</pre>
+  ),
+}));
 vi.mock("../../framework-tags/components/FrameworkTagPicker", () => ({
   FrameworkTagPicker: ({ entityType, entityId }: { entityType: string; entityId: number }) => (
     <p>{`Tags for ${entityType} ${entityId}`}</p>
@@ -330,6 +335,15 @@ describe("ConcernDetail", () => {
     vi.mocked(concernsApi.get).mockResolvedValue(makeConcern({ system_note: "The HR portal" }));
     renderWithProviders(<ConcernDetail concernId={1} />);
     expect(await screen.findByText(/The HR portal/)).toBeInTheDocument();
+  });
+
+  it("offers an improvement that carries nothing of what was reported", async () => {
+    vi.mocked(concernsApi.get).mockResolvedValue(makeConcern({ id: 4 }));
+
+    renderWithProviders(<ConcernDetail concernId={4} />);
+
+    const source = JSON.parse((await screen.findByTestId("improvement-source")).textContent ?? "");
+    expect(source).toEqual({ sourceType: "Concern", sourceId: 4, label: "concern #4" });
   });
 
   it("flags one that hasn't been acknowledged in time", async () => {

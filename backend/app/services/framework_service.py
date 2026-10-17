@@ -16,6 +16,7 @@ from app.models.framework_control import FrameworkControl
 from app.models.framework_soa_entry import SoaApplicability
 from app.models.framework_tag import FrameworkTag
 from app.models.impact_assessment import ImpactAssessment
+from app.models.improvement import Improvement
 from app.models.management_system_change import ManagementSystemChange
 from app.models.organization_context import OrganizationContext
 from app.models.policy import Policy
@@ -76,6 +77,7 @@ _LABELLED_ENTITY_TYPES = {
     "ManagementSystemChange": (ManagementSystemChange, lambda record: record.title),
     "CommunicationPlanItem": (CommunicationPlanItem, lambda record: record.topic),
     "ConcernSettings": (ConcernSettings, lambda record: "Concern reporting process"),
+    "Improvement": (Improvement, lambda record: record.title),
     # An AI system is an inventory row; its name is the label.
     "AISystem": (
         SheetRow,

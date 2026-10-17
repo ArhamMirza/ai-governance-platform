@@ -22,6 +22,7 @@ from app.services import (
     compliance_status_service,
     concern_service,
     corrective_action_service,
+    improvement_service,
     internal_audit_service,
     management_review_service,
     objective_service,
@@ -205,6 +206,8 @@ def test_seed_populates_changes_as_they_stood_at_the_management_review(
         "Introduce a fairness gate in the release pipeline": ("implemented", False),
         "Move the Resume Screener to a new base model": ("in_progress", False),
         "Replace the support chatbot vendor": ("planned", True),
+        # Planned today, from an accepted improvement.
+        "Name risk owners as individuals, not teams": ("planned", False),
     }
     # At last month's review the fairness gate was under way, and not yet late.
     assert then["Introduce a fairness gate in the release pipeline"] == ("in_progress", False)
@@ -302,3 +305,47 @@ def test_seed_is_idempotent(db_session: Session) -> None:
     policies = policy_repository.list_all(db_session)
 
     assert len(policies) == 2
+
+
+def test_seed_populates_the_improvement_register(db_session: Session) -> None:
+    seed(db_session)
+
+    standings = {
+        improvement.title: (standing.state, standing.overdue)
+        for improvement, standing in improvement_service.standings_as_of(
+            db_session, date.today()
+        )
+    }
+    assert standings == {
+        "Name risk owners as individuals, not teams": ("accepted", False),
+        "Tell customers when they are talking to an AI, in every product": (
+            "implemented",
+            False,
+        ),
+        "Publish a model card for every internal AI tool": ("accepted", True),
+    }
+    status = next(
+        row
+        for row in compliance_status_service.get_status(db_session, "iso_42001")
+        if row.code == "10.1"
+    )
+    assert status.status == "partial"
+    assert [i.label for i in status.tagged_items if not i.current] == [
+        "Publish a model card for every internal AI tool"
+    ]
+
+
+def test_the_script_entry_point_comes_after_everything_it_calls() -> None:
+    # `python -m app.seed` runs main() as soon as the guard is reached, so a
+    # helper defined below it doesn't exist yet when seed() calls it -- the
+    # tests, importing the whole module first, wouldn't notice.
+    import ast
+    import inspect
+
+    import app.seed as seed_module
+
+    tree = ast.parse(inspect.getsource(seed_module))
+    guard = tree.body[-1]
+    assert isinstance(guard, ast.If)
+    assert ast.unparse(guard.test) == "__name__ == '__main__'"
+

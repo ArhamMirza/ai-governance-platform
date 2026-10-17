@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 
 import { StatusBadge } from "../../../shared/components/StatusBadge";
 import { DocumentBrowser } from "../../evidence/components/DocumentBrowser";
+import { SourceImprovements } from "../../improvements/components/SourceImprovements";
 import { formatUserOption } from "../../users/formatUserOption";
 import { useUserDirectory } from "../../users/hooks";
 import {
@@ -126,6 +127,7 @@ export function AuditDetail({ programId, auditId }: AuditDetailProps) {
             <th>Description</th>
             <th>Type</th>
             <th>Corrective action</th>
+            <th>Improvement</th>
           </tr>
         </thead>
         <tbody>
@@ -144,6 +146,20 @@ export function AuditDetail({ programId, auditId }: AuditDetailProps) {
                   <button onClick={() => raiseCorrectiveAction(finding.id, finding.description)}>
                     Raise Corrective Action
                   </button>
+                )}
+              </td>
+              <td>
+                {/* An observation is an opportunity to improve (10.1); a
+                    nonconformity goes to a corrective action (10.2). */}
+                {finding.finding_type === "observation" && (
+                  <SourceImprovements
+                    from={{
+                      sourceType: "AuditFinding",
+                      sourceId: finding.id,
+                      label: `a finding in ${audit.title}`,
+                      description: finding.description,
+                    }}
+                  />
                 )}
               </td>
             </tr>
@@ -171,6 +187,7 @@ export function AuditDetail({ programId, auditId }: AuditDetailProps) {
                 Add Finding
               </button>
             </td>
+            <td />
           </tr>
         </tbody>
       </table>

@@ -6,6 +6,7 @@ import { useAISystemInventoryRows } from "../../ai-system-inventory/hooks";
 import { AuditLogViewer } from "../../audit-log/components/AuditLogViewer";
 import { DocumentBrowser } from "../../evidence/components/DocumentBrowser";
 import { FrameworkTagPicker } from "../../framework-tags/components/FrameworkTagPicker";
+import { SourceImprovements } from "../../improvements/components/SourceImprovements";
 import { formatUserOption } from "../../users/formatUserOption";
 import { useUserDirectory } from "../../users/hooks";
 import { useIncident, useUpdateIncident } from "../hooks";
@@ -256,6 +257,17 @@ export function IncidentDetail({ incidentId }: IncidentDetailProps) {
           <p>No corrective action raised yet.</p>
         )}
         <button onClick={raiseCorrectiveAction}>Raise Corrective Action</button>
+      </section>
+
+      <section>
+        <h3>Improvements</h3>
+        <SourceImprovements
+          from={{
+            sourceType: "AIIncident",
+            sourceId: incident.id,
+            label: `the incident "${incident.title}"`,
+          }}
+        />
       </section>
 
       <h3>Framework Tags</h3>

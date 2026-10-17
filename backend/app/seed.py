@@ -14,10 +14,12 @@ from datetime import date, timedelta
 from io import BytesIO
 from types import SimpleNamespace
 
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core import concern_tracking
 from app.core.database import SessionLocal
+from app.models.audit_finding import AuditFinding, AuditFindingType
 from app.models.concern import Concern
 from app.repositories import (
     concern_repository,
@@ -38,6 +40,7 @@ from app.schemas.concern import (
 from app.schemas.corrective_action import CorrectiveActionCreate, CorrectiveActionUpdate
 from app.schemas.eu_ai_act import EuAiActApplicabilityUpdate
 from app.schemas.impact_assessment import ImpactAssessmentCreate, ImpactAssessmentUpdate
+from app.schemas.improvement import ImprovementCreate, ImprovementStatusUpdate
 from app.schemas.internal_audit import AuditFindingCreate, AuditProgramCreate, InternalAuditCreate
 from app.schemas.management_review import (
     ManagementReviewMeetingCreate,
@@ -66,6 +69,7 @@ from app.services import (
     evidence_service,
     framework_service,
     impact_assessment_service,
+    improvement_service,
     internal_audit_service,
     management_review_service,
     objective_service,
@@ -444,6 +448,7 @@ def seed(db: Session) -> None:
     _seed_changes(db, resume_screener.id, support_chatbot.id)
     _seed_communications(db)
     _seed_concerns(db, resume_screener.id, support_chatbot.id)
+    _seed_improvements(db)
 
     print("Seed complete.")
 
@@ -1244,6 +1249,86 @@ def _seed_concerns(db: Session, resume_screener_id: int, support_chatbot_id: int
         today=today,
     )
     print(f"  Demo tracking code for the anonymous concern: {DEMO_TRACKING_CODE}")
+
+
+def _seed_improvements(db: Session) -> None:
+    """The improvement register (10.1): one from last month's audit
+    observation, accepted and being carried out as a planned change; one
+    from the anonymous concern, implemented; and one past its target date."""
+    print("Seeding improvements...")
+    today = date.today()
+    observation = db.scalar(
+        select(AuditFinding).where(AuditFinding.finding_type == AuditFindingType.OBSERVATION)
+    )
+    anonymous_concern = db.scalar(select(Concern).where(Concern.is_anonymous.is_(True)))
+
+    def accept(improvement_id: int, days_ago: int) -> None:
+        improvement_service.change_status(
+            db,
+            improvement_id,
+            ImprovementStatusUpdate(action="accept"),
+            PLACEHOLDER_USER_ID,
+            today=today - timedelta(days=days_ago),
+        )
+
+    owners = improvement_service.create_improvement(
+        db,
+        ImprovementCreate(
+            title="Name risk owners as individuals, not teams",
+            description="Each risk item names one accountable person.",
+            expected_benefit="Treatments stop stalling between teams.",
+            source_type="AuditFinding",
+            source_id=observation.id,
+            owner_id=PLACEHOLDER_USER_ID,
+            raised_on=today - timedelta(days=30),
+            target_date=today + timedelta(days=30),
+        ),
+        actor_id=None,
+    )
+    accept(owners.id, 25)
+    improvement_service.carry_out_as_change(db, owners.id, PLACEHOLDER_USER_ID, today=today)
+
+    disclosure = improvement_service.create_improvement(
+        db,
+        ImprovementCreate(
+            title="Tell customers when they are talking to an AI, in every product",
+            expected_benefit="No customer-facing AI without a disclosure.",
+            source_type="Concern",
+            source_id=anonymous_concern.id,
+            owner_id=PLACEHOLDER_USER_ID,
+            raised_on=today - timedelta(days=25),
+            target_date=today - timedelta(days=5),
+        ),
+        actor_id=None,
+    )
+    accept(disclosure.id, 24)
+    improvement_service.change_status(
+        db,
+        disclosure.id,
+        ImprovementStatusUpdate(
+            action="implement",
+            note="Disclosure banner added to the chatbot and the help-centre search; "
+            "no complaints since.",
+        ),
+        PLACEHOLDER_USER_ID,
+        today=today - timedelta(days=10),
+    )
+
+    model_cards = improvement_service.create_improvement(
+        db,
+        ImprovementCreate(
+            title="Publish a model card for every internal AI tool",
+            source="stakeholder_feedback",
+            owner_id=PLACEHOLDER_USER_ID,
+            raised_on=today - timedelta(days=60),
+            target_date=today - timedelta(days=5),
+        ),
+        actor_id=None,
+    )
+    accept(model_cards.id, 50)
+
+    for improvement in (owners, disclosure, model_cards):
+        _tag(db, improvement_service.ENTITY_TYPE, improvement.id, "iso_42001:10.1")
 
 
 def main() -> None:

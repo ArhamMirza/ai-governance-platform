@@ -41,6 +41,7 @@ from app.routers import (
     health,
     impact_assessment_drafts,
     impact_assessments,
+    improvements,
     internal_audits,
     management_review,
     objectives,
@@ -158,4 +159,5 @@ app.include_router(objectives.router, prefix="/api/v1", dependencies=_protected)
 app.include_router(ai_roles.router, prefix="/api/v1", dependencies=_protected)
 app.include_router(changes.router, prefix="/api/v1", dependencies=_protected)
 app.include_router(concerns.router, prefix="/api/v1", dependencies=_protected)
+app.include_router(improvements.router, prefix="/api/v1", dependencies=_protected)
 app.include_router(communications.router, prefix="/api/v1", dependencies=_protected)

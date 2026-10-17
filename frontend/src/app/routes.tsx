@@ -7,6 +7,8 @@ import { ChangeDetailPage } from "../pages/ChangeDetailPage";
 import { ChangesPage } from "../pages/ChangesPage";
 import { ConcernDetailPage } from "../pages/ConcernDetailPage";
 import { ConcernsPage } from "../pages/ConcernsPage";
+import { ImprovementDetailPage } from "../pages/ImprovementDetailPage";
+import { ImprovementsPage } from "../pages/ImprovementsPage";
 import { CommunicationDetailPage } from "../pages/CommunicationDetailPage";
 import { CommunicationsPage } from "../pages/CommunicationsPage";
 import { AuditDetailPage } from "../pages/AuditDetailPage";
@@ -60,6 +62,8 @@ export function AppRoutes() {
         <Route path="/communications" element={<CommunicationsPage />} />
         <Route path="/communications/:communicationId" element={<CommunicationDetailPage />} />
         <Route path="/changes/:changeId" element={<ChangeDetailPage />} />
+        <Route path="/improvements" element={<ImprovementsPage />} />
+        <Route path="/improvements/:improvementId" element={<ImprovementDetailPage />} />
         <Route path="/objectives" element={<ObjectivesPage />} />
         <Route path="/objectives/:objectiveId" element={<ObjectiveDetailPage />} />
         <Route path="/suppliers" element={<SuppliersPage />} />

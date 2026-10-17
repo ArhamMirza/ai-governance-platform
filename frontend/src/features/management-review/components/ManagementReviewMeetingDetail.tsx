@@ -2,6 +2,7 @@ import { AuditLogViewer } from "../../audit-log/components/AuditLogViewer";
 import { DocumentBrowser } from "../../evidence/components/DocumentBrowser";
 import { ChangesAsOf } from "../../changes/components/ChangesAsOf";
 import { FrameworkTagPicker } from "../../framework-tags/components/FrameworkTagPicker";
+import { ImprovementsAsOf } from "../../improvements/components/ImprovementsAsOf";
 import { ObjectivesAsOf } from "../../objectives/components/ObjectivesAsOf";
 import { formatUserOption } from "../../users/formatUserOption";
 import { useUserDirectory } from "../../users/hooks";
@@ -80,6 +81,8 @@ export function ManagementReviewMeetingDetail({ meetingId }: ManagementReviewMee
       <ObjectivesAsOf asOf={meeting.meeting_date} />
 
       <ChangesAsOf asOf={meeting.meeting_date} />
+
+      <ImprovementsAsOf asOf={meeting.meeting_date} />
 
       {ISO_FIELDS.map((field) => (
         <div key={field.key}>

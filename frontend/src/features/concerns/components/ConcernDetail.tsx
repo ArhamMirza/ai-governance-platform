@@ -5,6 +5,7 @@ import { readError } from "../../../shared/api/readError";
 import { StatusBadge } from "../../../shared/components/StatusBadge";
 import { useAISystemInventoryRows } from "../../ai-system-inventory/hooks";
 import { AuditLogViewer } from "../../audit-log/components/AuditLogViewer";
+import { SourceImprovements } from "../../improvements/components/SourceImprovements";
 import { aiSystemName } from "../../suppliers/labels";
 import { useUserDirectory } from "../../users/hooks";
 import { formatUserOption } from "../../users/formatUserOption";
@@ -262,6 +263,14 @@ export function ConcernDetail({ concernId }: { concernId: number }) {
           </ul>
         )}
         <RaiseCorrectiveActionForm concern={concern} />
+        <h4>Improvements</h4>
+        <p className="approval-note">
+          An improvement is readable by everyone in the organization, so it starts empty -- nothing
+          of what was reported is copied into it.
+        </p>
+        <SourceImprovements
+          from={{ sourceType: "Concern", sourceId: concern.id, label: `concern #${concern.id}` }}
+        />
       </section>
 
       <AuditLogViewer entityType="Concern" entityId={concernId} />
