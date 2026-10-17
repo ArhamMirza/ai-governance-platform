@@ -193,7 +193,7 @@ def delete_change(db: Session, change_id: int, actor_id: int | None) -> None:
     """Only while nothing has happened to it -- once work has started or it's
     been closed, it's part of the record of how the management system
     changed, so it's cancelled instead."""
-    from app.services import evidence_service
+    from app.services import evidence_service, improvement_service
 
     change = _get_or_raise(db, change_id)
     # Starting or closing a change always moves it off `planned`, so the
@@ -203,6 +203,7 @@ def delete_change(db: Session, change_id: int, actor_id: int | None) -> None:
             "This change has been started or closed, so it can't be deleted; cancel it instead."
         )
     change_repository.delete_links(db, change_repository.list_links_for_change(db, change_id))
+    improvement_service.unlink_change(db, change_id, actor_id)
     evidence_service.delete_all_for_entity(db, ENTITY_TYPE, change_id)
     framework_service.delete_tags(db, ENTITY_TYPE, change_id)
     change_repository.delete(db, change)

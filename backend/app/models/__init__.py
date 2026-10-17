@@ -38,6 +38,7 @@ from app.models.governance_role_assignment import GovernanceRoleAssignment
 from app.models.governance_role_delegation import GovernanceRoleDelegation
 from app.models.impact_assessment import ImpactAssessment
 from app.models.impact_factor_assessment import ImpactFactorAssessment
+from app.models.improvement import Improvement, ImprovementSource, ImprovementStatus
 from app.models.index_queue import IndexQueueEntry
 from app.models.internal_audit import InternalAudit, InternalAuditStatus
 from app.models.management_review_meeting import ManagementReviewMeeting
@@ -112,6 +113,9 @@ __all__ = [
     "GovernanceRoleDelegation",
     "ImpactAssessment",
     "ImpactFactorAssessment",
+    "Improvement",
+    "ImprovementSource",
+    "ImprovementStatus",
     "IndexQueueEntry",
     "IndexStatus",
     "InternalAudit",

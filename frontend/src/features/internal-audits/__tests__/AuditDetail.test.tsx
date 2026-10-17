@@ -6,6 +6,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import { createTestQueryClient } from "../../../test/testQueryClient";
 import { evidenceApi, folderApi } from "../../evidence/api";
+import { improvementsApi } from "../../improvements/api";
 import { usersApi } from "../../users/api";
 import { auditFindingsApi, internalAuditsApi } from "../api";
 import { AuditDetail } from "../components/AuditDetail";
@@ -14,6 +15,7 @@ import type { AuditFinding, InternalAudit } from "../types";
 vi.mock("../api");
 vi.mock("../../evidence/api");
 vi.mock("../../users/api");
+vi.mock("../../improvements/api");
 
 const audit: InternalAudit = {
   id: 1,
@@ -57,6 +59,10 @@ function LocationProbe() {
   );
 }
 
+function ImprovementsProbe() {
+  return <pre data-testid="improvement-state">{JSON.stringify(useLocation().state)}</pre>;
+}
+
 function renderWithProviders() {
   const queryClient = createTestQueryClient();
   return render(
@@ -68,6 +74,7 @@ function renderWithProviders() {
             element={<AuditDetail programId={1} auditId={1} />}
           />
           <Route path="/corrective-actions" element={<LocationProbe />} />
+          <Route path="/improvements" element={<ImprovementsProbe />} />
         </Routes>
       </MemoryRouter>
     </QueryClientProvider>,
@@ -110,5 +117,38 @@ describe("AuditDetail", () => {
     const link = await screen.findByRole("link", { name: "View corrective action" });
     expect(link).toHaveAttribute("href", "/corrective-actions/42");
     expect(screen.queryByRole("button", { name: "Raise Corrective Action" })).not.toBeInTheDocument();
+  });
+
+  it("offers an improvement for an observation only, carrying its text", async () => {
+    vi.mocked(internalAuditsApi.get).mockResolvedValue(audit);
+    vi.mocked(auditFindingsApi.list).mockResolvedValue([
+      openFinding,
+      {
+        ...openFinding,
+        id: 10,
+        description: "Risk owners are named by team.",
+        finding_type: "observation",
+      },
+    ]);
+    vi.mocked(improvementsApi.listForSource).mockResolvedValue([]);
+    vi.mocked(evidenceApi.list).mockResolvedValue([]);
+    vi.mocked(folderApi.list).mockResolvedValue([]);
+    vi.mocked(usersApi.directory).mockResolvedValue([]);
+    const user = userEvent.setup();
+
+    renderWithProviders();
+
+    // One per observation; the nonconformity goes to a corrective action.
+    const raise = await screen.findAllByRole("button", { name: "Raise Improvement" });
+    expect(raise).toHaveLength(1);
+    expect(improvementsApi.listForSource).toHaveBeenCalledWith("AuditFinding", 10);
+    await user.click(raise[0]);
+
+    expect(JSON.parse(screen.getByTestId("improvement-state").textContent ?? "null")).toEqual({
+      sourceType: "AuditFinding",
+      sourceId: 10,
+      label: "a finding in Q1 Risk Register Audit",
+      description: "Risk owners are named by team.",
+    });
   });
 });

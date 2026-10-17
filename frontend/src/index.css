@@ -1276,7 +1276,8 @@ td button {
 
 .status-badge[data-status="in_review"],
 .status-badge[data-status="in_progress"],
-.status-badge[data-status="under_review"] {
+.status-badge[data-status="under_review"],
+.status-badge[data-status="accepted"] {
   background: var(--warning-subtle);
   border-color: var(--warning-line);
   color: var(--warning-text);
@@ -1307,7 +1308,9 @@ td button {
   color: var(--danger-text);
 }
 
-.status-badge[data-status="draft"] {
+.status-badge[data-status="draft"],
+.status-badge[data-status="proposed"],
+.status-badge[data-status="declined"] {
   background: var(--bg-sunken);
   border-color: var(--border-strong);
   color: var(--text-muted);

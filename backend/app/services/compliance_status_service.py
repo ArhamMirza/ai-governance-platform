@@ -46,6 +46,7 @@ from app.models.evidence import Evidence
 from app.models.framework_control import Framework, FrameworkControl
 from app.models.framework_soa_entry import FrameworkSoaEntry, SoaApplicability
 from app.models.impact_assessment import ImpactAssessment, ImpactAssessmentStatus
+from app.models.improvement import Improvement
 from app.models.management_system_change import ManagementSystemChange
 from app.models.organization_context import OrganizationContext, OrganizationContextStatus
 from app.models.policy import Policy, PolicyStatus
@@ -77,6 +78,7 @@ from app.services import (
     concern_service,
     corrective_action_service,
     eu_ai_act_service,
+    improvement_service,
     internal_audit_service,
     management_review_service,
     objective_service,
@@ -378,6 +380,25 @@ def _resolve_communication_plan_item(
     return _Resolved(record.topic, True, f"Last communicated {standing.last_communicated_on}")
 
 
+def _resolve_improvement(db: Session, entity_id: int, today: date) -> _Resolved | None:
+    """An opportunity for improvement (10.1): current unless it's open past
+    its target date. A declined one still counts -- deciding not to go ahead,
+    with a reason, is a decision."""
+    record = db.get(Improvement, entity_id)
+    if record is None:
+        return None
+    standing = improvement_service.standing(record, today)
+    if standing.overdue:
+        return _Resolved(record.title, False, f"Improvement overdue since {record.target_date}")
+    labels = {
+        "proposed": f"Improvement proposed, target {record.target_date}",
+        "accepted": f"Improvement accepted, target {record.target_date}",
+        "implemented": "Improvement implemented",
+        "declined": "Improvement declined",
+    }
+    return _Resolved(record.title, True, labels[standing.state])
+
+
 def _resolve_concern_settings(db: Session, entity_id: int, today: date) -> _Resolved | None:
     """The concern reporting process (A.3.3): in place once it's described to
     employees, and not holding up concerns -- one left unacknowledged past the
@@ -456,6 +477,7 @@ _RESOLVERS = {
     "ManagementSystemChange": _resolve_management_system_change,
     "CommunicationPlanItem": _resolve_communication_plan_item,
     "ConcernSettings": _resolve_concern_settings,
+    "Improvement": _resolve_improvement,
 }
 
 
