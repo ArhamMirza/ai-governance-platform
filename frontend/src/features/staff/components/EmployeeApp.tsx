@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, NavLink, Navigate, Route, Routes } from "react-router-dom";
+import { Link, NavLink, Navigate, Route, Routes, useSearchParams } from "react-router-dom";
 
 import { ThemeToggle } from "../../../shared/components/ThemeToggle";
 import { MyAIToolRequests } from "../../ai-tools/components/MyAIToolRequests";
@@ -42,6 +42,9 @@ function EmployeeHome() {
 
 function AIToolsPage() {
   const [requested, setRequested] = useState<string | null>(null);
+  // Arrives from the browser extension's "not approved" page with the tool filled in.
+  const [params] = useSearchParams();
+  const initial = { name: params.get("name") ?? undefined, domain: params.get("domain") ?? undefined };
 
   return (
     <section>
@@ -63,7 +66,7 @@ function AIToolsPage() {
           Your request for {requested} has been sent. You'll see the answer under your requests.
         </p>
       )}
-      <RequestAIToolForm onRequested={setRequested} />
+      <RequestAIToolForm initial={initial} onRequested={setRequested} />
       <h2>Your requests</h2>
       <MyAIToolRequests />
     </section>

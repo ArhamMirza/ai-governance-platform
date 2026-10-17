@@ -81,5 +81,16 @@ describe("EmployeeApp", () => {
     expect(await screen.findByText("We count visits, never what you type.")).toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: /Welcome/ })).not.toBeInTheDocument();
   });
+
+  it("fills in the request from the link on the browser extension's blocked page", async () => {
+    vi.mocked(staffAiToolsApi.approved).mockResolvedValue([]);
+    vi.mocked(staffAiToolsApi.requestable).mockResolvedValue([]);
+    vi.mocked(staffAiToolsApi.mine).mockResolvedValue([]);
+    vi.mocked(staffAiUseApi.notice).mockResolvedValue({ staff_notice: null, unapproved_site_action: "block" });
+    renderAt("/tools?name=Mystery%20AI&domain=mystery.ai");
+
+    expect(await screen.findByLabelText("Name of the tool")).toHaveValue("Mystery AI");
+    expect(screen.getByLabelText("Its website, if you know it")).toHaveValue("mystery.ai");
+  });
 });
 
