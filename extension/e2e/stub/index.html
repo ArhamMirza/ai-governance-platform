@@ -1,0 +1,15 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Stub chat</title>
+<style>body{font-family:system-ui;margin:40px;max-width:640px} textarea{width:100%;height:90px;font:inherit} #log{margin-top:16px;padding:8px;border:1px solid #ccc;min-height:40px}</style></head>
+<body>
+<h1 id="host">Stub chat</h1>
+<form id="chat"><textarea id="box" placeholder="Message the assistant"></textarea>
+<p><button type="submit" id="send" aria-label="Send message">Send</button></p></form>
+<div id="log" aria-live="polite">Nothing sent yet.</div>
+<script>
+  document.getElementById("host").textContent = "Stub chat on " + location.hostname;
+  const log = document.getElementById("log");
+  function send() { const b = document.getElementById("box"); log.textContent = "SENT: " + b.value; b.value = ""; }
+  document.getElementById("box").addEventListener("keydown", e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } });
+  document.getElementById("chat").addEventListener("submit", e => { e.preventDefault(); send(); });
+</script></body></html>

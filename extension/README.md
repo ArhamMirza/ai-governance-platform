@@ -26,6 +26,20 @@ What it does, on the AI sites the platform has catalogued:
   sites in the platform's AI tool catalogue (the platform refuses any other).
 - It runs its checking script **only** on catalogued AI domains.
 
+## What has been tested
+
+- **Unit tests** (`npm test`) cover the decision logic, the policy handling, the
+  counting, the platform communication, the interception of pastes, sends and
+  uploads, and the dialog.
+- **A real-browser test** (`e2e/`) loads the built extension into **real Chrome
+  and real Edge** against a running platform and drives it with a real keyboard
+  and mouse: 47 checks pass in each. See [e2e/README.md](e2e/README.md).
+- **Not tested here:** force-install by enterprise policy and managed storage
+  (they need a managed machine), Chrome Web Store / Edge Add-ons packaging, or
+  any real AI site: the test uses a stand-in chat page, so it shows the
+  mechanics work, not that a particular AI site's page is handled. Run the test
+  script below on your own setup before a rollout.
+
 ## Read this before rolling it out
 
 **It only covers browsers it is installed in.** It does not see other
@@ -87,39 +101,55 @@ npm run build    # type-checks, then bundles into dist/
 
 ## Try it on one machine (unpacked)
 
-1. `npm run build`.
-2. Chrome: open `chrome://extensions`, switch on **Developer mode**, **Load
+The simplest way, on your own laptop with no system policy changes:
+
+1. Run the platform locally and create an enrollment key (**AI Tools →
+   Settings → Create Key**).
+2. Build a **development** extension, which reads its settings from its own
+   storage: `DEV_CONFIG=1 npm run build`. (Never deploy this build; production
+   builds don't read that setting.)
+3. Chrome: open `chrome://extensions`, switch on **Developer mode**, **Load
    unpacked**, choose `dist/`. Edge: the same at `edge://extensions`.
-3. Note the extension's **ID** shown on the card.
-4. Give it its settings through the browser's managed policy (an extension
-   loaded by hand has none). On Windows, with an elevated PowerShell:
+4. Click **service worker** on the extension's card to open its console and run:
 
-   ```powershell
-   $id = "<the extension ID>"
-   # Chrome
-   $key = "HKLM:\SOFTWARE\Policies\Google\Chrome\3rdparty\extensions\$id\policy"
-   # Edge:  "HKLM:\SOFTWARE\Policies\Microsoft\Edge\3rdparty\extensions\$id\policy"
-   New-Item -Path $key -Force | Out-Null
-   Set-ItemProperty -Path $key -Name serverUrl     -Value "http://localhost:8000"
-   Set-ItemProperty -Path $key -Name portalUrl     -Value "http://localhost:5173"
-   Set-ItemProperty -Path $key -Name enrollmentKey -Value "<key from the platform>"
+   ```js
+   chrome.storage.local.set({ devConfig: {
+     serverUrl: "http://localhost:8000",
+     portalUrl: "http://localhost:5173",
+     enrollmentKey: "aigk_..."          // the key from step 1
+   } })
    ```
 
-   On macOS/Linux put the same three values in a JSON file in the browser's
-   managed-policy folder, e.g. `/etc/opt/chrome/policies/managed/ai.json`:
+   The icon's `!` badge clears within a few seconds once it has fetched a policy.
 
-   ```json
-   { "3rdparty": { "extensions": { "<extension ID>": {
-       "serverUrl": "https://governance.example.com",
-       "portalUrl": "https://portal.example.com",
-       "enrollmentKey": "aigk_..." } } } }
-   ```
+To try it the way a deployment works, with the real managed policy instead:
+build normally (`npm run build`), load `dist/`, and give the browser the
+settings through its enterprise policy. On Windows, with an elevated PowerShell:
 
-   Plain `http` is accepted for `localhost` only. Restart the browser, or open
-   `chrome://policy` and **Reload policies**, and check the values appear.
-5. Create the key on the platform (**AI Tools → Settings → Create Key**) and
-   put it in `enrollmentKey`. The toolbar icon shows `!` until the extension
-   has fetched a policy.
+```powershell
+$id = "<the extension ID>"
+# Chrome
+$key = "HKLM:\SOFTWARE\Policies\Google\Chrome\3rdparty\extensions\$id\policy"
+# Edge:  "HKLM:\SOFTWARE\Policies\Microsoft\Edge\3rdparty\extensions\$id\policy"
+New-Item -Path $key -Force | Out-Null
+Set-ItemProperty -Path $key -Name serverUrl     -Value "http://localhost:8000"
+Set-ItemProperty -Path $key -Name portalUrl     -Value "http://localhost:5173"
+Set-ItemProperty -Path $key -Name enrollmentKey -Value "<key from the platform>"
+```
+
+On macOS/Linux put the same three values in a JSON file in the browser's
+managed-policy folder, e.g. `/etc/opt/chrome/policies/managed/ai.json`:
+
+```json
+{ "3rdparty": { "extensions": { "<extension ID>": {
+    "serverUrl": "https://governance.example.com",
+    "portalUrl": "https://portal.example.com",
+    "enrollmentKey": "aigk_..." } } } }
+```
+
+Plain `http` is accepted for `localhost` only. Restart the browser, or open
+`chrome://policy` and **Reload policies**, and check the values appear. The
+extension ID is shown on its card in `chrome://extensions`.
 
 ## Test script (once in Chrome, once in Edge)
 
@@ -266,4 +296,6 @@ without a restart.
 | `src/guard.ts`, `dialog.ts`, `content.ts` | The checking on the page. |
 | `src/background.ts` | The service worker that ties it together. |
 | `src/blocked.ts`, `popup.ts`, `public/` | The *not approved* page and the toolbar popup. |
+| `src/configSource.ts` | Where settings come from: managed policy only, plus a development-only override. |
+| `e2e/` | The real-browser test (Chrome and Edge). |
 | `../frontend/src/shared/dlp/detectors.ts` | The rule engine, shared with the platform's rule tester so both agree. |
