@@ -19,6 +19,10 @@ const LONG_TEXT_COLUMNS = [
   "hosting_environment",
   "development_team",
   "oversight_roles",
+  "event_logging",
+  "log_retention",
+  "user_information",
+  "customer_information",
 ];
 
 /** The column a row is identified by. It is pinned into every view, because
@@ -26,10 +30,11 @@ const LONG_TEXT_COLUMNS = [
 const IDENTITY_COLUMN = "name";
 
 /**
- * The inventory carries the whole of Annex A.4 (resources for AI systems)
- * alongside the system's own description, which is far too many columns to
- * read at once. Each A.4 control gets its own view instead, addressable by
- * URL so a view can be linked to and bookmarked.
+ * The inventory carries the whole of Annex A.4 (resources for AI systems),
+ * event logging and what users and customers are told, alongside the
+ * system's own description -- far too many columns to read at once. Each
+ * control gets its own view instead, addressable by URL so a view can be
+ * linked to and bookmarked.
  */
 interface SheetView {
   slug: string;
@@ -68,6 +73,18 @@ const VIEWS: SheetView[] = [
     label: "Human Resources",
     note: "A.4.6",
     keys: ["development_team", "oversight_roles"],
+  },
+  {
+    slug: "logging",
+    label: "Event Logs",
+    note: "A.6.2.8",
+    keys: ["event_logging", "log_retention"],
+  },
+  {
+    slug: "information",
+    label: "Users & Customers",
+    note: "A.8.2 / A.10.4",
+    keys: ["user_information", "customer_information"],
   },
 ];
 

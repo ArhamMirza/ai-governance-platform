@@ -156,9 +156,10 @@ def _resolve_procedure(db: Session, entity_id: int, today: date) -> _Resolved | 
 
 def _resolve_ai_system(db: Session, entity_id: int, control_code: str) -> _Resolved | None:
     """An AI system tagged to a control. It stops counting once archived,
-    and for the resource controls (A.4.2-A.4.6) only counts once the
-    inventory columns that document that resource are filled in -- tagging
-    it to A.4.5 with no compute or hosting recorded isn't coverage."""
+    and for the controls the inventory documents (the A.4 resources, event
+    logs, information for users and customers) only counts once those
+    columns are filled in -- tagging it to A.6.2.8 with no logging recorded
+    isn't coverage."""
     inventory = ai_system_inventory_service.get_or_create_sheet(db)
     row = db.get(SheetRow, entity_id)
     if row is None or row.sheet_id != inventory.id:
@@ -168,7 +169,7 @@ def _resolve_ai_system(db: Session, entity_id: int, control_code: str) -> _Resol
     if lifecycle is not None and lifecycle.archived_at is not None:
         return _Resolved(name, False, "AI system has been archived")
 
-    required = ai_system_inventory_service.RESOURCE_CONTROL_COLUMNS.get(control_code)
+    required = ai_system_inventory_service.CONTROL_COLUMNS.get(control_code)
     if required is not None:
         labels = {column["key"]: column["label"] for column in inventory.columns}
         missing = [
@@ -178,7 +179,7 @@ def _resolve_ai_system(db: Session, entity_id: int, control_code: str) -> _Resol
         ]
         if missing:
             return _Resolved(name, False, f"Not recorded yet: {', '.join(missing)}")
-        return _Resolved(name, True, "Resource information recorded")
+        return _Resolved(name, True, "Recorded in the inventory")
     stage = str(row.data.get(ai_system_inventory_service.STAGE_COLUMN_KEY) or "").strip()
     return _Resolved(name, True, f"AI system in {stage}" if stage else "AI system recorded")
 

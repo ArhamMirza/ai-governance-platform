@@ -38,33 +38,42 @@ DEFAULT_COLUMNS = [
     # Human resources -- A.4.6
     ColumnDef(key="development_team", label="Development Team"),
     ColumnDef(key="oversight_roles", label="Oversight Roles"),
+    # Operation -- A.6.2.8 (and EU AI Act Art. 12 / Art. 19)
+    ColumnDef(key="event_logging", label="Event Logging"),
+    ColumnDef(key="log_retention", label="Log Retention"),
+    # Information for users and customers -- A.8.2 / A.10.4
+    ColumnDef(key="user_information", label="Information for Users"),
+    ColumnDef(key="customer_information", label="Information for Customers"),
 ]
 
-# Which inventory columns document each resource control, so an AI system
-# tagged to one of them only counts as covering it once those are filled in
-# (see compliance_status_service._resolve_ai_system).
-RESOURCE_CONTROL_COLUMNS: dict[str, list[str]] = {
+# Which inventory columns document each control, so an AI system tagged to
+# one of them only counts as covering it once those are filled in (see
+# compliance_status_service._resolve_ai_system).
+CONTROL_COLUMNS: dict[str, list[str]] = {
     "A.4.2": ["resource_documentation"],
     "A.4.3": ["data_resources"],
     "A.4.4": ["tooling_frameworks", "tooling_documentation"],
     "A.4.5": ["compute_infrastructure", "hosting_environment"],
     "A.4.6": ["development_team", "oversight_roles"],
+    "A.6.2.8": ["event_logging", "log_retention"],
+    "A.8.2": ["user_information"],
+    "A.10.4": ["customer_information"],
+    "Art.12": ["event_logging"],
+    "Art.19": ["log_retention"],
 }
 
-# New A.4 columns not present in an already-provisioned inventory sheet get
-# appended to it by a one-off data migration -- a fresh install just gets
-# them from DEFAULT_COLUMNS above on first use.
+# The A.4 columns that migration 84cc2880ae2a appended to an
+# already-provisioned inventory sheet. Listed explicitly, not derived from
+# DEFAULT_COLUMNS, so columns added later don't silently join that migration.
 RESOURCE_COLUMN_KEYS = [
-    c.key
-    for c in DEFAULT_COLUMNS
-    if c.key
-    not in {
-        "name",
-        "description",
-        "purpose",
-        "lifecycle_stage",
-        "risk_tier",
-    }
+    "resource_documentation",
+    "data_resources",
+    "tooling_frameworks",
+    "tooling_documentation",
+    "compute_infrastructure",
+    "hosting_environment",
+    "development_team",
+    "oversight_roles",
 ]
 
 

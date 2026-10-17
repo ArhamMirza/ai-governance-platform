@@ -31,6 +31,10 @@ const inventorySheet: SheetWithRows = {
     { key: "risk_tier", label: "Risk Tier", data_type: "text" },
     { key: "resource_documentation", label: "Resource Documentation", data_type: "text" },
     { key: "data_resources", label: "Data Resources", data_type: "text" },
+    { key: "event_logging", label: "Event Logging", data_type: "text" },
+    { key: "log_retention", label: "Log Retention", data_type: "text" },
+    { key: "user_information", label: "Information for Users", data_type: "text" },
+    { key: "customer_information", label: "Information for Customers", data_type: "text" },
   ],
   rows: [
     {
@@ -88,5 +92,33 @@ describe("AISystemInventoryGrid", () => {
     expect(
       screen.getByRole("columnheader", { name: "Resource Documentation (A.4.2 / A.4.3)" }),
     ).toBeInTheDocument();
+  });
+
+  it.each([
+    ["logging", "Event Logs (A.6.2.8)", ["Event Logging", "Log Retention"]],
+    [
+      "information",
+      "Users & Customers (A.8.2 / A.10.4)",
+      ["Information for Users", "Information for Customers"],
+    ],
+  ])("shows the %s view with just its own columns", async (slug, group, labels) => {
+    vi.mocked(httpClient.get).mockResolvedValue(inventorySheet);
+
+    render(
+      <MemoryRouter initialEntries={[`/?view=${slug}`]}>
+        <QueryClientProvider client={createTestQueryClient()}>
+          <AISystemInventoryGrid />
+        </QueryClientProvider>
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByLabelText("Name for row 1")).toBeInTheDocument();
+    });
+    expect(screen.getByRole("columnheader", { name: group })).toBeInTheDocument();
+    for (const label of labels) {
+      expect(screen.getByLabelText(`${label} for row 1`)).toBeInTheDocument();
+    }
+    expect(screen.queryByLabelText("Data Resources for row 1")).not.toBeInTheDocument();
   });
 });
