@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 
 from app.core.exceptions import NotFoundError, ValidationError
 from app.models.ai_objective import AIObjective
+from app.models.ai_tool import AITool
 from app.models.communication import CommunicationPlanItem
 from app.models.concern import ConcernSettings
 from app.models.evidence import Evidence
@@ -78,6 +79,7 @@ _LABELLED_ENTITY_TYPES = {
     "CommunicationPlanItem": (CommunicationPlanItem, lambda record: record.topic),
     "ConcernSettings": (ConcernSettings, lambda record: "Concern reporting process"),
     "Improvement": (Improvement, lambda record: record.title),
+    "AITool": (AITool, lambda record: record.name),
     # An AI system is an inventory row; its name is the label.
     "AISystem": (
         SheetRow,

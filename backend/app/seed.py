@@ -28,6 +28,7 @@ from app.repositories import (
     policy_repository,
 )
 from app.schemas.ai_incident import AIIncidentCreate, AIIncidentUpdate
+from app.schemas.ai_tool import AIToolDecision, AIToolRequestCreate, AIToolRequestDecision
 from app.schemas.change import ChangeCreate, ChangeStatusUpdate
 from app.schemas.communication import CommunicationCreate, CommunicationRecordCreate
 from app.schemas.competence import CompetenceRequirementCreate
@@ -60,6 +61,7 @@ from app.services import (
     ai_incident_service,
     ai_system_inventory_service,
     ai_system_lifecycle_service,
+    ai_tool_service,
     change_service,
     communication_service,
     competence_service,
@@ -84,6 +86,10 @@ from app.services import (
 # _seed_impact_assessment already uses -- the seed creates no users, and
 # none of these ids are real FKs.
 PLACEHOLDER_USER_ID = 1
+# Who asked for the demo AI tools: not an account, so that whoever signs in as
+# the Chief AI Governance Officer (usually the first user) can decide them --
+# nobody decides their own request.
+DEMO_REQUESTER_ID = 999_999
 
 # The tracking code of the seeded anonymous concern, so a demo can show looking
 # one up. A real code is random and shown once; only its hash is ever stored.
@@ -449,6 +455,7 @@ def seed(db: Session) -> None:
     _seed_communications(db)
     _seed_concerns(db, resume_screener.id, support_chatbot.id)
     _seed_improvements(db)
+    _seed_ai_tools(db)
 
     print("Seed complete.")
 
@@ -1329,6 +1336,79 @@ def _seed_improvements(db: Session) -> None:
 
     for improvement in (owners, disclosure, model_cards):
         _tag(db, improvement_service.ENTITY_TYPE, improvement.id, "iso_42001:10.1")
+
+
+def _seed_ai_tools(db: Session) -> None:
+    """The register of third-party AI tools (A.9.2): the built-in list of
+    well-known sites, three of them decided on -- one with its review overdue
+    -- a request waiting for the Chief AI Governance Officer and one that was
+    turned down."""
+    print("Seeding the AI tool register...")
+    today = date.today()
+    ai_tool_service.install_default_catalog(db)
+    tools = {tool.name: tool for tool in ai_tool_service.list_tools(db)}
+
+    def decide(name: str, action: str, **fields) -> None:
+        # No acting user, as for the other seeded decisions.
+        ai_tool_service.decide_tool(
+            db, tools[name].id, AIToolDecision(action=action, **fields), None, today=today
+        )
+
+    decide(
+        "Microsoft Copilot",
+        "approve",
+        max_data_classification="internal",
+        conditions_of_use="Sign in with your work account only. No customer personal data.",
+        review_due=today + timedelta(days=200),
+    )
+    decide(
+        "Perplexity",
+        "restrict",
+        max_data_classification="public",
+        conditions_of_use="Public sources only: never paste company documents or code.",
+        review_due=today + timedelta(days=60),
+    )
+    decide(
+        "ChatGPT",
+        "approve",
+        max_data_classification="internal",
+        conditions_of_use="Company workspace only; personal accounts are not allowed.",
+        review_due=today - timedelta(days=10),
+    )
+    for name in ("Microsoft Copilot", "Perplexity", "ChatGPT"):
+        _tag(db, "AITool", tools[name].id, "iso_42001:A.9.2")
+
+    ai_tool_service.create_request(
+        db,
+        AIToolRequestCreate(
+            tool_id=tools["Claude"].id,
+            tool_name="Claude",
+            purpose="Drafting and reviewing long policy documents, which Copilot handles badly.",
+            data_involved="Internal draft policies; no personal data.",
+        ),
+        requester_id=DEMO_REQUESTER_ID,
+        today=today - timedelta(days=3),
+    )
+    rejected = ai_tool_service.create_request(
+        db,
+        AIToolRequestCreate(
+            tool_id=tools["Character.AI"].id,
+            tool_name="Character.AI",
+            purpose="Role-playing difficult customer conversations to practise them.",
+        ),
+        requester_id=DEMO_REQUESTER_ID,
+        today=today - timedelta(days=20),
+    )
+    ai_tool_service.decide_request(
+        db,
+        rejected.id,
+        AIToolRequestDecision(
+            action="reject",
+            note="No business data-protection terms. Use the approved Copilot for practice.",
+        ),
+        None,
+        today=today - timedelta(days=18),
+    )
 
 
 def main() -> None:

@@ -8,8 +8,15 @@ from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.dependencies import get_current_user
+from app.models.ai_tool import AIToolRequest
 from app.models.concern import Concern
 from app.models.user import User
+from app.schemas.ai_tool import (
+    AIToolRequestCreate,
+    StaffAITool,
+    StaffAIToolRequestRead,
+    StaffRequestableTool,
+)
 from app.schemas.concern import (
     ConcernLookup,
     ConcernsProcess,
@@ -19,7 +26,7 @@ from app.schemas.concern import (
     StaffAISystem,
 )
 from app.schemas.staff import StaffLibraryItem
-from app.services import concern_service, staff_service
+from app.services import ai_tool_service, concern_service, staff_service
 
 router = APIRouter(prefix="/staff", tags=["staff"])
 
@@ -100,3 +107,64 @@ def lookup_concern(
     user: User = Depends(get_current_user),
 ) -> ReporterConcernRead:
     return _reporter_view(concern_service.lookup(db, user, data.tracking_code))
+
+
+# ---------- AI tools ----------
+
+
+def _own_request_view(request: AIToolRequest) -> StaffAIToolRequestRead:
+    """An employee's own request and how it was answered -- built field by
+    field, so an internal field can't leak through."""
+    return StaffAIToolRequestRead(
+        id=request.id,
+        tool_name=request.tool_name,
+        domain=request.domain,
+        purpose=request.purpose,
+        requested_on=request.requested_on,
+        status=request.status,
+        decided_on=request.decided_on,
+        decision_note=request.decision_note,
+    )
+
+
+@router.get("/ai-tools", response_model=list[StaffAITool])
+def approved_ai_tools(db: Session = Depends(get_db)) -> list[StaffAITool]:
+    """The AI tools staff may use, with the rules that go with each."""
+    return [
+        StaffAITool(
+            id=tool.id,
+            name=tool.name,
+            vendor=tool.vendor,
+            domains=tool.domains,
+            status=tool.status,
+            max_data_classification=tool.max_data_classification,
+            conditions_of_use=tool.conditions_of_use,
+        )
+        for tool in ai_tool_service.approved_tools(db)
+    ]
+
+
+@router.get("/ai-tools/requestable", response_model=list[StaffRequestableTool])
+def requestable_ai_tools(db: Session = Depends(get_db)) -> list[StaffRequestableTool]:
+    """Known tools that are not allowed yet, to pick from when asking."""
+    return [
+        StaffRequestableTool(id=tool.id, name=tool.name, vendor=tool.vendor)
+        for tool in ai_tool_service.requestable_tools(db)
+    ]
+
+
+@router.post("/ai-tool-requests", response_model=StaffAIToolRequestRead, status_code=201)
+def request_ai_tool(
+    data: AIToolRequestCreate,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+) -> StaffAIToolRequestRead:
+    return _own_request_view(ai_tool_service.create_request(db, data, user.id))
+
+
+@router.get("/ai-tool-requests/mine", response_model=list[StaffAIToolRequestRead])
+def my_ai_tool_requests(
+    db: Session = Depends(get_db), user: User = Depends(get_current_user)
+) -> list[StaffAIToolRequestRead]:
+    return [_own_request_view(r) for r in ai_tool_service.list_my_requests(db, user.id)]
+

@@ -2,6 +2,9 @@ import { useState } from "react";
 import { Link, NavLink, Navigate, Route, Routes } from "react-router-dom";
 
 import { ThemeToggle } from "../../../shared/components/ThemeToggle";
+import { MyAIToolRequests } from "../../ai-tools/components/MyAIToolRequests";
+import { RequestAIToolForm } from "../../ai-tools/components/RequestAIToolForm";
+import { StaffAITools } from "../../ai-tools/components/StaffAITools";
 import { useCurrentUser, useLogout } from "../../auth/hooks";
 import { ConcernSubmittedNotice } from "../../concerns/components/ConcernSubmittedNotice";
 import { MyConcerns } from "../../concerns/components/MyConcerns";
@@ -27,10 +30,40 @@ function EmployeeHome() {
         <Link to="/report" className="button-link">
           Report a concern
         </Link>{" "}
-        <Link to="/concerns">My concerns</Link>
+        <Link to="/concerns">My concerns</Link>{" "}
+        <Link to="/tools">AI tools</Link>
       </p>
       <h2>Policies and information</h2>
       <StaffLibrary />
+    </section>
+  );
+}
+
+function AIToolsPage() {
+  const [requested, setRequested] = useState<string | null>(null);
+
+  return (
+    <section>
+      <div className="page-header">
+        <div>
+          <h1>AI tools</h1>
+          <p>
+            The AI tools you may use at work, and the rules for each. If you need one that isn't
+            here, ask for it below -- the Chief AI Governance Officer will decide.
+          </p>
+        </div>
+      </div>
+      <h2>Approved tools</h2>
+      <StaffAITools />
+      <h2>Ask for a tool</h2>
+      {requested && (
+        <p role="status" className="approval-note">
+          Your request for {requested} has been sent. You'll see the answer under your requests.
+        </p>
+      )}
+      <RequestAIToolForm onRequested={setRequested} />
+      <h2>Your requests</h2>
+      <MyAIToolRequests />
     </section>
   );
 }
@@ -98,6 +131,7 @@ export function EmployeeApp() {
                 ["/", "Home"],
                 ["/report", "Report a concern"],
                 ["/concerns", "My concerns"],
+                ["/tools", "AI tools"],
               ] as const
             ).map(([to, label]) => (
               <NavLink
@@ -128,6 +162,7 @@ export function EmployeeApp() {
           <Route path="/" element={<EmployeeHome />} />
           <Route path="/report" element={<ReportConcernPage />} />
           <Route path="/concerns" element={<MyConcernsPage />} />
+          <Route path="/tools" element={<AIToolsPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>

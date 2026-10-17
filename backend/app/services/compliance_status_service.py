@@ -36,6 +36,7 @@ from sqlalchemy.orm import Session
 from app.core import review_cadence
 from app.models.ai_incident import AIIncident
 from app.models.ai_objective import AIObjective
+from app.models.ai_tool import AITool, AIToolStatus
 from app.models.audit_program import AuditProgram
 from app.models.communication import CommunicationPlanItem, CommunicationStatus
 from app.models.competence_requirement import CompetenceRequirement
@@ -72,6 +73,7 @@ from app.schemas.compliance_status import (
 from app.services import (
     ai_incident_service,
     ai_system_inventory_service,
+    ai_tool_service,
     change_service,
     communication_service,
     competence_service,
@@ -380,6 +382,25 @@ def _resolve_communication_plan_item(
     return _Resolved(record.topic, True, f"Last communicated {standing.last_communicated_on}")
 
 
+def _resolve_ai_tool(db: Session, entity_id: int, today: date) -> _Resolved | None:
+    """A third-party AI tool (A.9.2 responsible use, A.10.3 suppliers): in
+    place once the Chief AI Governance Officer has decided on it, and kept
+    under review. A tool still only catalogued has no decision behind it, so
+    tagging it is not coverage."""
+    record = db.get(AITool, entity_id)
+    if record is None:
+        return None
+    if record.status == AIToolStatus.CATALOGUED:
+        return _Resolved(record.name, False, "Known, but no decision has been made on it")
+    if record.status == AIToolStatus.REVOKED:
+        return _Resolved(record.name, True, "Access withdrawn")
+    if ai_tool_service.review_overdue(record, today):
+        return _Resolved(record.name, False, f"Review overdue since {record.review_due}")
+    return _Resolved(
+        record.name, True, f"{record.status.capitalize()}, review due {record.review_due}"
+    )
+
+
 def _resolve_improvement(db: Session, entity_id: int, today: date) -> _Resolved | None:
     """An opportunity for improvement (10.1): current unless it's open past
     its target date. A declined one still counts -- deciding not to go ahead,
@@ -478,6 +499,7 @@ _RESOLVERS = {
     "CommunicationPlanItem": _resolve_communication_plan_item,
     "ConcernSettings": _resolve_concern_settings,
     "Improvement": _resolve_improvement,
+    "AITool": _resolve_ai_tool,
 }
 
 
