@@ -1,0 +1,15 @@
+{
+  "name": "ai-governance-extension-e2e",
+  "private": true,
+  "version": "0.0.0",
+  "license": "Apache-2.0",
+  "type": "module",
+  "description": "Real-browser test of the extension. Run by hand; not part of CI.",
+  "scripts": {
+    "test:chrome": "node run.mjs chrome",
+    "test:edge": "node run.mjs edge"
+  },
+  "dependencies": {
+    "puppeteer-core": "^25.14.0"
+  }
+}

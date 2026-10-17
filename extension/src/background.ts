@@ -7,7 +7,8 @@
  * chrome.storage.local, and every entry point re-reads what it needs.
  */
 
-import { type Config, parseConfig, reportingEmail } from "./config.ts";
+import { reportingEmail } from "./config.ts";
+import { DEV_CONFIG_KEY, loadConfig } from "./configSource.ts";
 import { EventBuffer, type EventType, type UsageAction, utcDay } from "./events.ts";
 import {
   EVENTS_KEY,
@@ -30,15 +31,6 @@ const ALLOW_MINUTES = 60;
 const FLUSH_THRESHOLD = 50;
 
 // ---------- storage ----------
-
-async function readConfig(): Promise<Config | null> {
-  try {
-    return parseConfig(await chrome.storage.managed.get(null));
-  } catch {
-    // No managed storage at all -- the extension was loaded by hand.
-    return null;
-  }
-}
 
 async function readStored(): Promise<StoredPolicy> {
   const stored = (await chrome.storage.local.get(POLICY_KEY))[POLICY_KEY] as
@@ -113,7 +105,7 @@ async function applyPolicy(policy: Policy): Promise<void> {
 }
 
 async function refreshPolicy(): Promise<void> {
-  const config = await readConfig();
+  const config = await loadConfig();
   const stored = await readStored();
   if (config === null) {
     await writeStatus(
@@ -137,7 +129,7 @@ async function reapply(): Promise<void> {
 }
 
 async function flush(): Promise<void> {
-  const config = await readConfig();
+  const config = await loadConfig();
   if (config === null) return;
   const pending = await buffer();
   if (pending.size === 0) return;
@@ -233,6 +225,6 @@ chrome.alarms.onAlarm.addListener((alarm) => {
 });
 
 // A change to what IT configured takes effect straight away.
-chrome.storage.onChanged.addListener((_changes, area) => {
-  if (area === "managed") void refreshPolicy();
+chrome.storage.onChanged.addListener((changes, area) => {
+  if (area === "managed" || (area === "local" && DEV_CONFIG_KEY in changes)) void refreshPolicy();
 });

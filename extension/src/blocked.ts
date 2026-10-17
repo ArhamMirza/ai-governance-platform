@@ -4,7 +4,8 @@
  * if the organization only warns -- carry on for an hour.
  */
 
-import { parseConfig, requestUrl } from "./config.ts";
+import { requestUrl } from "./config.ts";
+import { loadConfig } from "./configSource.ts";
 import type { ExtensionMessage } from "./messages.ts";
 
 const params = new URLSearchParams(location.search);
@@ -33,13 +34,7 @@ document.title = `${tool} isn't approved`;
 void send({ type: "interstitial", domain, mode });
 
 void (async () => {
-  let managed: Record<string, unknown> | null = null;
-  try {
-    managed = await chrome.storage.managed.get(null);
-  } catch {
-    managed = null;
-  }
-  const config = parseConfig(managed);
+  const config = await loadConfig();
 
   const link = byId("request") as HTMLAnchorElement;
   if (config !== null) {

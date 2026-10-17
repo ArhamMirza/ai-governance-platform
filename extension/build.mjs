@@ -13,7 +13,16 @@ const out = "dist";
 await rm(out, { recursive: true, force: true });
 await mkdir(out, { recursive: true });
 
-const common = { bundle: true, target: "es2023", sourcemap: false, logLevel: "info" };
+const dev = process.env.DEV_CONFIG === "1";
+if (dev) console.warn("DEV_CONFIG=1: this build reads its settings from its own storage. Do not deploy it.");
+const common = {
+  bundle: true,
+  target: "es2023",
+  sourcemap: false,
+  logLevel: "info",
+  // Compiled in only for a development build; absent from every other.
+  define: { __DEV_CONFIG__: dev ? "true" : "false" },
+};
 
 // The service worker is declared "type": "module".
 await build({ ...common, entryPoints: ["src/background.ts"], outfile: `${out}/background.js`, format: "esm" });
@@ -25,6 +34,7 @@ for (const name of ["content", "blocked", "popup"]) {
 const pkg = JSON.parse(await readFile("package.json", "utf8"));
 const manifest = JSON.parse(await readFile("manifest.json", "utf8"));
 manifest.version = pkg.version;
+if (dev) manifest.name += " (DEV)";
 if (process.env.EXTENSION_PUBLIC_KEY) {
   manifest.key = process.env.EXTENSION_PUBLIC_KEY.trim();
   console.log(`Extension ID: ${extensionId(manifest.key)}`);
