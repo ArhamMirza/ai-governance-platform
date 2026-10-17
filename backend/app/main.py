@@ -73,6 +73,9 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    # So a client reading the agent policy from a page (not only from the extension)
+    # can see its ETag and ask "has it changed?" with If-None-Match.
+    expose_headers=["ETag"],
 )
 
 

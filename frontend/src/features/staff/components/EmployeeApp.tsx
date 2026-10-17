@@ -5,6 +5,7 @@ import { ThemeToggle } from "../../../shared/components/ThemeToggle";
 import { MyAIToolRequests } from "../../ai-tools/components/MyAIToolRequests";
 import { RequestAIToolForm } from "../../ai-tools/components/RequestAIToolForm";
 import { StaffAITools } from "../../ai-tools/components/StaffAITools";
+import { StaffAIUseNotice } from "../../ai-use/components/StaffAIUseNotice";
 import { useCurrentUser, useLogout } from "../../auth/hooks";
 import { ConcernSubmittedNotice } from "../../concerns/components/ConcernSubmittedNotice";
 import { MyConcerns } from "../../concerns/components/MyConcerns";
@@ -53,6 +54,7 @@ function AIToolsPage() {
           </p>
         </div>
       </div>
+      <StaffAIUseNotice />
       <h2>Approved tools</h2>
       <StaffAITools />
       <h2>Ask for a tool</h2>

@@ -131,3 +131,20 @@ def test_the_stored_hash_does_not_reveal_the_key() -> None:
     assert key not in agent_key.hash_key(key)
     assert len(agent_key.hash_key(key)) == 64
     assert agent_key.hint(key) == key[-4:]
+
+
+def test_the_backend_and_the_browser_agree_on_the_built_in_detectors() -> None:
+    """The detectors run in the browser (frontend/src/shared/dlp/detectors.ts);
+    the backend only lists them. A key on one side and not the other would
+    mean a rule that saves but never fires, or a detector nobody can pick."""
+    import re
+    from pathlib import Path
+
+    source = Path(__file__).resolve().parents[3] / "frontend/src/shared/dlp/detectors.ts"
+    block = re.search(
+        r"BUILTIN_KEYS = \[(.*?)\] as const", source.read_text(encoding="utf-8"), re.S
+    )
+
+    assert block is not None
+    frontend_keys = re.findall(r'"([a-z_]+)"', block.group(1))
+    assert sorted(frontend_keys) == sorted(BUILTIN_DETECTORS)

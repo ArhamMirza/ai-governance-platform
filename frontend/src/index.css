@@ -5357,3 +5357,56 @@ select {
   padding: 0;
   list-style: none;
 }
+
+.usage-totals {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin: 0 0 18px;
+}
+
+.usage-totals > div {
+  min-width: 170px;
+  padding: 10px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-surface);
+}
+
+.usage-totals dt {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.usage-totals dd {
+  margin: 4px 0 0;
+  font-size: 24px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.usage-day {
+  display: grid;
+  grid-template-columns: 100px minmax(80px, 1fr) minmax(160px, auto);
+  align-items: center;
+  gap: 12px;
+  padding: 3px 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.usage-bar {
+  height: 10px;
+  border-radius: 5px;
+  background: var(--bg-sunken);
+  overflow: hidden;
+}
+
+.usage-bar-fill {
+  display: block;
+  height: 100%;
+  background: var(--primary);
+}
+
+.row-muted {
+  opacity: 0.6;
+}

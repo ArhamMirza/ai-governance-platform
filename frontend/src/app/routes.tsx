@@ -3,12 +3,15 @@ import { Route, Routes } from "react-router-dom";
 import { AISystemDetailPage } from "../pages/AISystemDetailPage";
 import { AIToolDetailPage } from "../pages/AIToolDetailPage";
 import { AIToolsPage } from "../pages/AIToolsPage";
+import { AIUsagePage } from "../pages/AIUsagePage";
+import { AIUseSettingsPage } from "../pages/AIUseSettingsPage";
 import { AISystemInventoryPage } from "../pages/AISystemInventoryPage";
 import { ArchivePage } from "../pages/ArchivePage";
 import { ChangeDetailPage } from "../pages/ChangeDetailPage";
 import { ChangesPage } from "../pages/ChangesPage";
 import { ConcernDetailPage } from "../pages/ConcernDetailPage";
 import { ConcernsPage } from "../pages/ConcernsPage";
+import { DLPRulesPage } from "../pages/DLPRulesPage";
 import { ImprovementDetailPage } from "../pages/ImprovementDetailPage";
 import { ImprovementsPage } from "../pages/ImprovementsPage";
 import { CommunicationDetailPage } from "../pages/CommunicationDetailPage";
@@ -66,6 +69,9 @@ export function AppRoutes() {
         <Route path="/changes/:changeId" element={<ChangeDetailPage />} />
         <Route path="/improvements" element={<ImprovementsPage />} />
         <Route path="/ai-tools" element={<AIToolsPage />} />
+        <Route path="/ai-tools/rules" element={<DLPRulesPage />} />
+        <Route path="/ai-tools/usage" element={<AIUsagePage />} />
+        <Route path="/ai-tools/settings" element={<AIUseSettingsPage />} />
         <Route path="/ai-tools/:toolId" element={<AIToolDetailPage />} />
         <Route path="/improvements/:improvementId" element={<ImprovementDetailPage />} />
         <Route path="/objectives" element={<ObjectivesPage />} />

@@ -427,6 +427,18 @@ def test_the_policy_carries_a_tag_that_changes_only_when_the_policy_does(
     assert changed.status_code == 200 and changed.headers["etag"] != etag
 
 
+def test_the_tag_can_be_read_by_a_page_as_well_as_by_the_extension(
+    client: TestClient, test_user: User
+) -> None:
+    key = issue_key(client)
+
+    response = client.get(
+        "/api/v1/agent/policy", headers={**bearer(key), "Origin": "http://localhost:5173"}
+    )
+
+    assert "etag" in response.headers["access-control-expose-headers"].lower()
+
+
 def test_changing_a_tool_or_a_setting_also_changes_the_tag(
     client: TestClient, test_user: User, caigo_admin: User, login_as, catalogue
 ) -> None:

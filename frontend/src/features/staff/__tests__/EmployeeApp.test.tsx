@@ -6,11 +6,13 @@ import { describe, expect, it, vi } from "vitest";
 import { createTestQueryClient } from "../../../test/testQueryClient";
 import { authApi } from "../../auth/api";
 import { staffAiToolsApi } from "../../ai-tools/api";
+import { staffAiUseApi } from "../../ai-use/api";
 import { staffApi } from "../api";
 import { EmployeeApp } from "../components/EmployeeApp";
 
 vi.mock("../../auth/api");
 vi.mock("../../ai-tools/api");
+vi.mock("../../ai-use/api");
 vi.mock("../api", async () => {
   const actual = await vi.importActual<typeof import("../api")>("../api");
   return { staffApi: { ...actual.staffApi, library: vi.fn() } };
@@ -68,10 +70,15 @@ describe("EmployeeApp", () => {
     vi.mocked(staffAiToolsApi.approved).mockResolvedValue([]);
     vi.mocked(staffAiToolsApi.requestable).mockResolvedValue([]);
     vi.mocked(staffAiToolsApi.mine).mockResolvedValue([]);
+    vi.mocked(staffAiUseApi.notice).mockResolvedValue({
+      staff_notice: "We count visits, never what you type.",
+      unapproved_site_action: "warn",
+    });
     renderAt("/tools");
 
     expect(await screen.findByRole("heading", { name: "AI tools" }, SLOW)).toBeInTheDocument();
     expect(await screen.findByRole("button", { name: "Send request" })).toBeInTheDocument();
+    expect(await screen.findByText("We count visits, never what you type.")).toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: /Welcome/ })).not.toBeInTheDocument();
   });
 });
