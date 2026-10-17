@@ -41,6 +41,7 @@ from app.services import (
     ai_system_inventory_service,
     ai_system_lifecycle_service,
     ai_tool_service,
+    ai_usage_service,
     change_service,
     communication_service,
     competence_service,
@@ -119,6 +120,8 @@ def _attention(
     improvements_overdue_count: int,
     ai_tool_requests_pending_count: int,
     ai_tools_review_overdue_count: int,
+    unapproved_ai_use_week_count: int,
+    dlp_matches_week_count: int,
 ) -> list[AttentionItem]:
     """Actionable items, grouped by area and most urgent first. Zero-count
     items are dropped so the panel only ever shows things that need doing."""
@@ -327,6 +330,20 @@ def _attention(
             group=INVENTORY_GROUP,
             label="Approved AI tools past their review date",
             count=ai_tools_review_overdue_count,
+            severity="warning",
+        ),
+        AttentionItem(
+            key="unapproved_ai_use_week",
+            group=INVENTORY_GROUP,
+            label="Visits to unapproved AI sites in the last 7 days",
+            count=unapproved_ai_use_week_count,
+            severity="warning",
+        ),
+        AttentionItem(
+            key="dlp_matches_week",
+            group=INVENTORY_GROUP,
+            label="Sensitive data stopped from going into AI tools in the last 7 days",
+            count=dlp_matches_week_count,
             severity="warning",
         ),
         AttentionItem(
@@ -658,6 +675,8 @@ def get_summary(db: Session, actor_id: int) -> DashboardSummary:
             improvements_overdue_count=improvement_service.overdue_count(db, today),
             ai_tool_requests_pending_count=ai_tool_service.pending_request_count(db),
             ai_tools_review_overdue_count=ai_tool_service.review_overdue_count(db, today),
+            unapproved_ai_use_week_count=ai_usage_service.week_counts(db, today)[0],
+            dlp_matches_week_count=ai_usage_service.week_counts(db, today)[1],
         ),
         matrix=risk_analytics_service.matrix_cells(all_risk_rows),
         criteria=risk_criteria_service.get_criteria(db),

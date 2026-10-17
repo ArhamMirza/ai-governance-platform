@@ -18,11 +18,13 @@ from app.services import (
     ai_system_inventory_service,
     ai_system_lifecycle_service,
     ai_tool_service,
+    ai_usage_service,
     change_service,
     communication_service,
     compliance_status_service,
     concern_service,
     corrective_action_service,
+    dlp_rule_service,
     improvement_service,
     internal_audit_service,
     management_review_service,
@@ -371,3 +373,36 @@ def test_seed_populates_the_ai_tool_register(db_session: Session) -> None:
     )
     assert status.status == "partial"
     assert [i.label for i in status.tagged_items if not i.current] == ["ChatGPT"]
+
+
+def test_seed_populates_the_ai_use_controls(db_session: Session) -> None:
+    seed(db_session)
+
+    settings = ai_usage_service.get_settings(db_session)
+    assert (settings.unapproved_site_action, settings.retention_days) == ("warn", 90)
+    assert "never sent to us" in settings.staff_notice
+    rules = {r.name: (r.kind, r.action) for r in dlp_rule_service.list_rules(db_session)}
+    assert rules == {
+        "Payment card numbers": ("builtin", "block"),
+        "Keys and access tokens": ("builtin", "block"),
+        "Pakistan CNIC numbers": ("builtin", "warn"),
+        "Client and project names": ("keywords", "warn"),
+        "Internal ticket numbers": ("regex", "monitor"),
+    }
+    summary = ai_usage_service.usage_summary(db_session, 30)
+    assert {t.event_type: t.count for t in summary.by_type} == {
+        "unapproved_site": 16,
+        "blocked_site": 2,
+        "dlp_match": 4,
+    }
+    assert [u.user_ref for u in summary.by_user][0] == "elena@example.com"
+    # The enrollment key is a deployment secret, so it is not seeded.
+    assert not settings.enrollment_key_hash
+    status = next(
+        row
+        for row in compliance_status_service.get_status(db_session, "iso_42001")
+        if row.code == "A.9.2"
+    )
+    controls = next(i for i in status.tagged_items if i.label == "AI use controls")
+    assert controls.current
+    assert controls.detail == "5 rule(s) on; staff notice published"

@@ -14,12 +14,14 @@ from app.core.exceptions import (
 )
 from app.dependencies import get_current_user, get_internal_user
 from app.routers import (
+    agent,
     ai_assist,
     ai_incidents,
     ai_roles,
     ai_system_inventory,
     ai_system_lifecycle,
     ai_tools,
+    ai_use,
     assistant,
     audit_log,
     auth,
@@ -31,6 +33,7 @@ from app.routers import (
     corrective_actions,
     dashboard,
     data_inventory,
+    dlp_rules,
     eu_ai_act,
     evidence,
     folders,
@@ -162,4 +165,9 @@ app.include_router(changes.router, prefix="/api/v1", dependencies=_protected)
 app.include_router(concerns.router, prefix="/api/v1", dependencies=_protected)
 app.include_router(improvements.router, prefix="/api/v1", dependencies=_protected)
 app.include_router(ai_tools.router, prefix="/api/v1", dependencies=_protected)
+app.include_router(ai_use.router, prefix="/api/v1", dependencies=_protected)
+app.include_router(dlp_rules.router, prefix="/api/v1", dependencies=_protected)
+# The browser extension has no session: its routes take the enrollment key instead
+# (dependencies.require_agent_key), not the signed-in-user rule above.
+app.include_router(agent.router, prefix="/api/v1")
 app.include_router(communications.router, prefix="/api/v1", dependencies=_protected)

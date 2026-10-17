@@ -5,7 +5,7 @@ from app.core.database import get_db
 from app.core.exceptions import AuthenticationError, AuthorizationError
 from app.core.permissions import Action, has_permission
 from app.models.user import User, UserRole
-from app.services import auth_service
+from app.services import ai_usage_service, auth_service
 
 SESSION_COOKIE_NAME = "session_token"
 
@@ -41,6 +41,16 @@ def require_concern_handler(user: User = Depends(get_internal_user)) -> User:
     if user.role != UserRole.ADMIN:
         raise AuthorizationError("Only administrators can handle concerns.")
     return user
+
+
+def require_agent_key(request: Request, db: Session = Depends(get_db)) -> None:
+    """For the browser extension's routes: the organization's enrollment key,
+    sent as `Authorization: Bearer <key>`. A session is neither needed nor
+    accepted -- these routes are not part of the signed-in app."""
+    header = request.headers.get("authorization", "")
+    presented = header[7:].strip() if header.lower().startswith("bearer ") else None
+    caller = request.client.host if request.client else "unknown"
+    ai_usage_service.authenticate_agent(db, presented, caller)
 
 
 def _require(action: Action):

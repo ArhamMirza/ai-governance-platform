@@ -34,6 +34,7 @@ from enum import StrEnum
 from sqlalchemy.orm import Session
 
 from app.core import review_cadence
+from app.models.ai_dlp import AIUseSettings
 from app.models.ai_incident import AIIncident
 from app.models.ai_objective import AIObjective
 from app.models.ai_tool import AITool, AIToolStatus
@@ -79,6 +80,7 @@ from app.services import (
     competence_service,
     concern_service,
     corrective_action_service,
+    dlp_rule_service,
     eu_ai_act_service,
     improvement_service,
     internal_audit_service,
@@ -401,6 +403,22 @@ def _resolve_ai_tool(db: Session, entity_id: int, today: date) -> _Resolved | No
     )
 
 
+def _resolve_ai_use_controls(db: Session, entity_id: int, today: date) -> _Resolved | None:
+    """The controls on staff use of AI tools (A.9.2): in place once staff have
+    been told what is monitored and at least one data-loss-prevention rule is
+    switched on."""
+    record = db.get(AIUseSettings, entity_id)
+    if record is None:
+        return None
+    label = "AI use controls"
+    if not (record.staff_notice or "").strip():
+        return _Resolved(label, False, "Staff haven't been told what is monitored")
+    active = [rule for rule in dlp_rule_service.list_rules(db) if rule.enabled]
+    if not active:
+        return _Resolved(label, False, "No data-loss-prevention rule is switched on")
+    return _Resolved(label, True, f"{len(active)} rule(s) on; staff notice published")
+
+
 def _resolve_improvement(db: Session, entity_id: int, today: date) -> _Resolved | None:
     """An opportunity for improvement (10.1): current unless it's open past
     its target date. A declined one still counts -- deciding not to go ahead,
@@ -500,6 +518,7 @@ _RESOLVERS = {
     "ConcernSettings": _resolve_concern_settings,
     "Improvement": _resolve_improvement,
     "AITool": _resolve_ai_tool,
+    "AIUseSettings": _resolve_ai_use_controls,
 }
 
 
