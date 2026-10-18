@@ -28,7 +28,7 @@ function renderAt(path: string) {
     email: "elena@example.com",
     role: "employee",
     is_active: true,
-    created_at: "2026-01-01T00:00:00Z", must_change_password: false,
+    created_at: "2026-01-01T00:00:00Z", must_change_password: false, mfa_enabled: false, mfa_setup_required: false,
   });
   vi.mocked(staffApi.library).mockResolvedValue([]);
   return render(

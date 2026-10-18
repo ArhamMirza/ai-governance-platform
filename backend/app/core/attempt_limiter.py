@@ -33,6 +33,9 @@ class AttemptLimiter:
             self._failures.pop(key, None)
         return attempts
 
+    def failure_count(self, key: str, now: datetime | None = None) -> int:
+        return len(self._recent(key, now or datetime.now(UTC)))
+
     def check(self, key: str, now: datetime | None = None) -> None:
         """Raises RateLimitedError once the key has failed too often recently."""
         reference = now or datetime.now(UTC)

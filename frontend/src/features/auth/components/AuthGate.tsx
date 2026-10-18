@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 
 import { useCurrentUser, useLogout, useRegistrationStatus } from "../hooks";
 import { ChangePasswordForm } from "./ChangePasswordForm";
+import { TwoStepSetup } from "./TwoStepSetup";
 import { LoginForm } from "./LoginForm";
 import { RegisterForm } from "./RegisterForm";
 
@@ -20,6 +21,31 @@ function ForcedPasswordChange() {
       <div className="auth-form-panel">
         <div className="auth-card">
           <ChangePasswordForm forced />
+          <button type="button" onClick={() => logout.mutate()} disabled={logout.isPending}>
+            Sign out
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** Shown instead of the app while the organization requires two-step sign-in
+ * of this administrator and it isn't on yet. The server enforces it too. */
+function ForcedTwoStepSetup() {
+  const logout = useLogout();
+  return (
+    <div className="auth-screen">
+      <div className="auth-form-panel">
+        <div className="auth-card">
+          <div className="auth-form">
+            <h1>Set up two-step sign-in</h1>
+            <p>
+              Your organization requires two-step sign-in for administrators. Set it up to
+              continue.
+            </p>
+            <TwoStepSetup />
+          </div>
           <button type="button" onClick={() => logout.mutate()} disabled={logout.isPending}>
             Sign out
           </button>
@@ -55,6 +81,10 @@ export function AuthGate({ children }: { children: ReactNode }) {
 
   if (isSuccess && user?.must_change_password) {
     return <ForcedPasswordChange />;
+  }
+
+  if (isSuccess && user?.mfa_setup_required) {
+    return <ForcedTwoStepSetup />;
   }
 
   if (isSuccess && user) {

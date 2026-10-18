@@ -3,6 +3,7 @@ import type {
   CreateUserInput,
   DirectoryUser,
   ManagedUser,
+  SecuritySettings,
   TemporaryPassword,
   UpdateUserInput,
   UserAccountabilities,
@@ -15,6 +16,12 @@ export const usersApi = {
     httpClient.patch<ManagedUser>(`/users/${id}`, data),
   resetPassword: (id: number) =>
     httpClient.post<TemporaryPassword>(`/users/${id}/reset-password`),
+  resetTwoStep: (id: number) => httpClient.post<ManagedUser>(`/users/${id}/reset-two-step`),
+  securitySettings: () => httpClient.get<SecuritySettings>("/security/settings"),
+  updateSecuritySettings: (requireForAdmins: boolean) =>
+    httpClient.put<SecuritySettings>("/security/settings", {
+      require_mfa_for_admins: requireForAdmins,
+    }),
   directory: () => httpClient.get<DirectoryUser[]>("/users/directory"),
   accountabilities: (id: number) =>
     httpClient.get<UserAccountabilities>(`/users/${id}/accountabilities`),

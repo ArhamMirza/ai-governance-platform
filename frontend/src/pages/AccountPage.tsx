@@ -1,4 +1,5 @@
 import { ChangePasswordForm } from "../features/auth/components/ChangePasswordForm";
+import { TwoStepPanel } from "../features/auth/components/TwoStepPanel";
 import { useCurrentUser, useSignOutEverywhere } from "../features/auth/hooks";
 
 /** Your own account: who you're signed in as, your password, and a way to
@@ -17,6 +18,8 @@ export function AccountPage() {
       </div>
 
       <ChangePasswordForm />
+
+      <TwoStepPanel />
 
       <h2>Signed in on other devices</h2>
       <p>

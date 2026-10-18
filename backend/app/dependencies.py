@@ -6,9 +6,10 @@ from app.core.database import get_db
 from app.core.exceptions import AuthenticationError, AuthorizationError
 from app.core.permissions import Action, has_permission
 from app.models.user import User, UserRole
-from app.services import ai_usage_service, auth_service
+from app.services import ai_usage_service, auth_service, mfa_service
 
 PASSWORD_CHANGE_REQUIRED = "You need to choose a new password before you can continue."
+MFA_SETUP_REQUIRED = "Your organization requires two-step sign-in. Set it up to continue."
 
 
 def session_cookie_name() -> str:
@@ -27,9 +28,13 @@ def get_session_user(request: Request, db: Session = Depends(get_db)) -> User:
     return user
 
 
-def get_current_user(user: User = Depends(get_session_user)) -> User:
+def get_current_user(
+    user: User = Depends(get_session_user), db: Session = Depends(get_db)
+) -> User:
     if user.must_change_password:
         raise AuthorizationError(PASSWORD_CHANGE_REQUIRED)
+    if mfa_service.setup_required(db, user):
+        raise AuthorizationError(MFA_SETUP_REQUIRED)
     return user
 
 

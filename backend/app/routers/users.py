@@ -12,7 +12,7 @@ from app.schemas.user import (
     UserDirectoryEntry,
     UserUpdate,
 )
-from app.services import governance_role_service, user_service
+from app.services import governance_role_service, mfa_service, user_service
 
 router = APIRouter(prefix="/users", tags=["users"])
 
@@ -70,6 +70,18 @@ def reset_password(
     """Sets a one-time password, shown here once, and signs the person out
     everywhere. They must choose their own at their next sign-in."""
     return TemporaryPassword(temporary_password=user_service.reset_password(db, user_id, actor.id))
+
+
+@router.post("/{user_id}/reset-two-step", response_model=UserRead)
+def reset_two_step(
+    user_id: int,
+    db: Session = Depends(get_db),
+    actor: User = Depends(require_manage_users_user),
+) -> UserRead:
+    """For someone who has lost their phone and their recovery codes. Signs
+    them out everywhere; if the organization requires two-step sign-in they
+    must set it up again before doing anything else."""
+    return mfa_service.admin_reset(db, user_id, actor.id)
 
 
 @router.patch("/{user_id}", response_model=UserRead)

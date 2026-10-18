@@ -2,7 +2,15 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { ApiError } from "../../shared/api/httpClient";
 import { authApi } from "./api";
-import type { AuthUser, ChangePasswordInput, LoginInput, RegisterInput } from "./types";
+import {
+  type AuthUser,
+  type ChangePasswordInput,
+  type LoginInput,
+  type RegisterInput,
+  type TwoStepLoginInput,
+  type TwoStepProof,
+  isMfaChallenge,
+} from "./types";
 
 export const currentUserKey = ["auth", "me"] as const;
 
@@ -53,8 +61,71 @@ export function useLogin() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (data: LoginInput) => authApi.login(data),
+    onSuccess: (result) => {
+      // An account with two-step sign-in gets only a ticket here; the session
+      // (and so the signed-in user) comes from the second step.
+      if (!isMfaChallenge(result)) queryClient.setQueryData(currentUserKey, result);
+    },
+  });
+}
+
+export function useLoginTwoStep() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: TwoStepLoginInput) => authApi.loginTwoStep(data),
     onSuccess: (user) => {
       queryClient.setQueryData(currentUserKey, user);
+    },
+  });
+}
+
+const twoStepKey = ["auth", "two-step"] as const;
+
+export function useTwoStepStatus() {
+  return useQuery({ queryKey: twoStepKey, queryFn: authApi.twoStepStatus });
+}
+
+/** Asks for a new secret. Nothing is cached: it is shown once, on the screen
+ * that asked for it. */
+export function useStartTwoStepSetup() {
+  return useMutation({ mutationFn: authApi.startTwoStepSetup });
+}
+
+/** Turns it on. Deliberately does not refresh the account on success: that
+ * would flip the screen to "on" (or, for a required set-up, into the app) and
+ * discard the recovery codes it is about to show. The set-up flow calls
+ * useRefreshAccount once they are saved. */
+export function useConfirmTwoStep() {
+  return useMutation({ mutationFn: (code: string) => authApi.confirmTwoStep(code) });
+}
+
+/** Re-reads who is signed in and their two-step status. */
+export function useRefreshAccount() {
+  const queryClient = useQueryClient();
+  return () =>
+    Promise.all([
+      queryClient.invalidateQueries({ queryKey: currentUserKey }),
+      queryClient.invalidateQueries({ queryKey: twoStepKey }),
+    ]);
+}
+
+export function useDisableTwoStep() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: TwoStepProof) => authApi.disableTwoStep(data),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: currentUserKey });
+      void queryClient.invalidateQueries({ queryKey: twoStepKey });
+    },
+  });
+}
+
+export function useNewRecoveryCodes() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: TwoStepProof) => authApi.newRecoveryCodes(data),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: twoStepKey });
     },
   });
 }

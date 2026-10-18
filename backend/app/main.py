@@ -64,6 +64,7 @@ from app.routers import (
     risk_assessments,
     risk_criteria,
     risk_item_suggestions,
+    security,
     staff_portal,
     suppliers,
     users,
@@ -189,6 +190,7 @@ app.include_router(framework_mapping.router, prefix="/api/v1", dependencies=_pro
 app.include_router(framework_soa.router, prefix="/api/v1", dependencies=_protected)
 app.include_router(compliance_status.router, prefix="/api/v1", dependencies=_protected)
 app.include_router(users.router, prefix="/api/v1", dependencies=_protected)
+app.include_router(security.router, prefix="/api/v1", dependencies=_protected)
 app.include_router(governance_roles.router, prefix="/api/v1", dependencies=_protected)
 app.include_router(ai_assist.router, prefix="/api/v1", dependencies=_protected)
 app.include_router(assistant.router, prefix="/api/v1", dependencies=_protected)

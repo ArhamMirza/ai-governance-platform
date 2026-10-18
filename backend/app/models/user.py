@@ -3,7 +3,7 @@ from enum import StrEnum
 
 from sqlalchemy import Boolean, DateTime, String
 from sqlalchemy import false as sa_false
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
 
@@ -41,6 +41,12 @@ class User(Base):
     password_changed_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
+    # Their authenticator app, if they have started setting one up (app.models.mfa).
+    mfa = relationship("UserMFA", uselist=False, lazy="joined", cascade="all, delete-orphan")
+
+    @property
+    def mfa_enabled(self) -> bool:
+        return self.mfa is not None and self.mfa.confirmed
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(UTC)
     )

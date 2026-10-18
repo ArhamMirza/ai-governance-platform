@@ -2,6 +2,7 @@ import { useState } from "react";
 
 import { useCurrentUser } from "../features/auth/hooks";
 import { hasPermission } from "../features/auth/permissions";
+import { SecuritySettingsPanel } from "../features/users/components/SecuritySettingsPanel";
 import { UserForm } from "../features/users/components/UserForm";
 import { UsersList } from "../features/users/components/UsersList";
 
@@ -30,6 +31,8 @@ export function UsersPage() {
         </button>
       </div>
       {showForm && <UserForm onCreated={() => setShowForm(false)} />}
+
+      <SecuritySettingsPanel />
 
       <UsersList />
     </section>

@@ -11,7 +11,7 @@ from datetime import UTC, datetime, timedelta
 
 from sqlalchemy.orm import Session as DbSession
 
-from app.core import password_policy, setup_code
+from app.core import mfa_ticket, password_policy, setup_code
 from app.core.attempt_limiter import AttemptLimiter
 from app.core.exceptions import (
     AuthenticationError,
@@ -29,7 +29,8 @@ from app.models.session import Session as UserSession
 from app.models.user import User
 from app.repositories import password_history_repository, session_repository, user_repository
 from app.schemas.auth import ChangePasswordRequest, LoginRequest, RegisterRequest
-from app.services import audit_service
+from app.schemas.mfa import MfaLogin
+from app.services import audit_service, mfa_service
 
 ENTITY_TYPE = "User"
 SESSION_LIFETIME = timedelta(days=14)
@@ -78,6 +79,7 @@ def reset_rate_limits() -> None:
     _login_attempts_by_address.reset()
     _password_change_attempts.reset()
     _setup_code_attempts.reset()
+    mfa_service.reset_rate_limits()
 
 
 def _recent_failures(email: str, now: datetime) -> list[datetime]:
@@ -175,8 +177,46 @@ def authenticate(db: DbSession, data: LoginRequest, ip: str | None = None) -> Us
     ):
         user.must_change_password = True
         user = user_repository.save(db, user)
-    _audit(db, user.id, "login", user.id, {"ip": ip})
     return user
+
+
+def record_login(
+    db: DbSession, user: User, ip: str | None, second_factor: str | None = None
+) -> None:
+    """Written once the person is actually in: after the password, and after
+    the code too when the account has two-step sign-in."""
+    diff: dict = {"ip": ip}
+    if second_factor is not None:
+        diff["second_factor"] = second_factor
+    _audit(db, user.id, "login", user.id, diff)
+
+
+_SIGN_IN_EXPIRED = "Your sign-in took too long or is no longer valid. Enter your password again."
+
+
+def complete_two_step(db: DbSession, data: MfaLogin, ip: str | None) -> tuple[User, str]:
+    """The second step: the ticket from a correct password, and a code. Returns
+    the person and which kind of code was used."""
+    if ip is not None:
+        _login_attempts_by_address.check(ip)
+    ticket = mfa_ticket.read(data.ticket)
+    user = user_repository.get(db, ticket.user_id) if ticket is not None else None
+    if (
+        ticket is None
+        or user is None
+        or not user.is_active
+        or not user.mfa_enabled
+        or mfa_ticket.fingerprint(user.password_hash) != ticket.password_fingerprint
+    ):
+        raise AuthenticationError(_SIGN_IN_EXPIRED)
+    try:
+        method = mfa_service.verify_for_login(db, user, data.code, ip)
+    except AuthenticationError:
+        if ip is not None:
+            _login_attempts_by_address.record_failure(ip)
+        raise
+    session_repository.delete_expired(db, _utc_now_naive())
+    return user, method
 
 
 def create_session(db: DbSession, user: User) -> str:

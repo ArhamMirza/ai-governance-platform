@@ -3,7 +3,13 @@ import { useState } from "react";
 import { ConfirmDialog } from "../../../shared/components/ConfirmDialog";
 import { readError } from "../../../shared/api/readError";
 import { useCurrentUser } from "../../auth/hooks";
-import { useResetPassword, useUpdateUser, useUserAccountabilities, useUsers } from "../hooks";
+import {
+  useResetPassword,
+  useResetTwoStep,
+  useUpdateUser,
+  useUserAccountabilities,
+  useUsers,
+} from "../hooks";
 import type { ManagedUser, UserAccountabilities } from "../types";
 
 const ROLE_LABELS: Record<string, string> = {
@@ -37,9 +43,11 @@ export function UsersList() {
   const { data: me } = useCurrentUser();
   const updateUser = useUpdateUser();
   const resetPassword = useResetPassword();
+  const resetTwoStep = useResetTwoStep();
   const [error, setError] = useState<string | null>(null);
   const [confirmingDeactivation, setConfirmingDeactivation] = useState<ManagedUser | null>(null);
   const [confirmingReset, setConfirmingReset] = useState<ManagedUser | null>(null);
+  const [confirmingTwoStepReset, setConfirmingTwoStepReset] = useState<ManagedUser | null>(null);
   // Held in state only for as long as the dialog is open: it is shown once and
   // not kept anywhere after that.
   const [issued, setIssued] = useState<{ user: ManagedUser; password: string } | null>(null);
@@ -69,6 +77,16 @@ export function UsersList() {
     }
   };
 
+  const handleTwoStepReset = async (target: ManagedUser) => {
+    setError(null);
+    try {
+      await resetTwoStep.mutateAsync(target.id);
+      setConfirmingTwoStepReset(null);
+    } catch (err) {
+      setError(readError(err, "Failed to reset two-step sign-in"));
+    }
+  };
+
   const handleReset = async (target: ManagedUser) => {
     setError(null);
     try {
@@ -84,7 +102,9 @@ export function UsersList() {
     <div>
       {/* While the dialog is open it shows the error itself -- rendering it
           here too would duplicate it, and behind the modal backdrop. */}
-      {error && !confirmingDeactivation && !confirmingReset && <p role="alert">{error}</p>}
+      {error && !confirmingDeactivation && !confirmingReset && !confirmingTwoStepReset && (
+        <p role="alert">{error}</p>
+      )}
       <table>
         <thead>
           <tr>
@@ -92,6 +112,7 @@ export function UsersList() {
             <th>Email</th>
             <th>Role</th>
             <th>Status</th>
+            <th>Two-step</th>
             <th>Actions</th>
           </tr>
         </thead>
@@ -128,6 +149,14 @@ export function UsersList() {
                   </span>
                 </td>
                 <td>
+                  <span
+                    className="status-badge"
+                    data-status={user.mfa_enabled ? "approved" : "retired"}
+                  >
+                    {user.mfa_enabled ? "On" : "Off"}
+                  </span>
+                </td>
+                <td>
                   {!isSelf && (
                     <>
                       <button
@@ -140,6 +169,15 @@ export function UsersList() {
                       >
                         {user.is_active ? "Deactivate" : "Reactivate"}
                       </button>
+                      {user.mfa_enabled && (
+                        <button
+                          aria-label={`Reset two-step sign-in for ${user.name}`}
+                          onClick={() => setConfirmingTwoStepReset(user)}
+                          disabled={resetTwoStep.isPending}
+                        >
+                          Reset two-step
+                        </button>
+                      )}
                       {user.is_active && (
                         <button
                           aria-label={`Reset password for ${user.name}`}
@@ -157,6 +195,19 @@ export function UsersList() {
           })}
         </tbody>
       </table>
+
+      {confirmingTwoStepReset && (
+        <ConfirmDialog
+          title={`Reset two-step sign-in for ${confirmingTwoStepReset.name}?`}
+          message="Use this when they have lost their phone and their recovery codes. They are signed out everywhere, and can then sign in with just their password. If your organization requires two-step sign-in for administrators, an administrator must set it up again before doing anything else."
+          confirmLabel="Reset two-step"
+          pendingLabel="Resetting..."
+          isPending={resetTwoStep.isPending}
+          error={error}
+          onConfirm={() => handleTwoStepReset(confirmingTwoStepReset)}
+          onCancel={() => setConfirmingTwoStepReset(null)}
+        />
+      )}
 
       {confirmingReset && (
         <ConfirmDialog

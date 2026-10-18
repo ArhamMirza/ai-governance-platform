@@ -30,6 +30,11 @@ class UserRead(BaseModel):
     # True until the person chooses a password of their own; the app then
     # shows only the change-password screen.
     must_change_password: bool = False
+    # Whether two-step sign-in is on for this account, and whether the
+    # organization requires it of them and it isn't yet (the app then shows
+    # only the set-up screen).
+    mfa_enabled: bool = False
+    mfa_setup_required: bool = False
 
 
 class ChangePasswordRequest(BaseModel):
