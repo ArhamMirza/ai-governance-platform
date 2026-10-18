@@ -1,0 +1,45 @@
+# One address for the app and the API, over https, with the protective headers.
+#
+# Build the frontend with the API on the same address:
+#   cd frontend && VITE_API_BASE_URL=/api/v1 npm run build
+# and copy frontend/dist to /srv/governance/dist.
+#
+# Caddy gets and renews the certificate for the name below by itself.
+# Replace governance.example.com with your own address.
+
+governance.example.com {
+	encode gzip
+
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		-Server
+	}
+
+	# The API. It sets its own protective headers (including a policy that
+	# makes downloaded files inert), so none are added here. `header_up` hands
+	# the real client address on, so the sign-in limits count each person's own
+	# address rather than the proxy's.
+	handle /api/* {
+		reverse_proxy 127.0.0.1:8000 {
+			header_up X-Forwarded-For {remote_host}
+		}
+	}
+
+	# The app. Any other address is the single-page app's own route.
+	handle {
+		header {
+			# Scripts only from this site (the built page has no inline scripts;
+			# CI checks that). Styles also allow inline, which the app's
+			# components use, and the Google Fonts stylesheet and files.
+			# Everything else is refused.
+			Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
+			X-Content-Type-Options "nosniff"
+			X-Frame-Options "DENY"
+			Referrer-Policy "no-referrer"
+			Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=(), usb=()"
+		}
+		root * /srv/governance/dist
+		try_files {path} /index.html
+		file_server
+	}
+}

@@ -61,7 +61,7 @@ describe("App", () => {
 
   it("shows a sign-in form when not authenticated", async () => {
     vi.mocked(authApi.me).mockRejectedValue(new Error("Not authenticated"));
-    vi.mocked(authApi.registrationStatus).mockResolvedValue({ registration_open: false });
+    vi.mocked(authApi.registrationStatus).mockResolvedValue({ registration_open: false, setup_code_required: false });
 
     render(<App />);
 
@@ -72,7 +72,7 @@ describe("App", () => {
 
   it("shows the registration form on first run", async () => {
     vi.mocked(authApi.me).mockRejectedValue(new Error("Not authenticated"));
-    vi.mocked(authApi.registrationStatus).mockResolvedValue({ registration_open: true });
+    vi.mocked(authApi.registrationStatus).mockResolvedValue({ registration_open: true, setup_code_required: false });
 
     render(<App />);
 

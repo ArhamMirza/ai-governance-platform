@@ -10,21 +10,37 @@ const registerFormSchema = z.object({
   name: z.string().min(1, "Name is required"),
   email: z.string().min(3, "Email is required"),
   password: z.string().min(MIN_PASSWORD_LENGTH, PASSWORD_TOO_SHORT),
+  setup_code: z.string().optional(),
 });
 
 type RegisterFormValues = z.infer<typeof registerFormSchema>;
 
-export function RegisterForm() {
+interface RegisterFormProps {
+  /** Shown only on a real deployment, where the server prints a code at startup. */
+  setupCodeRequired?: boolean;
+}
+
+export function RegisterForm({ setupCodeRequired = false }: RegisterFormProps) {
   const register = useRegister();
   const {
     register: field,
     handleSubmit,
+    setError,
     formState: { errors },
   } = useForm<RegisterFormValues>({ resolver: zodResolver(registerFormSchema) });
 
   const onSubmit = handleSubmit(async (values) => {
+    if (setupCodeRequired && !values.setup_code?.trim()) {
+      setError("setup_code", { message: "Enter the setup code from the server's log" });
+      return;
+    }
     try {
-      await register.mutateAsync(values);
+      await register.mutateAsync({
+        name: values.name,
+        email: values.email,
+        password: values.password,
+        ...(setupCodeRequired ? { setup_code: values.setup_code?.trim() } : {}),
+      });
     } catch {
       // Surfaced below via register.error
     }
@@ -59,6 +75,23 @@ export function RegisterForm() {
         </p>
         {errors.password && <p role="alert">{errors.password.message}</p>}
       </div>
+
+      {setupCodeRequired && (
+        <div>
+          <label htmlFor="register-setup-code">Setup code</label>
+          <input
+            id="register-setup-code"
+            autoComplete="off"
+            spellCheck={false}
+            aria-describedby="register-setup-code-hint"
+            {...field("setup_code")}
+          />
+          <p id="register-setup-code-hint" className="field-hint">
+            Printed in the server's log when it started, or the SETUP_CODE you configured.
+          </p>
+          {errors.setup_code && <p role="alert">{errors.setup_code.message}</p>}
+        </div>
+      )}
 
       {register.isError && <p role="alert">{readError(register.error, "Registration failed")}</p>}
 

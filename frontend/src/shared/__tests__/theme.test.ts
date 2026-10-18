@@ -5,10 +5,11 @@ import { describe, expect, it } from "vitest";
 // ["vite/client"] only), and reading it through Vite keeps the test inside
 // the same bundler-aware toolchain the app itself runs on.
 import html from "../../../index.html?raw";
+import script from "../../../public/theme-init.js?raw";
 import { isThemePreference, THEME_STORAGE_KEY } from "../theme";
 
 /**
- * index.html carries a pre-paint inline script that has to agree with this
+ * public/theme-init.js (loaded by index.html) is a pre-paint script that has to agree with this
  * module on the storage key and the two persisted preference values ("light"
  * and "dark" -- "system" is never written, see storeTheme) -- it runs before
  * any bundle loads, so it can't import theme.ts and has to duplicate that
@@ -21,9 +22,14 @@ import { isThemePreference, THEME_STORAGE_KEY } from "../theme";
  * recognising a stored preference and the flash-of-wrong-theme it exists to
  * prevent would come back for whichever value it no longer matches.
  */
-describe("the pre-paint script in index.html", () => {
+describe("the pre-paint script (public/theme-init.js)", () => {
+  it("is loaded from the page as a file, ahead of everything else", () => {
+    expect(html).toContain('<script src="/theme-init.js"></script>');
+    expect(html.indexOf("/theme-init.js")).toBeLessThan(html.indexOf("/src/main.tsx"));
+  });
+
   it("reads the same storage key theme.ts writes", () => {
-    expect(html).toContain(`localStorage.getItem("${THEME_STORAGE_KEY}")`);
+    expect(script).toContain(`localStorage.getItem("${THEME_STORAGE_KEY}")`);
   });
 
   it("recognises exactly the preferences theme.ts actually persists", () => {
@@ -32,11 +38,11 @@ describe("the pre-paint script in index.html", () => {
     );
 
     for (const value of persisted) {
-      expect(html).toContain(`"${value}"`);
+      expect(script).toContain(`"${value}"`);
     }
     // "system" is never written to storage (storeTheme removes the key
     // instead) -- if the script started checking for it as a stored value,
     // that would itself be a sign the two have drifted apart.
-    expect(html).not.toMatch(/t === "system"/);
+    expect(script).not.toMatch(/t === "system"/);
   });
 });

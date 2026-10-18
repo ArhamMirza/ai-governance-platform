@@ -52,3 +52,30 @@ def test_local_development_still_runs_with_cookie_secure_false() -> None:
 
     assert settings.cookie_secure is False
     assert settings.is_real_deployment is False
+
+
+# ---------- origins, cookie name, setup code ----------
+
+
+@pytest.mark.parametrize("origins", ["*", "https://*.example.com", "http://a.example,*"])
+def test_a_wildcard_origin_is_refused(origins: str) -> None:
+    with pytest.raises(PydanticValidationError) as caught:
+        Settings(cors_origins=origins)
+
+    assert "CORS_ORIGINS" in str(caught.value)
+
+
+def test_named_origins_are_accepted() -> None:
+    settings = Settings(cors_origins="https://a.example.com, https://b.example.com")
+
+    assert settings.cors_origin_list == ["https://a.example.com", "https://b.example.com"]
+
+
+def test_the_cookie_gets_the_host_prefix_exactly_when_it_is_secure() -> None:
+    assert Settings(cookie_secure=True).session_cookie_name == "__Host-session"
+    assert Settings(cookie_secure=False).session_cookie_name == "session_token"
+
+
+def test_the_setup_code_is_optional() -> None:
+    assert Settings().setup_code is None
+    assert Settings(setup_code="abc").setup_code == "abc"

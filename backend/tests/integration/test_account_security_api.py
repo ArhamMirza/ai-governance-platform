@@ -92,7 +92,8 @@ def test_registration_refuses_a_weak_password(unauthenticated_client: TestClient
     assert response.status_code == 400
     assert "common" in response.json()["detail"]
     assert unauthenticated_client.get(f"{API}/auth/registration-status").json() == {
-        "registration_open": True
+        "registration_open": True,
+        "setup_code_required": False,
     }
 
 

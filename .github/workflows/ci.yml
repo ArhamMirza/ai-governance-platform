@@ -66,6 +66,9 @@ jobs:
       - name: Build
         run: npm run build
 
+      - name: Built page works under a strict Content-Security-Policy
+        run: node scripts/csp-check.mjs dist/index.html
+
   extension:
     runs-on: ubuntu-latest
     defaults:

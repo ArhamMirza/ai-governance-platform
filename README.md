@@ -96,6 +96,27 @@ The platform can also govern what employees do with AI, not only document it:
 - **Audit trail.** Sign-ins, failed sign-ins, lockouts, sign-outs, password changes and
   resets are recorded against the account (with the address), in the audit log.
 
+### Hardening for a real deployment
+
+With `ENVIRONMENT=production` (or `staging`) the platform is stricter, and
+[deploy/](deploy/README.md) has the proxy configuration to go with it:
+
+- **First account needs a setup code**, printed in the server's log at startup (or set
+  as `SETUP_CODE`), so whoever reaches a new server first can't claim it.
+- **Every response carries protective headers**: `nosniff`, `X-Frame-Options: DENY`,
+  `Referrer-Policy`, `Permissions-Policy`, a policy that makes downloaded files inert,
+  `Cache-Control: no-store`, and HSTS when cookies are secure.
+- **The session cookie** is `HttpOnly`, `SameSite=Strict`, and (over https) carries the
+  browser-enforced `__Host-` prefix.
+- **Cross-site requests are refused**: a state-changing request carrying the session
+  cookie from another website's origin gets a 403, on top of SameSite and CORS.
+- **CORS** allows only the listed origins (a wildcard is refused at startup), and only
+  the methods and headers the app uses.
+- **The API docs are switched off**, and the demo-data loader refuses to run unless
+  told `--allow-production`.
+- The built frontend works under a strict Content-Security-Policy (no inline scripts);
+  CI checks the built page.
+
 ## Git Workflow
 
 - `main` is protected and always kept working — changes land via Pull Request,

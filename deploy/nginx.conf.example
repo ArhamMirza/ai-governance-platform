@@ -1,0 +1,56 @@
+# One address for the app and the API, over https, with the protective headers.
+#
+# Build the frontend with the API on the same address:
+#   cd frontend && VITE_API_BASE_URL=/api/v1 npm run build
+# and copy frontend/dist to /srv/governance/dist.
+#
+# Replace governance.example.com and the certificate paths with your own.
+
+server {
+    listen 80;
+    server_name governance.example.com;
+    return 301 https://$host$request_uri;
+}
+
+server {
+    listen 443 ssl;
+    http2 on;
+    server_name governance.example.com;
+
+    ssl_certificate     /etc/letsencrypt/live/governance.example.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/governance.example.com/privkey.pem;
+    ssl_protocols       TLSv1.2 TLSv1.3;
+
+    server_tokens off;
+
+    # The API. It sets its own protective headers (including a policy that
+    # makes downloaded files inert), so only HSTS is added here. The real
+    # client address is handed on, so the sign-in limits count each person's
+    # own address rather than the proxy's.
+    location /api/ {
+        add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+        proxy_pass http://127.0.0.1:8000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $remote_addr;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        client_max_body_size 30m;   # the app accepts uploads up to 25 MB
+    }
+
+    # The app. Any other address is the single-page app's own route.
+    # (`always` so the headers are also sent on error responses.)
+    location / {
+        root /srv/governance/dist;
+        try_files $uri /index.html;
+
+        # Scripts only from this site (the built page has no inline scripts; CI
+        # checks that). Styles also allow inline, which the app's components
+        # use, and the Google Fonts stylesheet and files. Everything else is
+        # refused.
+        add_header Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'" always;
+        add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+        add_header X-Content-Type-Options "nosniff" always;
+        add_header X-Frame-Options "DENY" always;
+        add_header Referrer-Policy "no-referrer" always;
+        add_header Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=(), usb=()" always;
+    }
+}

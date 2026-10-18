@@ -112,7 +112,11 @@ export function AuthGate({ children }: { children: ReactNode }) {
           </div>
 
           {isSetup && <span className="auth-eyebrow">One-time setup</span>}
-          {isSetup ? <RegisterForm /> : <LoginForm />}
+          {isSetup ? (
+            <RegisterForm setupCodeRequired={registrationStatus?.setup_code_required === true} />
+          ) : (
+            <LoginForm />
+          )}
         </div>
       </div>
     </div>

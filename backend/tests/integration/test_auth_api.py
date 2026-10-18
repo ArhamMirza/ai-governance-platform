@@ -5,7 +5,7 @@ def test_registration_open_before_any_user_exists(unauthenticated_client: TestCl
     response = unauthenticated_client.get("/api/v1/auth/registration-status")
 
     assert response.status_code == 200
-    assert response.json() == {"registration_open": True}
+    assert response.json() == {"registration_open": True, "setup_code_required": False}
 
 
 def test_register_sets_a_session_cookie_and_returns_the_user(
@@ -31,7 +31,7 @@ def test_registration_closes_after_the_first_user(unauthenticated_client: TestCl
     )
 
     status = unauthenticated_client.get("/api/v1/auth/registration-status")
-    assert status.json() == {"registration_open": False}
+    assert status.json() == {"registration_open": False, "setup_code_required": False}
 
     second = unauthenticated_client.post(
         "/api/v1/auth/register",
