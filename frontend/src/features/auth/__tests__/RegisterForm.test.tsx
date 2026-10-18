@@ -75,4 +75,69 @@ describe("RegisterForm", () => {
       );
     });
   });
+
+  describe("setup code", () => {
+    function mockRegister() {
+      const mutateAsync = vi.fn().mockResolvedValue({});
+      vi.mocked(useRegister).mockReturnValue({
+        mutateAsync,
+        isPending: false,
+        isError: false,
+      } as never);
+      return mutateAsync;
+    }
+
+    async function fillRest(user: ReturnType<typeof userEvent.setup>) {
+      await user.type(screen.getByLabelText("Name"), "Ada Lovelace");
+      await user.type(screen.getByLabelText("Email"), "ada@example.com");
+      await user.type(screen.getByLabelText("Password"), "tangerine-lantern-47");
+    }
+
+    it("is not asked for on a development machine, and not sent", async () => {
+      const mutateAsync = mockRegister();
+      const user = userEvent.setup();
+
+      render(<RegisterForm />);
+      await fillRest(user);
+      await user.click(screen.getByRole("button", { name: "Create account" }));
+
+      expect(screen.queryByLabelText("Setup code")).not.toBeInTheDocument();
+      expect(mutateAsync).toHaveBeenCalledWith({
+        name: "Ada Lovelace",
+        email: "ada@example.com",
+        password: "tangerine-lantern-47",
+      });
+    });
+
+    it("is asked for on a real deployment, and sent trimmed", async () => {
+      const mutateAsync = mockRegister();
+      const user = userEvent.setup();
+
+      render(<RegisterForm setupCodeRequired />);
+      await fillRest(user);
+      await user.type(screen.getByLabelText("Setup code"), "  abc-123-xyz  ");
+      await user.click(screen.getByRole("button", { name: "Create account" }));
+
+      expect(mutateAsync).toHaveBeenCalledWith({
+        name: "Ada Lovelace",
+        email: "ada@example.com",
+        password: "tangerine-lantern-47",
+        setup_code: "abc-123-xyz",
+      });
+      expect(screen.getByLabelText("Setup code")).toHaveAccessibleDescription(/server's log/);
+    });
+
+    it("cannot be left empty or blank", async () => {
+      const mutateAsync = mockRegister();
+      const user = userEvent.setup();
+
+      render(<RegisterForm setupCodeRequired />);
+      await fillRest(user);
+      await user.type(screen.getByLabelText("Setup code"), "   ");
+      await user.click(screen.getByRole("button", { name: "Create account" }));
+
+      expect(await screen.findByText("Enter the setup code from the server's log")).toBeInTheDocument();
+      expect(mutateAsync).not.toHaveBeenCalled();
+    });
+  });
 });

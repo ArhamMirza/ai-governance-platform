@@ -9,6 +9,8 @@ class RegisterRequest(BaseModel):
     # The rules (length and so on) are checked in the service, so the person
     # is told what is wrong in words rather than by a generic validation error.
     password: str = Field(min_length=1, max_length=200)
+    # Only asked for on a real deployment (app.core.setup_code).
+    setup_code: str | None = Field(default=None, max_length=100)
 
 
 class LoginRequest(BaseModel):
@@ -41,3 +43,5 @@ class SessionsEnded(BaseModel):
 
 class RegistrationStatus(BaseModel):
     registration_open: bool
+    # True when the first account also needs the code from the server's log.
+    setup_code_required: bool = False

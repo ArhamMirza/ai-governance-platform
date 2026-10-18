@@ -1,14 +1,18 @@
 from fastapi import Depends, Request
 from sqlalchemy.orm import Session
 
+from app.core.config import get_settings
 from app.core.database import get_db
 from app.core.exceptions import AuthenticationError, AuthorizationError
 from app.core.permissions import Action, has_permission
 from app.models.user import User, UserRole
 from app.services import ai_usage_service, auth_service
 
-SESSION_COOKIE_NAME = "session_token"
 PASSWORD_CHANGE_REQUIRED = "You need to choose a new password before you can continue."
+
+
+def session_cookie_name() -> str:
+    return get_settings().session_cookie_name
 
 
 def get_session_user(request: Request, db: Session = Depends(get_db)) -> User:
@@ -16,7 +20,7 @@ def get_session_user(request: Request, db: Session = Depends(get_db)) -> User:
     choose a new password. Only the few routes that let them do that, or
     sign out, use this directly; everything else goes through
     get_current_user."""
-    token = request.cookies.get(SESSION_COOKIE_NAME)
+    token = request.cookies.get(session_cookie_name())
     user = auth_service.get_user_for_token(db, token)
     if user is None or not user.is_active:
         raise AuthenticationError()

@@ -21,12 +21,16 @@ export interface SessionsEnded {
 
 export interface RegistrationStatus {
   registration_open: boolean;
+  /** True on a real deployment: the first account also needs the code from the
+   * server's log (or the SETUP_CODE the operator configured). */
+  setup_code_required: boolean;
 }
 
 export interface RegisterInput {
   name: string;
   email: string;
   password: string;
+  setup_code?: string;
 }
 
 export interface LoginInput {

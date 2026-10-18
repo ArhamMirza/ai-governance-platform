@@ -32,6 +32,18 @@ class Settings(BaseSettings):
     # Anything other than "development" is treated as a real deployment and
     # held to the secret_key check below.
     environment: str = "development"
+    # The code that guards creating the first account on a real deployment
+    # (see app.core.setup_code). Left unset, the server makes one up at
+    # startup and prints it in its log.
+    setup_code: str | None = None
+
+    @property
+    def session_cookie_name(self) -> str:
+        """The `__Host-` prefix makes the browser refuse the cookie unless it
+        is Secure, has no Domain and covers the whole site, which also stops a
+        sibling subdomain from planting one. It needs https, so it is used
+        exactly when cookie_secure is."""
+        return "__Host-session" if self.cookie_secure else "session_token"
 
     @property
     def cors_origin_list(self) -> list[str]:
@@ -40,6 +52,17 @@ class Settings(BaseSettings):
     @property
     def is_real_deployment(self) -> bool:
         return self.environment.strip().lower() in _REAL_DEPLOYMENTS
+
+    @model_validator(mode="after")
+    def _refuse_wildcard_origins(self) -> "Settings":
+        """Credentialed requests must name the sites they trust. A wildcard
+        here would let any website call the API as the signed-in user."""
+        if any("*" in origin for origin in self.cors_origin_list):
+            raise ValueError(
+                "CORS_ORIGINS must list the exact origins to trust "
+                "(e.g. https://governance.example.com), not a wildcard."
+            )
+        return self
 
     @model_validator(mode="after")
     def _refuse_the_example_secret(self) -> "Settings":

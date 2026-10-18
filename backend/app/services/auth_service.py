@@ -11,7 +11,7 @@ from datetime import UTC, datetime, timedelta
 
 from sqlalchemy.orm import Session as DbSession
 
-from app.core import password_policy
+from app.core import password_policy, setup_code
 from app.core.attempt_limiter import AttemptLimiter
 from app.core.exceptions import (
     AuthenticationError,
@@ -59,6 +59,12 @@ _login_attempts_by_address = AttemptLimiter(
 
 # Someone holding a stolen session can't use "change password" to guess the
 # real password: wrong current passwords are counted per account.
+_setup_code_attempts = AttemptLimiter(
+    max_failures=5,
+    window=_FAILED_LOGIN_WINDOW,
+    message="Too many incorrect setup codes. Try again in 15 minutes.",
+)
+
 _password_change_attempts = AttemptLimiter(
     max_failures=5,
     window=_FAILED_LOGIN_WINDOW,
@@ -71,6 +77,7 @@ def reset_rate_limits() -> None:
     _failed_logins.clear()
     _login_attempts_by_address.reset()
     _password_change_attempts.reset()
+    _setup_code_attempts.reset()
 
 
 def _recent_failures(email: str, now: datetime) -> list[datetime]:
@@ -105,9 +112,18 @@ def registration_open(db: DbSession) -> bool:
     return user_repository.count(db) == 0
 
 
-def register(db: DbSession, data: RegisterRequest) -> User:
+def register(db: DbSession, data: RegisterRequest, ip: str | None = None) -> User:
     if not registration_open(db):
         raise ConflictError("Registration is closed; an account already exists.")
+    if setup_code.required():
+        key = ip or "unknown"
+        _setup_code_attempts.check(key)
+        if not setup_code.matches(data.setup_code):
+            _setup_code_attempts.record_failure(key)
+            raise ValidationError(
+                "The setup code is missing or wrong. It is printed in the server's log when "
+                "it starts, or it is the SETUP_CODE you configured."
+            )
     if "@" not in data.email:
         raise ValidationError("Enter a valid email address.")
     email = data.email.strip().lower()

@@ -1,8 +1,13 @@
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
+
 from fastapi import Depends, FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
+from app.core import setup_code
 from app.core.config import get_settings
+from app.core.database import SessionLocal
 from app.core.exceptions import (
     AuthenticationError,
     AuthorizationError,
@@ -12,6 +17,7 @@ from app.core.exceptions import (
     ServiceUnavailableError,
     ValidationError,
 )
+from app.core.web_security import OriginCheckMiddleware, SecurityHeadersMiddleware
 from app.dependencies import get_current_user, get_internal_user
 from app.routers import (
     agent,
@@ -65,17 +71,50 @@ from app.routers import (
 
 settings = get_settings()
 
-app = FastAPI(title="AI Governance Platform API", version="0.1.0")
 
+@asynccontextmanager
+async def lifespan(_: FastAPI) -> AsyncIterator[None]:
+    if setup_code.required():
+        db = SessionLocal()
+        try:
+            setup_code.announce(db)
+        finally:
+            db.close()
+    yield
+
+
+# The interactive API docs list every route and are only for development.
+_DOCS_PATHS = ("/docs", "/redoc", "/openapi.json")
+_docs = (
+    {"docs_url": None, "redoc_url": None, "openapi_url": None}
+    if settings.is_real_deployment
+    else {}
+)
+
+app = FastAPI(title="AI Governance Platform API", version="0.1.0", lifespan=lifespan, **_docs)
+
+# Added innermost first: a refused cross-site request still carries CORS and
+# security headers, so the app can read the refusal.
+app.add_middleware(
+    OriginCheckMiddleware,
+    allowed_origins=settings.cors_origin_list,
+    cookie_name=settings.session_cookie_name,
+)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origin_list,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    # Only what the app and the browser extension actually use.
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=["Content-Type", "Authorization", "If-None-Match"],
     # So a client reading the agent policy from a page (not only from the extension)
     # can see its ETag and ask "has it changed?" with If-None-Match.
     expose_headers=["ETag"],
+)
+app.add_middleware(
+    SecurityHeadersMiddleware,
+    hsts=settings.cookie_secure,
+    csp_exempt_paths=() if settings.is_real_deployment else _DOCS_PATHS,
 )
 
 

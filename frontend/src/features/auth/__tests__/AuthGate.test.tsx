@@ -18,12 +18,14 @@ function mockHooks({
   userLoading = false,
   isSuccess = false,
   registrationOpen = false,
+  setupCodeRequired = false,
   statusError = false,
 }: {
   user?: unknown;
   userLoading?: boolean;
   isSuccess?: boolean;
   registrationOpen?: boolean;
+  setupCodeRequired?: boolean;
   statusError?: boolean;
 } = {}) {
   vi.mocked(useCurrentUser).mockReturnValue({
@@ -32,7 +34,9 @@ function mockHooks({
     isSuccess,
   } as never);
   vi.mocked(useRegistrationStatus).mockReturnValue({
-    data: statusError ? undefined : { registration_open: registrationOpen },
+    data: statusError
+      ? undefined
+      : { registration_open: registrationOpen, setup_code_required: setupCodeRequired },
     isLoading: false,
     isError: statusError,
   } as never);
@@ -130,6 +134,27 @@ describe("AuthGate", () => {
     await waitFor(() => {
       expect(screen.getByRole("heading", { name: "Create your account" })).toBeInTheDocument();
     });
+  });
+
+  it("asks for the setup code on first run only when the server says so", async () => {
+    mockHooks({ registrationOpen: true, setupCodeRequired: true });
+
+    const { unmount } = render(
+      <AuthGate>
+        <div>Protected content</div>
+      </AuthGate>,
+    );
+    expect(await screen.findByLabelText("Setup code")).toBeInTheDocument();
+    unmount();
+
+    mockHooks({ registrationOpen: true, setupCodeRequired: false });
+    render(
+      <AuthGate>
+        <div>Protected content</div>
+      </AuthGate>,
+    );
+    expect(await screen.findByRole("heading", { name: "Create your account" })).toBeInTheDocument();
+    expect(screen.queryByLabelText("Setup code")).not.toBeInTheDocument();
   });
 
   it("keeps the sign-in form up while a logged-out session check refetches", async () => {

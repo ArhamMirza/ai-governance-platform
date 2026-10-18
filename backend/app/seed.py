@@ -10,6 +10,7 @@ action, and skips entirely if the database already has policies in it
 -- safe to run again without duplicating data.
 """
 
+import sys
 from datetime import date, timedelta
 from io import BytesIO
 from types import SimpleNamespace
@@ -1522,6 +1523,14 @@ def _seed_ai_use_controls(db: Session) -> None:
 
 
 def main() -> None:
+    from app.core.config import get_settings
+
+    if get_settings().is_real_deployment and "--allow-production" not in sys.argv:
+        raise SystemExit(
+            "Refusing to load demo data: ENVIRONMENT says this is a real deployment. "
+            "The demo data is fictional and would sit alongside your real records. "
+            "Pass --allow-production if you really mean it."
+        )
     db = SessionLocal()
     try:
         seed(db)
