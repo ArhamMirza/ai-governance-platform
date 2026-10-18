@@ -5410,3 +5410,32 @@ select {
 .row-muted {
   opacity: 0.6;
 }
+
+/* Password guidance under a field, and the account link in the sidebar. */
+.field-hint {
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.sidebar-account-link {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 12px;
+  color: var(--text-inverse-muted);
+  text-decoration: none;
+}
+
+.sidebar-account-link:hover,
+.sidebar-account-link.active {
+  color: var(--text-inverse);
+}
+
+.temporary-password {
+  display: inline-block;
+  padding: 8px 12px;
+  font-family: var(--mono);
+  font-size: 15px;
+  letter-spacing: 0.02em;
+  user-select: all;
+}

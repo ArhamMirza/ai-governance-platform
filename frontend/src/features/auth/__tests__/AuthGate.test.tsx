@@ -2,7 +2,14 @@ import { render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import { AuthGate } from "../components/AuthGate";
-import { useCurrentUser, useLogin, useRegister, useRegistrationStatus } from "../hooks";
+import {
+  useChangePassword,
+  useCurrentUser,
+  useLogin,
+  useLogout,
+  useRegister,
+  useRegistrationStatus,
+} from "../hooks";
 
 vi.mock("../hooks");
 
@@ -41,6 +48,13 @@ function mockHooks({
     isPending: false,
     isError: false,
   } as never);
+  vi.mocked(useChangePassword).mockReturnValue({
+    mutateAsync: vi.fn(),
+    isPending: false,
+    isError: false,
+    isSuccess: false,
+  } as never);
+  vi.mocked(useLogout).mockReturnValue({ mutate: vi.fn(), isPending: false } as never);
 }
 
 describe("AuthGate", () => {
@@ -54,6 +68,39 @@ describe("AuthGate", () => {
     );
 
     expect(screen.getByText("Protected content")).toBeInTheDocument();
+  });
+
+  it("shows only the change-password screen while the password must be replaced", () => {
+    mockHooks({
+      user: { id: 2, name: "Bob", must_change_password: true },
+      isSuccess: true,
+    });
+
+    render(
+      <AuthGate>
+        <div>Protected content</div>
+      </AuthGate>,
+    );
+
+    expect(screen.getByRole("heading", { name: "Choose a new password" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Sign out" })).toBeInTheDocument();
+    expect(screen.queryByText("Protected content")).not.toBeInTheDocument();
+  });
+
+  it("opens the app once the password has been replaced", () => {
+    mockHooks({
+      user: { id: 2, name: "Bob", must_change_password: false },
+      isSuccess: true,
+    });
+
+    render(
+      <AuthGate>
+        <div>Protected content</div>
+      </AuthGate>,
+    );
+
+    expect(screen.getByText("Protected content")).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Choose a new password" })).not.toBeInTheDocument();
   });
 
   it("shows the login form when not authenticated and registration is closed", async () => {

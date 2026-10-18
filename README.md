@@ -77,6 +77,25 @@ The platform can also govern what employees do with AI, not only document it:
   [extension/README.md](extension/README.md) for what it can and can't do and
   how to roll it out.
 
+## Accounts and sign-in
+
+- **Passwords** need at least 12 characters and are refused if they are a common
+  word (even dressed up, like `P@ssw0rd2024!`), a keyboard or number run, almost
+  all one character, or built from the person's own name or email. The last five
+  passwords can't be reused.
+- **Temporary passwords.** An account an administrator creates, or whose password
+  they reset, can do nothing but choose a new password at first sign-in. Existing
+  accounts whose password falls short of the rules are asked to change it the same way.
+- **Resetting.** *Users → Reset password* issues a one-time password, shown once and
+  never stored readably, and signs the person out everywhere.
+- **Sessions** end everywhere when a password is changed or reset, a role is changed,
+  or an account is deactivated. *Your account* has "Sign out of other devices".
+- **Lockout.** Five wrong passwords lock an account for 15 minutes; 20 wrong attempts
+  from one address block that address. Behind a reverse proxy, forward the real client
+  address (`uvicorn --proxy-headers`) or every user will appear to share one.
+- **Audit trail.** Sign-ins, failed sign-ins, lockouts, sign-outs, password changes and
+  resets are recorded against the account (with the address), in the audit log.
+
 ## Git Workflow
 
 - `main` is protected and always kept working — changes land via Pull Request,

@@ -322,12 +322,13 @@ def test_with_no_key_issued_nothing_gets_in(client: TestClient, test_user: User)
 def test_the_key_opens_the_agent_routes_and_nothing_else(
     client: TestClient, test_user: User
 ) -> None:
-    from app.dependencies import get_current_user
+    from app.dependencies import get_current_user, get_session_user
     from app.main import app
 
     key = issue_key(client)
     # From here on there is no signed-in user: only the key.
     app.dependency_overrides.pop(get_current_user)
+    app.dependency_overrides.pop(get_session_user)
 
     for path in (
         "/api/v1/policies",

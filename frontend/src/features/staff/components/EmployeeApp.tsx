@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link, NavLink, Navigate, Route, Routes, useSearchParams } from "react-router-dom";
 
+import { AccountPage } from "../../../pages/AccountPage";
 import { ThemeToggle } from "../../../shared/components/ThemeToggle";
 import { MyAIToolRequests } from "../../ai-tools/components/MyAIToolRequests";
 import { RequestAIToolForm } from "../../ai-tools/components/RequestAIToolForm";
@@ -155,6 +156,9 @@ export function EmployeeApp() {
           {user && (
             <div className="sidebar-account">
               <div className="sidebar-account-name">{user.name}</div>
+              <NavLink to="/account" className="sidebar-account-link">
+                Account
+              </NavLink>
               <button onClick={() => logout.mutate()} disabled={logout.isPending}>
                 {logout.isPending ? "Signing out..." : "Sign out"}
               </button>
@@ -168,6 +172,7 @@ export function EmployeeApp() {
           <Route path="/report" element={<ReportConcernPage />} />
           <Route path="/concerns" element={<MyConcernsPage />} />
           <Route path="/tools" element={<AIToolsPage />} />
+          <Route path="/account" element={<AccountPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>

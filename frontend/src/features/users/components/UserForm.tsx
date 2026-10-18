@@ -3,12 +3,13 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 
 import { readError } from "../../../shared/api/readError";
+import { MIN_PASSWORD_LENGTH, PASSWORD_HINT, PASSWORD_TOO_SHORT } from "../../auth/passwordRules";
 import { useCreateUser } from "../hooks";
 
 const userFormSchema = z.object({
   name: z.string().min(1, "Name is required"),
   email: z.string().min(3, "Email is required"),
-  password: z.string().min(8, "Password must be at least 8 characters"),
+  password: z.string().min(MIN_PASSWORD_LENGTH, PASSWORD_TOO_SHORT),
   role: z.enum(["admin", "contributor", "viewer", "employee"]),
 });
 
@@ -58,8 +59,12 @@ export function UserForm({ onCreated }: UserFormProps) {
           id="user-password"
           type="password"
           autoComplete="new-password"
+          aria-describedby="user-password-hint"
           {...register("password")}
         />
+        <p id="user-password-hint" className="field-hint">
+          They must replace it the first time they sign in. {PASSWORD_HINT}
+        </p>
         {errors.password && <p role="alert">{errors.password.message}</p>}
       </div>
       <div>

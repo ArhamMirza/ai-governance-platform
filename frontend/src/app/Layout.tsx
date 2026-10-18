@@ -415,6 +415,9 @@ export function Layout({ children }: { children: ReactNode }) {
             <div className="sidebar-account">
               <div className="sidebar-account-name">{user.name}</div>
               <div className="sidebar-account-role">{user.role}</div>
+              <NavLink to="/account" className="sidebar-account-link">
+                Account
+              </NavLink>
               <button onClick={() => logout.mutate()} disabled={logout.isPending}>
                 {logout.isPending ? "Signing out..." : "Sign out"}
               </button>

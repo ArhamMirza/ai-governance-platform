@@ -67,6 +67,7 @@ from app.models.management_system_change import (
 )
 from app.models.objective_measurement import ObjectiveMeasurement
 from app.models.organization_context import OrganizationContext, OrganizationContextStatus
+from app.models.password_history import PasswordHistory
 from app.models.policy import Policy
 from app.models.procedure import Procedure
 from app.models.risk_assessment import RiskAssessment
@@ -171,6 +172,7 @@ __all__ = [
     "SupplierStatus",
     "SupplierType",
     "TargetDirection",
+    "PasswordHistory",
     "User",
 ]
 

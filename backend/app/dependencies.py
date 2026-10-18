@@ -8,13 +8,24 @@ from app.models.user import User, UserRole
 from app.services import ai_usage_service, auth_service
 
 SESSION_COOKIE_NAME = "session_token"
+PASSWORD_CHANGE_REQUIRED = "You need to choose a new password before you can continue."
 
 
-def get_current_user(request: Request, db: Session = Depends(get_db)) -> User:
+def get_session_user(request: Request, db: Session = Depends(get_db)) -> User:
+    """Whoever holds a valid session -- including someone who still has to
+    choose a new password. Only the few routes that let them do that, or
+    sign out, use this directly; everything else goes through
+    get_current_user."""
     token = request.cookies.get(SESSION_COOKIE_NAME)
     user = auth_service.get_user_for_token(db, token)
     if user is None or not user.is_active:
         raise AuthenticationError()
+    return user
+
+
+def get_current_user(user: User = Depends(get_session_user)) -> User:
+    if user.must_change_password:
+        raise AuthorizationError(PASSWORD_CHANGE_REQUIRED)
     return user
 
 

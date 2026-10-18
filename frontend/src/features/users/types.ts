@@ -5,6 +5,11 @@ export interface ManagedUser {
   role: string;
   is_active: boolean;
   created_at: string;
+  must_change_password: boolean;
+}
+
+export interface TemporaryPassword {
+  temporary_password: string;
 }
 
 export interface CreateUserInput {

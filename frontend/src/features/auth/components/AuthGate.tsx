@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 
-import { useCurrentUser, useRegistrationStatus } from "../hooks";
+import { useCurrentUser, useLogout, useRegistrationStatus } from "../hooks";
+import { ChangePasswordForm } from "./ChangePasswordForm";
 import { LoginForm } from "./LoginForm";
 import { RegisterForm } from "./RegisterForm";
 
@@ -9,6 +10,24 @@ const BrandMark = () => (
     <path d="M12 2l8 4v6c0 5-3.5 9-8 10-4.5-1-8-5-8-10V6l8-4z" />
   </svg>
 );
+
+/** Shown instead of the app until a temporary or outdated password has been
+ * replaced. The server enforces it too: every other route refuses this login. */
+function ForcedPasswordChange() {
+  const logout = useLogout();
+  return (
+    <div className="auth-screen">
+      <div className="auth-form-panel">
+        <div className="auth-card">
+          <ChangePasswordForm forced />
+          <button type="button" onClick={() => logout.mutate()} disabled={logout.isPending}>
+            Sign out
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 /**
  * The sign-in / one-time-setup screen.
@@ -32,6 +51,10 @@ export function AuthGate({ children }: { children: ReactNode }) {
         <p className="auth-loading">Loading...</p>
       </div>
     );
+  }
+
+  if (isSuccess && user?.must_change_password) {
+    return <ForcedPasswordChange />;
   }
 
   if (isSuccess && user) {

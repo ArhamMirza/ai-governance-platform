@@ -5,14 +5,17 @@ Distinct from auth_service: that module is "how you get a session"
 accounts" once the app already has its first user.
 """
 
+import secrets
+
 from sqlalchemy.orm import Session
 
+from app.core import password_policy
 from app.core.exceptions import ConflictError, NotFoundError, ValidationError
 from app.core.security import hash_password
 from app.models.user import User
 from app.repositories import user_repository
 from app.schemas.user import UserAccountabilities, UserCreate, UserUpdate
-from app.services import audit_service
+from app.services import audit_service, auth_service
 
 ENTITY_TYPE = "User"
 
@@ -88,12 +91,16 @@ def create_user(db: Session, data: UserCreate, actor_id: int | None) -> User:
     email = data.email.strip().lower()
     if user_repository.get_by_email(db, email) is not None:
         raise ConflictError(f"A user with email {email} already exists.")
+    password_policy.require(data.password, email=email, name=data.name)
 
+    # The administrator chose this password, so the person must replace it
+    # before doing anything else.
     user = User(
         name=data.name,
         email=email,
         password_hash=hash_password(data.password),
         role=data.role,
+        must_change_password=True,
     )
     user = user_repository.create(db, user)
     audit_service.log(
@@ -102,13 +109,9 @@ def create_user(db: Session, data: UserCreate, actor_id: int | None) -> User:
     return user
 
 
-def update_user(
-    db: Session, user_id: int, data: UserUpdate, actor_id: int | None
-) -> User:
+def update_user(db: Session, user_id: int, data: UserUpdate, actor_id: int | None) -> User:
     if user_id == actor_id:
-        raise ConflictError(
-            "You can't change your own role or active status; ask another admin."
-        )
+        raise ConflictError("You can't change your own role or active status; ask another admin.")
 
     user = _get_or_raise(db, user_id)
     changes = data.model_dump(exclude_unset=True)
@@ -117,4 +120,32 @@ def update_user(
 
     user = user_repository.save(db, user)
     audit_service.log(db, ENTITY_TYPE, user.id, "updated", actor_id, changes)
+    # What an open session was allowed to do has changed, so none of them
+    # is left running on the old terms.
+    if "role" in changes or changes.get("is_active") is False:
+        auth_service.end_sessions(db, user.id)
     return user
+
+
+def _temporary_password(email: str, name: str) -> str:
+    while True:
+        candidate = secrets.token_urlsafe(12)
+        if password_policy.problem_with(candidate, email=email, name=name) is None:
+            return candidate
+
+
+def reset_password(db: Session, user_id: int, actor_id: int) -> str:
+    """For someone who is locked out or has forgotten their password: sets a
+    temporary one, signs them out everywhere, and returns it -- for the
+    administrator to pass on once. It is never stored in readable form, and
+    the person must replace it at their next sign-in."""
+    if user_id == actor_id:
+        raise ConflictError("Change your own password from your account page instead.")
+    user = _get_or_raise(db, user_id)
+    temporary = _temporary_password(user.email, user.name)
+    auth_service.replace_password(db, user, temporary, must_change=True)
+    ended = auth_service.end_sessions(db, user.id)
+    audit_service.log(
+        db, ENTITY_TYPE, user.id, "password_reset", actor_id, {"sessions_ended": ended}
+    )
+    return temporary

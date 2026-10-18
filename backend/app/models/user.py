@@ -2,6 +2,7 @@ from datetime import UTC, datetime
 from enum import StrEnum
 
 from sqlalchemy import Boolean, DateTime, String
+from sqlalchemy import false as sa_false
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.database import Base
@@ -30,6 +31,16 @@ class User(Base):
     # dependencies.get_current_user), but keeps their audit history intact --
     # deactivation, not deletion.
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    # Set when an admin created the account or reset its password (the person
+    # is using a password someone else knows), or when sign-in shows the
+    # password falls short of the current rules. Until it is changed, the
+    # login reaches only the change-password screen.
+    must_change_password: Mapped[bool] = mapped_column(
+        Boolean, default=False, server_default=sa_false()
+    )
+    password_changed_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(UTC)
     )
