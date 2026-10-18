@@ -6,6 +6,13 @@ export interface ManagedUser {
   is_active: boolean;
   created_at: string;
   must_change_password: boolean;
+  mfa_enabled: boolean;
+}
+
+export interface SecuritySettings {
+  require_mfa_for_admins: boolean;
+  /** Active administrators without two-step sign-in: who the rule would catch. */
+  admins_without_mfa: number;
 }
 
 export interface TemporaryPassword {

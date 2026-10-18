@@ -43,6 +43,37 @@ export function useResetPassword() {
   });
 }
 
+export function useResetTwoStep() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => usersApi.resetTwoStep(id),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: usersKey });
+      void queryClient.invalidateQueries({ queryKey: securityKey });
+    },
+  });
+}
+
+const securityKey = ["security", "settings"] as const;
+
+export function useSecuritySettings(options?: { enabled?: boolean }) {
+  return useQuery({
+    queryKey: securityKey,
+    queryFn: usersApi.securitySettings,
+    enabled: options?.enabled,
+  });
+}
+
+export function useUpdateSecuritySettings() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (requireForAdmins: boolean) => usersApi.updateSecuritySettings(requireForAdmins),
+    onSuccess: (settings) => {
+      queryClient.setQueryData(securityKey, settings);
+    },
+  });
+}
+
 export function useUpdateUser() {
   const queryClient = useQueryClient();
   return useMutation({

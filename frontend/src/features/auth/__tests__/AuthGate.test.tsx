@@ -4,11 +4,14 @@ import { describe, expect, it, vi } from "vitest";
 import { AuthGate } from "../components/AuthGate";
 import {
   useChangePassword,
+  useConfirmTwoStep,
   useCurrentUser,
   useLogin,
   useLogout,
   useRegister,
+  useRefreshAccount,
   useRegistrationStatus,
+  useStartTwoStepSetup,
 } from "../hooks";
 
 vi.mock("../hooks");
@@ -59,6 +62,17 @@ function mockHooks({
     isSuccess: false,
   } as never);
   vi.mocked(useLogout).mockReturnValue({ mutate: vi.fn(), isPending: false } as never);
+  vi.mocked(useStartTwoStepSetup).mockReturnValue({
+    mutateAsync: vi.fn(),
+    isPending: false,
+    isError: false,
+  } as never);
+  vi.mocked(useConfirmTwoStep).mockReturnValue({
+    mutateAsync: vi.fn(),
+    isPending: false,
+    isError: false,
+  } as never);
+  vi.mocked(useRefreshAccount).mockReturnValue(vi.fn().mockResolvedValue(undefined));
 }
 
 describe("AuthGate", () => {
@@ -89,6 +103,40 @@ describe("AuthGate", () => {
     expect(screen.getByRole("heading", { name: "Choose a new password" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Sign out" })).toBeInTheDocument();
     expect(screen.queryByText("Protected content")).not.toBeInTheDocument();
+  });
+
+  it("shows only the two-step set-up screen while the organization requires it", () => {
+    mockHooks({
+      user: { id: 2, name: "Ada", must_change_password: false, mfa_setup_required: true },
+      isSuccess: true,
+    });
+
+    render(
+      <AuthGate>
+        <div>Protected content</div>
+      </AuthGate>,
+    );
+
+    expect(screen.getByRole("heading", { name: "Set up two-step sign-in" })).toBeInTheDocument();
+    expect(screen.getByText(/requires two-step sign-in for administrators/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Sign out" })).toBeInTheDocument();
+    expect(screen.queryByText("Protected content")).not.toBeInTheDocument();
+  });
+
+  it("asks for a new password before the two-step set-up", () => {
+    mockHooks({
+      user: { id: 2, name: "Ada", must_change_password: true, mfa_setup_required: true },
+      isSuccess: true,
+    });
+
+    render(
+      <AuthGate>
+        <div>Protected content</div>
+      </AuthGate>,
+    );
+
+    expect(screen.getByRole("heading", { name: "Choose a new password" })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Set up two-step sign-in" })).not.toBeInTheDocument();
   });
 
   it("opens the app once the password has been replaced", () => {

@@ -2,7 +2,12 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
-import { useChangePassword, useCurrentUser, useSignOutEverywhere } from "../../features/auth/hooks";
+import {
+  useChangePassword,
+  useCurrentUser,
+  useSignOutEverywhere,
+  useTwoStepStatus,
+} from "../../features/auth/hooks";
 import { AccountPage } from "../AccountPage";
 
 vi.mock("../../features/auth/hooks");
@@ -17,6 +22,11 @@ function mockHooks(signOut: Record<string, unknown> = {}) {
     isPending: false,
     isError: false,
     isSuccess: false,
+  } as never);
+  vi.mocked(useTwoStepStatus).mockReturnValue({
+    data: { enabled: false, recovery_codes_remaining: 0, setup_required: false },
+    isLoading: false,
+    isError: false,
   } as never);
   vi.mocked(useSignOutEverywhere).mockReturnValue({
     mutate,
@@ -36,6 +46,14 @@ describe("AccountPage", () => {
 
     expect(screen.getByText("Ada Admin · ada@example.com")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Change your password" })).toBeInTheDocument();
+  });
+
+  it("has the two-step sign-in settings on it", () => {
+    mockHooks();
+
+    render(<AccountPage />);
+
+    expect(screen.getByRole("region", { name: "Two-step sign-in" })).toBeInTheDocument();
   });
 
   it("signs out of other devices on request", async () => {

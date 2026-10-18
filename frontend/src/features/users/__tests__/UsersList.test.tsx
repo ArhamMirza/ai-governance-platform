@@ -5,7 +5,13 @@ import { describe, expect, it, vi } from "vitest";
 import { ApiError } from "../../../shared/api/httpClient";
 import { useCurrentUser } from "../../auth/hooks";
 import { UsersList } from "../components/UsersList";
-import { useResetPassword, useUpdateUser, useUserAccountabilities, useUsers } from "../hooks";
+import {
+  useResetPassword,
+  useResetTwoStep,
+  useUpdateUser,
+  useUserAccountabilities,
+  useUsers,
+} from "../hooks";
 import type { ManagedUser, UserAccountabilities } from "../types";
 
 vi.mock("../hooks");
@@ -18,7 +24,7 @@ const me: ManagedUser = {
   role: "admin",
   is_active: true,
   created_at: "2026-01-01T00:00:00Z",
-  must_change_password: false,
+  must_change_password: false, mfa_enabled: false,
 };
 
 const contributor: ManagedUser = {
@@ -28,7 +34,7 @@ const contributor: ManagedUser = {
   role: "contributor",
   is_active: true,
   created_at: "2026-01-01T00:00:00Z",
-  must_change_password: false,
+  must_change_password: false, mfa_enabled: false,
 };
 
 const NOTHING_OWNED: UserAccountabilities = {
@@ -43,6 +49,7 @@ function mockHooks(
   mutateAsync = vi.fn(),
   accountabilities: UserAccountabilities = NOTHING_OWNED,
   resetMutateAsync = vi.fn(),
+  twoStepMutateAsync = vi.fn(),
 ) {
   vi.mocked(useUsers).mockReturnValue({ data: users, isLoading: false, isError: false } as never);
   vi.mocked(useCurrentUser).mockReturnValue({ data: me } as never);
@@ -52,7 +59,11 @@ function mockHooks(
     mutateAsync: resetMutateAsync,
     isPending: false,
   } as never);
-  return { mutateAsync, resetMutateAsync };
+  vi.mocked(useResetTwoStep).mockReturnValue({
+    mutateAsync: twoStepMutateAsync,
+    isPending: false,
+  } as never);
+  return { mutateAsync, resetMutateAsync, twoStepMutateAsync };
 }
 
 /** Deactivation is behind a confirmation now, so the tests have to confirm. */
@@ -230,6 +241,68 @@ describe("UsersList", () => {
       render(<UsersList />);
 
       expect(screen.queryByRole("button", { name: /Reset password/ })).not.toBeInTheDocument();
+    });
+  });
+
+  describe("two-step sign-in", () => {
+    const withTwoStep = { ...contributor, mfa_enabled: true };
+
+    it("shows who has it on", () => {
+      mockHooks([me, withTwoStep, { ...contributor, id: 3, name: "Carol", email: "c@example.com" }]);
+
+      render(<UsersList />);
+
+      const rows = screen.getAllByRole("row").slice(1);
+      expect(within(rows[1]).getByText("On")).toBeInTheDocument();
+      expect(within(rows[2]).getByText("Off")).toBeInTheDocument();
+    });
+
+    it("offers a reset only where it is on, and asks first", async () => {
+      const { twoStepMutateAsync } = mockHooks([me, withTwoStep]);
+      const user = userEvent.setup();
+
+      render(<UsersList />);
+      await user.click(screen.getByRole("button", { name: "Reset two-step sign-in for Bob" }));
+      const dialog = screen.getByRole("alertdialog", { name: "Reset two-step sign-in for Bob?" });
+      expect(dialog).toHaveTextContent("lost their phone");
+      expect(twoStepMutateAsync).not.toHaveBeenCalled();
+
+      await user.click(within(dialog).getByRole("button", { name: "Reset two-step" }));
+      expect(twoStepMutateAsync).toHaveBeenCalledWith(contributor.id);
+    });
+
+    it("has no reset where it is off, or for yourself", () => {
+      mockHooks([{ ...me, mfa_enabled: true }, contributor]);
+
+      render(<UsersList />);
+
+      expect(screen.queryByRole("button", { name: /Reset two-step/ })).not.toBeInTheDocument();
+    });
+
+    it("does nothing if the confirmation is cancelled", async () => {
+      const { twoStepMutateAsync } = mockHooks([me, withTwoStep]);
+      const user = userEvent.setup();
+
+      render(<UsersList />);
+      await user.click(screen.getByRole("button", { name: "Reset two-step sign-in for Bob" }));
+      await user.click(screen.getByRole("button", { name: "Cancel" }));
+
+      expect(twoStepMutateAsync).not.toHaveBeenCalled();
+      expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
+    });
+
+    it("shows why a reset failed", async () => {
+      const twoStepMutateAsync = vi
+        .fn()
+        .mockRejectedValue(new ApiError(409, JSON.stringify({ detail: "Ask another administrator." })));
+      mockHooks([me, withTwoStep], vi.fn(), NOTHING_OWNED, vi.fn(), twoStepMutateAsync);
+      const user = userEvent.setup();
+
+      render(<UsersList />);
+      await user.click(screen.getByRole("button", { name: "Reset two-step sign-in for Bob" }));
+      await user.click(within(screen.getByRole("alertdialog")).getByRole("button", { name: "Reset two-step" }));
+
+      expect(await screen.findByRole("alert")).toHaveTextContent("Ask another administrator.");
     });
   });
 });

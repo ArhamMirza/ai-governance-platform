@@ -96,6 +96,28 @@ The platform can also govern what employees do with AI, not only document it:
 - **Audit trail.** Sign-ins, failed sign-ins, lockouts, sign-outs, password changes and
   resets are recorded against the account (with the address), in the audit log.
 
+### Two-step sign-in
+
+Anyone can turn on an authenticator app (Google or Microsoft Authenticator, Authy,
+1Password) under *Your account*; administrators can require it of administrators.
+
+- **Setting up**: scan a QR code (or type the key), enter one code to prove it works, then
+  save ten single-use **recovery codes**, shown once. The secret is stored encrypted and the
+  recovery codes only as hashes. Nothing is on until the first code is accepted.
+- **Signing in**: a correct password gets no session, only a five-minute signed ticket; a
+  current code (or a recovery code) turns it into the session. A code works once. Five wrong
+  codes lock the account's codes for 15 minutes, and entering the password again does not
+  give fresh guesses. Sign-ins, failures, lockouts and recovery-code use are in the audit log.
+- **Turning it off or making new recovery codes** needs the password *and* a current code.
+- **Lost phone and recovery codes**: another administrator uses *Users → Reset two-step*
+  (logged; signs the person out everywhere). Nobody can reset their own.
+- **Requiring it for administrators** (*Users → Sign-in security*, off to begin with): an
+  administrator without it is held at the set-up screen until they turn it on. It can only be
+  switched on by an administrator who has it on themselves, so it cannot lock everyone out.
+- **Limits**: codes can be phished (a hardware key would not be); rotating `SECRET_KEY`
+  makes stored secrets unreadable, so people must then use a recovery code or be reset; the
+  rate limits are in memory and reset when the API restarts.
+
 ### Hardening for a real deployment
 
 With `ENVIRONMENT=production` (or `staging`) the platform is stricter, and

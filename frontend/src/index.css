@@ -5439,3 +5439,64 @@ select {
   letter-spacing: 0.02em;
   user-select: all;
 }
+
+/* Two-step sign-in: the QR code, the setup steps and the recovery codes. */
+.qr-code {
+  display: block;
+  margin: 8px 0;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+}
+
+.setup-steps {
+  display: grid;
+  gap: 16px;
+  padding-left: 20px;
+}
+
+.setup-key {
+  display: inline-block;
+  margin-top: 6px;
+  padding: 6px 10px;
+  font-family: var(--mono);
+  letter-spacing: 0.04em;
+  user-select: all;
+}
+
+.recovery-code-list {
+  display: grid;
+  grid-template-columns: repeat(2, max-content);
+  gap: 8px 32px;
+  padding: 12px 16px;
+  margin: 12px 0;
+  list-style: none;
+  font-family: var(--mono);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+}
+
+.recovery-code-actions {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.checkbox-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 8px 0;
+}
+
+.link-button {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.text-warning {
+  color: var(--warning-text);
+}

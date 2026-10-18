@@ -65,6 +65,7 @@ from app.models.management_system_change import (
     ChangeType,
     ManagementSystemChange,
 )
+from app.models.mfa import MFARecoveryCode, SecuritySettings, UserMFA
 from app.models.objective_measurement import ObjectiveMeasurement
 from app.models.organization_context import OrganizationContext, OrganizationContextStatus
 from app.models.password_history import PasswordHistory
@@ -172,7 +173,10 @@ __all__ = [
     "SupplierStatus",
     "SupplierType",
     "TargetDirection",
+    "MFARecoveryCode",
     "PasswordHistory",
+    "SecuritySettings",
+    "UserMFA",
     "User",
 ]
 
