@@ -214,17 +214,17 @@ def test_settings_start_at_their_defaults_and_can_be_changed(
 ) -> None:
     initial = client.get("/api/v1/ai-use/settings").json()
 
-    assert (initial["unapproved_site_action"], initial["retention_days"]) == ("monitor", 90)
+    assert (initial["unapproved_site_action"], initial["retention_days"]) == ("block", 90)
     assert (initial["enrollment_key_issued"], initial["staff_notice"]) == (False, None)
     changed = client.put(
         "/api/v1/ai-use/settings",
         json={
-            "unapproved_site_action": "block",
+            "unapproved_site_action": "warn",
             "retention_days": 30,
             "staff_notice": "  We count visits to AI sites. We never read what you type.  ",
         },
     ).json()
-    assert (changed["unapproved_site_action"], changed["retention_days"]) == ("block", 30)
+    assert (changed["unapproved_site_action"], changed["retention_days"]) == ("warn", 30)
     assert changed["staff_notice"] == "We count visits to AI sites. We never read what you type."
 
 
@@ -445,7 +445,7 @@ def test_changing_a_tool_or_a_setting_also_changes_the_tag(
     key = issue_key(client)
     seen = [client.get("/api/v1/agent/policy", headers=bearer(key)).headers["etag"]]
 
-    client.put("/api/v1/ai-use/settings", json={"unapproved_site_action": "block"})
+    client.put("/api/v1/ai-use/settings", json={"unapproved_site_action": "warn"})
     seen.append(client.get("/api/v1/agent/policy", headers=bearer(key)).headers["etag"])
     login_as(caigo_admin)
     tool = client.get("/api/v1/ai-tools").json()[0]
@@ -735,7 +735,7 @@ def test_staff_see_a_default_notice_before_anything_is_saved(
 
     assert client.get("/api/v1/staff/ai-use-notice").json() == {
         "staff_notice": None,
-        "unapproved_site_action": "monitor",
+        "unapproved_site_action": "block",
     }
 
 

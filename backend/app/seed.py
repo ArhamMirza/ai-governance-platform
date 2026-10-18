@@ -1424,12 +1424,13 @@ def _seed_ai_use_controls(db: Session) -> None:
     ai_usage_service.update_settings(
         db,
         AIUseSettingsUpdate(
-            unapproved_site_action="warn",
+            unapproved_site_action="block",
             retention_days=90,
             staff_notice=(
                 "To keep company information safe we count how often AI websites are visited "
-                "and warn you when you open one that has not been approved. We also check what "
-                "you paste or type into an AI site for card numbers, keys and a short list of "
+                "and block the ones that have not been approved; you can ask for a tool to be "
+                "approved. We also check what you paste or type into an AI site for card numbers, "
+                "keys and a short list of "
                 "confidential terms. The text itself is checked on your own computer and is "
                 "never sent to us or stored. We keep only counts: who, which AI site, what "
                 "kind of event and how many times, for 90 days."
@@ -1462,21 +1463,21 @@ def _seed_ai_use_controls(db: Session) -> None:
         kind="builtin",
         builtin_key="pk_cnic",
         classification="confidential",
-        action="warn",
+        action="block",
     )
     rule(
         "Client and project names",
         kind="keywords",
         keywords=["Project Falcon", "Acme Corp"],
         classification="confidential",
-        action="warn",
+        action="block",
     )
     rule(
         "Internal ticket numbers",
         kind="regex",
         pattern=r"\bPROJ-\d{4}\b",
         classification="internal",
-        action="monitor",
+        action="block",
     )
 
     def counts(email: str, rows: list[tuple[int, str, str, str, int | None, int]]) -> None:

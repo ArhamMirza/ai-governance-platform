@@ -71,7 +71,7 @@ def get_settings(db: Session) -> AIUseSettings:
         settings = ai_use_repository.create_settings(
             db,
             AIUseSettings(
-                unapproved_site_action=DLPAction.MONITOR, retention_days=DEFAULT_RETENTION_DAYS
+                unapproved_site_action=DLPAction.BLOCK, retention_days=DEFAULT_RETENTION_DAYS
             ),
         )
     return settings
@@ -81,7 +81,7 @@ def settings_or_default(db: Session) -> AIUseSettings:
     """The settings if they've been saved, else the defaults -- without
     writing a row, for the dashboard, compliance and the staff notice."""
     return ai_use_repository.get_settings(db) or AIUseSettings(
-        unapproved_site_action=DLPAction.MONITOR, retention_days=DEFAULT_RETENTION_DAYS
+        unapproved_site_action=DLPAction.BLOCK, retention_days=DEFAULT_RETENTION_DAYS
     )
 
 
