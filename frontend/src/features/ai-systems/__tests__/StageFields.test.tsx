@@ -58,14 +58,14 @@ describe("OwnerField", () => {
     const save = vi.fn();
     vi.mocked(useSetOwner).mockReturnValue({ mutate: save, isPending: false } as never);
     vi.mocked(useUserDirectory).mockReturnValue({
-      data: [{ id: 7, name: "Arham Mirza", governance_roles: ["AI System Owner"] }],
+      data: [{ id: 7, name: "Alex Morgan", governance_roles: ["AI System Owner"] }],
     } as never);
     const user = userEvent.setup();
 
     render(<OwnerField rowId={1} lifecycle={makeLifecycle()} />);
 
     expect(
-      screen.getByRole("option", { name: "Arham Mirza (AI System Owner)" }),
+      screen.getByRole("option", { name: "Alex Morgan (AI System Owner)" }),
     ).toBeInTheDocument();
 
     await user.selectOptions(screen.getByLabelText("AI System Owner"), "7");
@@ -76,7 +76,7 @@ describe("OwnerField", () => {
   it("shows the currently assigned owner as selected", () => {
     vi.mocked(useSetOwner).mockReturnValue({ mutate: vi.fn(), isPending: false } as never);
     vi.mocked(useUserDirectory).mockReturnValue({
-      data: [{ id: 7, name: "Arham Mirza", governance_roles: [] }],
+      data: [{ id: 7, name: "Alex Morgan", governance_roles: [] }],
     } as never);
 
     render(<OwnerField rowId={1} lifecycle={makeLifecycle({ owner_id: 7 })} />);
