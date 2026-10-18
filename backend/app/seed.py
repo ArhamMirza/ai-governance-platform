@@ -1428,8 +1428,8 @@ def _seed_ai_use_controls(db: Session) -> None:
             retention_days=90,
             staff_notice=(
                 "To keep company information safe we count how often AI websites are visited "
-                "and block the ones that have not been approved; you can ask for a tool to be approved. We also check what "
-                "you paste or type into an AI site for card numbers, keys and a short list of "
+                "and block the ones that have not been approved; you can ask for a tool to be "
+                "approved. We also check what you paste or type into an AI site for card numbers, keys and a short list of "
                 "confidential terms. The text itself is checked on your own computer and is "
                 "never sent to us or stored. We keep only counts: who, which AI site, what "
                 "kind of event and how many times, for 90 days."
