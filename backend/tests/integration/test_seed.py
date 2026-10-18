@@ -379,15 +379,15 @@ def test_seed_populates_the_ai_use_controls(db_session: Session) -> None:
     seed(db_session)
 
     settings = ai_usage_service.get_settings(db_session)
-    assert (settings.unapproved_site_action, settings.retention_days) == ("warn", 90)
+    assert (settings.unapproved_site_action, settings.retention_days) == ("block", 90)
     assert "never sent to us" in settings.staff_notice
     rules = {r.name: (r.kind, r.action) for r in dlp_rule_service.list_rules(db_session)}
     assert rules == {
         "Payment card numbers": ("builtin", "block"),
         "Keys and access tokens": ("builtin", "block"),
-        "Pakistan CNIC numbers": ("builtin", "warn"),
-        "Client and project names": ("keywords", "warn"),
-        "Internal ticket numbers": ("regex", "monitor"),
+        "Pakistan CNIC numbers": ("builtin", "block"),
+        "Client and project names": ("keywords", "block"),
+        "Internal ticket numbers": ("regex", "block"),
     }
     summary = ai_usage_service.usage_summary(db_session, 30)
     assert {t.event_type: t.count for t in summary.by_type} == {

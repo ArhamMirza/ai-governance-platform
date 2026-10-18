@@ -53,7 +53,7 @@ export function DLPRuleForm({ onCreated }: { onCreated?: (ruleId: number) => voi
       keywords: "",
       pattern: "",
       classification: "confidential",
-      action: "warn",
+      action: "block",
     },
   });
   const kind = watch("kind");
