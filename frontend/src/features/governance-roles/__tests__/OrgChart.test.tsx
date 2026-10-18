@@ -14,7 +14,7 @@ const nodes: OrgChartNode[] = [
     name: "Chief AI Governance Officer",
     parent_role_id: null,
     max_holders: 1,
-    holders: [{ id: 5, name: "Arham Mirza" }],
+    holders: [{ id: 5, name: "Alex Morgan" }],
   },
   {
     id: 2,

@@ -6,6 +6,10 @@ on:
   push:
     branches: [main]
 
+# The jobs only read the repository, so the token they run with can only read it.
+permissions:
+  contents: read
+
 jobs:
   backend:
     runs-on: ubuntu-latest

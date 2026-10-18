@@ -4,6 +4,11 @@ A locally-run application for managing AI governance — policies, procedures,
 an AI system inventory, risk assessments, and supporting evidence — aligned to
 frameworks such as the EU AI Act and ISO/IEC 42001.
 
+> **Status.** A portfolio project, built to explore AI governance end to end. It has had
+> no independent security review and is **not ready to hold a real organization's data**;
+> see [SECURITY.md](SECURITY.md) for what is and isn't covered. The demo data
+> (`python -m app.seed`) is entirely fictional.
+
 See [DESIGN.md](DESIGN.md) for the full architecture and data model.
 
 ## Stack
