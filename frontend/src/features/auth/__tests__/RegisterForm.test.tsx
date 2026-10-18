@@ -46,7 +46,7 @@ describe("RegisterForm", () => {
     await user.click(screen.getByRole("button", { name: "Create account" }));
 
     expect(
-      await screen.findByText("Password must be at least 8 characters"),
+      await screen.findByText("Password must be at least 12 characters"),
     ).toBeInTheDocument();
   });
 

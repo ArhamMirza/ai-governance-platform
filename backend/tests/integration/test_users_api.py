@@ -141,6 +141,12 @@ def test_deactivated_user_loses_access_immediately(unauthenticated_client: TestC
         "/api/v1/auth/login", json={"email": "bob@example.com", "password": "supersecret1"}
     )
     assert login_response.status_code == 200
+    # An administrator-chosen password is temporary: nothing works until it is replaced.
+    assert contributor_client.get("/api/v1/policies").status_code == 403
+    contributor_client.post(
+        "/api/v1/auth/change-password",
+        json={"current_password": "supersecret1", "new_password": "a-much-better-passphrase"},
+    )
     assert contributor_client.get("/api/v1/policies").status_code == 200
 
     unauthenticated_client.patch(

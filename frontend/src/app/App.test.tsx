@@ -24,7 +24,7 @@ describe("App", () => {
       email: "ada@example.com",
       role: "admin",
       is_active: true,
-      created_at: "2026-01-01T00:00:00Z",
+      created_at: "2026-01-01T00:00:00Z", must_change_password: false,
     });
 
     render(<App />);
@@ -42,7 +42,7 @@ describe("App", () => {
       email: "elena@example.com",
       role: "employee",
       is_active: true,
-      created_at: "2026-01-01T00:00:00Z",
+      created_at: "2026-01-01T00:00:00Z", must_change_password: false,
     });
     vi.mocked(staffApi.library).mockResolvedValue([]);
 

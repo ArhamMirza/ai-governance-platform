@@ -4,11 +4,12 @@ import { z } from "zod";
 
 import { readError } from "../../../shared/api/readError";
 import { useRegister } from "../hooks";
+import { MIN_PASSWORD_LENGTH, PASSWORD_HINT, PASSWORD_TOO_SHORT } from "../passwordRules";
 
 const registerFormSchema = z.object({
   name: z.string().min(1, "Name is required"),
   email: z.string().min(3, "Email is required"),
-  password: z.string().min(8, "Password must be at least 8 characters"),
+  password: z.string().min(MIN_PASSWORD_LENGTH, PASSWORD_TOO_SHORT),
 });
 
 type RegisterFormValues = z.infer<typeof registerFormSchema>;
@@ -50,8 +51,12 @@ export function RegisterForm() {
           id="register-password"
           type="password"
           autoComplete="new-password"
+          aria-describedby="register-password-hint"
           {...field("password")}
         />
+        <p id="register-password-hint" className="field-hint">
+          {PASSWORD_HINT}
+        </p>
         {errors.password && <p role="alert">{errors.password.message}</p>}
       </div>
 

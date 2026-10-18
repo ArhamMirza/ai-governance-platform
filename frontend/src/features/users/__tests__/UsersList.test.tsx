@@ -2,9 +2,10 @@ import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
+import { ApiError } from "../../../shared/api/httpClient";
 import { useCurrentUser } from "../../auth/hooks";
 import { UsersList } from "../components/UsersList";
-import { useUpdateUser, useUserAccountabilities, useUsers } from "../hooks";
+import { useResetPassword, useUpdateUser, useUserAccountabilities, useUsers } from "../hooks";
 import type { ManagedUser, UserAccountabilities } from "../types";
 
 vi.mock("../hooks");
@@ -17,6 +18,7 @@ const me: ManagedUser = {
   role: "admin",
   is_active: true,
   created_at: "2026-01-01T00:00:00Z",
+  must_change_password: false,
 };
 
 const contributor: ManagedUser = {
@@ -26,6 +28,7 @@ const contributor: ManagedUser = {
   role: "contributor",
   is_active: true,
   created_at: "2026-01-01T00:00:00Z",
+  must_change_password: false,
 };
 
 const NOTHING_OWNED: UserAccountabilities = {
@@ -39,12 +42,17 @@ function mockHooks(
   users: ManagedUser[],
   mutateAsync = vi.fn(),
   accountabilities: UserAccountabilities = NOTHING_OWNED,
+  resetMutateAsync = vi.fn(),
 ) {
   vi.mocked(useUsers).mockReturnValue({ data: users, isLoading: false, isError: false } as never);
   vi.mocked(useCurrentUser).mockReturnValue({ data: me } as never);
   vi.mocked(useUpdateUser).mockReturnValue({ mutateAsync, isPending: false } as never);
   vi.mocked(useUserAccountabilities).mockReturnValue({ data: accountabilities } as never);
-  return { mutateAsync };
+  vi.mocked(useResetPassword).mockReturnValue({
+    mutateAsync: resetMutateAsync,
+    isPending: false,
+  } as never);
+  return { mutateAsync, resetMutateAsync };
 }
 
 /** Deactivation is behind a confirmation now, so the tests have to confirm. */
@@ -164,5 +172,64 @@ describe("UsersList", () => {
     await user.click(screen.getByRole("button", { name: "Reactivate" }));
 
     expect(mutateAsync).toHaveBeenCalledWith({ id: contributor.id, data: { is_active: true } });
+  });
+
+  describe("resetting a password", () => {
+    it("asks first, then shows the one-time password once", async () => {
+      const resetMutateAsync = vi.fn().mockResolvedValue({ temporary_password: "Tmp-Pass-9x8y7z" });
+      mockHooks([me, contributor], vi.fn(), NOTHING_OWNED, resetMutateAsync);
+      const user = userEvent.setup();
+
+      render(<UsersList />);
+      await user.click(screen.getByRole("button", { name: "Reset password for Bob" }));
+      const confirm = screen.getByRole("alertdialog", { name: "Reset the password for Bob?" });
+      expect(resetMutateAsync).not.toHaveBeenCalled();
+      await user.click(within(confirm).getByRole("button", { name: "Reset password" }));
+
+      expect(resetMutateAsync).toHaveBeenCalledWith(contributor.id);
+      const issued = await screen.findByRole("alertdialog", { name: "Temporary password" });
+      expect(within(issued).getByTestId("temporary-password")).toHaveTextContent("Tmp-Pass-9x8y7z");
+
+      await user.click(within(issued).getByRole("button", { name: "Done" }));
+      expect(screen.queryByText("Tmp-Pass-9x8y7z")).not.toBeInTheDocument();
+    });
+
+    it("does nothing if the confirmation is cancelled", async () => {
+      const resetMutateAsync = vi.fn();
+      mockHooks([me, contributor], vi.fn(), NOTHING_OWNED, resetMutateAsync);
+      const user = userEvent.setup();
+
+      render(<UsersList />);
+      await user.click(screen.getByRole("button", { name: "Reset password for Bob" }));
+      await user.click(screen.getByRole("button", { name: "Cancel" }));
+
+      expect(resetMutateAsync).not.toHaveBeenCalled();
+      expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
+    });
+
+    it("shows why a reset failed and no password", async () => {
+      const resetMutateAsync = vi
+        .fn()
+        .mockRejectedValue(new ApiError(404, JSON.stringify({ detail: "User 2 not found" })));
+      mockHooks([me, contributor], vi.fn(), NOTHING_OWNED, resetMutateAsync);
+      const user = userEvent.setup();
+
+      render(<UsersList />);
+      await user.click(screen.getByRole("button", { name: "Reset password for Bob" }));
+      await user.click(
+        within(screen.getByRole("alertdialog")).getByRole("button", { name: "Reset password" }),
+      );
+
+      expect(await screen.findByRole("alert")).toHaveTextContent("User 2 not found");
+      expect(screen.queryByTestId("temporary-password")).not.toBeInTheDocument();
+    });
+
+    it("offers no reset for yourself or for a deactivated account", () => {
+      mockHooks([me, { ...contributor, is_active: false }]);
+
+      render(<UsersList />);
+
+      expect(screen.queryByRole("button", { name: /Reset password/ })).not.toBeInTheDocument();
+    });
   });
 });

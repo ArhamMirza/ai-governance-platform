@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { ApiError } from "../../shared/api/httpClient";
 import { authApi } from "./api";
-import type { AuthUser, LoginInput, RegisterInput } from "./types";
+import type { AuthUser, ChangePasswordInput, LoginInput, RegisterInput } from "./types";
 
 export const currentUserKey = ["auth", "me"] as const;
 
@@ -57,6 +57,22 @@ export function useLogin() {
       queryClient.setQueryData(currentUserKey, user);
     },
   });
+}
+
+export function useChangePassword() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: ChangePasswordInput) => authApi.changePassword(data),
+    onSuccess: (user) => {
+      // The returned user has must_change_password cleared, which is what
+      // lets AuthGate swap the forced screen for the app.
+      queryClient.setQueryData(currentUserKey, user);
+    },
+  });
+}
+
+export function useSignOutEverywhere() {
+  return useMutation({ mutationFn: authApi.signOutEverywhere });
 }
 
 export function useLogout() {

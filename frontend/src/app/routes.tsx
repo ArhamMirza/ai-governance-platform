@@ -45,6 +45,7 @@ import { RiskAssessmentsPage } from "../pages/RiskAssessmentsPage";
 import { SettingsPage } from "../pages/SettingsPage";
 import { SupplierDetailPage } from "../pages/SupplierDetailPage";
 import { SuppliersPage } from "../pages/SuppliersPage";
+import { AccountPage } from "../pages/AccountPage";
 import { UsersPage } from "../pages/UsersPage";
 import { Layout } from "./Layout";
 
@@ -113,6 +114,7 @@ export function AppRoutes() {
         />
         <Route path="/frameworks" element={<FrameworksPage />} />
         <Route path="/governance" element={<GovernanceRolesPage />} />
+        <Route path="/account" element={<AccountPage />} />
         <Route path="/users" element={<UsersPage />} />
         <Route path="/handbook" element={<HandbookPage />} />
         <Route path="/settings" element={<SettingsPage />} />

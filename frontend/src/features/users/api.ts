@@ -3,6 +3,7 @@ import type {
   CreateUserInput,
   DirectoryUser,
   ManagedUser,
+  TemporaryPassword,
   UpdateUserInput,
   UserAccountabilities,
 } from "./types";
@@ -12,6 +13,8 @@ export const usersApi = {
   create: (data: CreateUserInput) => httpClient.post<ManagedUser>("/users", data),
   update: (id: number, data: UpdateUserInput) =>
     httpClient.patch<ManagedUser>(`/users/${id}`, data),
+  resetPassword: (id: number) =>
+    httpClient.post<TemporaryPassword>(`/users/${id}/reset-password`),
   directory: () => httpClient.get<DirectoryUser[]>("/users/directory"),
   accountabilities: (id: number) =>
     httpClient.get<UserAccountabilities>(`/users/${id}/accountabilities`),

@@ -1,5 +1,12 @@
 import { httpClient } from "../../shared/api/httpClient";
-import type { AuthUser, LoginInput, RegisterInput, RegistrationStatus } from "./types";
+import type {
+  AuthUser,
+  ChangePasswordInput,
+  LoginInput,
+  RegisterInput,
+  RegistrationStatus,
+  SessionsEnded,
+} from "./types";
 
 export const authApi = {
   registrationStatus: () => httpClient.get<RegistrationStatus>("/auth/registration-status"),
@@ -7,4 +14,7 @@ export const authApi = {
   login: (data: LoginInput) => httpClient.post<AuthUser>("/auth/login", data),
   logout: () => httpClient.post<void>("/auth/logout"),
   me: () => httpClient.get<AuthUser>("/auth/me"),
+  changePassword: (data: ChangePasswordInput) =>
+    httpClient.post<AuthUser>("/auth/change-password", data),
+  signOutEverywhere: () => httpClient.post<SessionsEnded>("/auth/sign-out-everywhere"),
 };

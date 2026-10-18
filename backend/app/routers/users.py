@@ -6,6 +6,7 @@ from app.dependencies import get_current_user, require_manage_users_user
 from app.models.user import User
 from app.schemas.auth import UserRead
 from app.schemas.user import (
+    TemporaryPassword,
     UserAccountabilities,
     UserCreate,
     UserDirectoryEntry,
@@ -58,6 +59,17 @@ def create_user(
     actor: User = Depends(require_manage_users_user),
 ) -> UserRead:
     return user_service.create_user(db, data, actor.id)
+
+
+@router.post("/{user_id}/reset-password", response_model=TemporaryPassword)
+def reset_password(
+    user_id: int,
+    db: Session = Depends(get_db),
+    actor: User = Depends(require_manage_users_user),
+) -> TemporaryPassword:
+    """Sets a one-time password, shown here once, and signs the person out
+    everywhere. They must choose their own at their next sign-in."""
+    return TemporaryPassword(temporary_password=user_service.reset_password(db, user_id, actor.id))
 
 
 @router.patch("/{user_id}", response_model=UserRead)

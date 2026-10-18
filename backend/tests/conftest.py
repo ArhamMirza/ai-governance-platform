@@ -12,7 +12,7 @@ from app.core.database import Base, get_db
 from app.core.framework_reference_data import as_rows
 from app.core.governance_role_seed_data import DEFAULT_ROLES
 from app.core.security import hash_password
-from app.dependencies import get_current_user
+from app.dependencies import get_current_user, get_session_user
 from app.main import app
 from app.models.framework_control import FrameworkControl
 from app.models.framework_soa_entry import FrameworkSoaEntry
@@ -110,9 +110,9 @@ def _clear_login_lockouts():
     without this a login failure in one test could count toward another
     test's lockout threshold -- it shares nothing else across tests, every
     other fixture here builds a fresh db per test."""
-    auth_service._failed_logins.clear()
+    auth_service.reset_rate_limits()
     yield
-    auth_service._failed_logins.clear()
+    auth_service.reset_rate_limits()
 
 
 @pytest.fixture(autouse=True)
@@ -253,6 +253,9 @@ def login_as() -> Callable[[User], None]:
 
     def _login_as(user: User) -> None:
         app.dependency_overrides[get_current_user] = lambda: user
+        # The few routes open to someone who must still change their password
+        # (auth/me among them) check the session directly.
+        app.dependency_overrides[get_session_user] = lambda: user
 
     return _login_as
 
@@ -268,6 +271,7 @@ def client(db_session: Session, test_user: User) -> Generator[TestClient, None, 
 
     app.dependency_overrides[get_db] = override_get_db
     app.dependency_overrides[get_current_user] = lambda: test_user
+    app.dependency_overrides[get_session_user] = lambda: test_user
     with TestClient(app) as test_client:
         yield test_client
     app.dependency_overrides.clear()

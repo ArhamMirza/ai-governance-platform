@@ -3,7 +3,7 @@ import { useState } from "react";
 import { ConfirmDialog } from "../../../shared/components/ConfirmDialog";
 import { readError } from "../../../shared/api/readError";
 import { useCurrentUser } from "../../auth/hooks";
-import { useUpdateUser, useUserAccountabilities, useUsers } from "../hooks";
+import { useResetPassword, useUpdateUser, useUserAccountabilities, useUsers } from "../hooks";
 import type { ManagedUser, UserAccountabilities } from "../types";
 
 const ROLE_LABELS: Record<string, string> = {
@@ -36,8 +36,13 @@ export function UsersList() {
   const { data: users, isLoading, isError } = useUsers();
   const { data: me } = useCurrentUser();
   const updateUser = useUpdateUser();
+  const resetPassword = useResetPassword();
   const [error, setError] = useState<string | null>(null);
   const [confirmingDeactivation, setConfirmingDeactivation] = useState<ManagedUser | null>(null);
+  const [confirmingReset, setConfirmingReset] = useState<ManagedUser | null>(null);
+  // Held in state only for as long as the dialog is open: it is shown once and
+  // not kept anywhere after that.
+  const [issued, setIssued] = useState<{ user: ManagedUser; password: string } | null>(null);
   const { data: accountabilities } = useUserAccountabilities(
     confirmingDeactivation?.id ?? null,
   );
@@ -64,11 +69,22 @@ export function UsersList() {
     }
   };
 
+  const handleReset = async (target: ManagedUser) => {
+    setError(null);
+    try {
+      const result = await resetPassword.mutateAsync(target.id);
+      setConfirmingReset(null);
+      setIssued({ user: target, password: result.temporary_password });
+    } catch (err) {
+      setError(readError(err, "Failed to reset the password"));
+    }
+  };
+
   return (
     <div>
       {/* While the dialog is open it shows the error itself -- rendering it
           here too would duplicate it, and behind the modal backdrop. */}
-      {error && !confirmingDeactivation && <p role="alert">{error}</p>}
+      {error && !confirmingDeactivation && !confirmingReset && <p role="alert">{error}</p>}
       <table>
         <thead>
           <tr>
@@ -113,16 +129,27 @@ export function UsersList() {
                 </td>
                 <td>
                   {!isSelf && (
-                    <button
-                      onClick={() =>
-                        user.is_active
-                          ? setConfirmingDeactivation(user)
-                          : setActive(user.id, true)
-                      }
-                      disabled={updateUser.isPending}
-                    >
-                      {user.is_active ? "Deactivate" : "Reactivate"}
-                    </button>
+                    <>
+                      <button
+                        onClick={() =>
+                          user.is_active
+                            ? setConfirmingDeactivation(user)
+                            : setActive(user.id, true)
+                        }
+                        disabled={updateUser.isPending}
+                      >
+                        {user.is_active ? "Deactivate" : "Reactivate"}
+                      </button>
+                      {user.is_active && (
+                        <button
+                          aria-label={`Reset password for ${user.name}`}
+                          onClick={() => setConfirmingReset(user)}
+                          disabled={resetPassword.isPending}
+                        >
+                          Reset password
+                        </button>
+                      )}
+                    </>
                   )}
                 </td>
               </tr>
@@ -130,6 +157,49 @@ export function UsersList() {
           })}
         </tbody>
       </table>
+
+      {confirmingReset && (
+        <ConfirmDialog
+          title={`Reset the password for ${confirmingReset.name}?`}
+          message="They are signed out everywhere and their current password stops working. You'll be shown a one-time password to give them; they must choose their own when they next sign in."
+          confirmLabel="Reset password"
+          pendingLabel="Resetting..."
+          isPending={resetPassword.isPending}
+          error={error}
+          onConfirm={() => handleReset(confirmingReset)}
+          onCancel={() => setConfirmingReset(null)}
+        />
+      )}
+
+      {issued && (
+        <div className="modal-backdrop">
+          <div
+            className="modal-panel confirm-dialog"
+            role="alertdialog"
+            aria-modal="true"
+            aria-label="Temporary password"
+          >
+            <div className="modal-header">
+              <div>
+                <h3>Temporary password for {issued.user.name}</h3>
+                <p>
+                  Copy it now and pass it on privately. It won't be shown again, and they must
+                  replace it when they sign in.
+                </p>
+              </div>
+            </div>
+            <p>
+              <code className="temporary-password" data-testid="temporary-password">
+                {issued.password}
+              </code>
+            </p>
+            <div className="confirm-dialog-actions">
+              <button onClick={() => navigator.clipboard?.writeText(issued.password)}>Copy</button>
+              <button onClick={() => setIssued(null)}>Done</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {confirmingDeactivation && (
         <ConfirmDialog

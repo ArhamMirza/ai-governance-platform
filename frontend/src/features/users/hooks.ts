@@ -33,6 +33,16 @@ export function useCreateUser() {
   });
 }
 
+/** The temporary password comes back once, in the mutation result; nothing
+ * is cached, so it can't reappear on a later visit. */
+export function useResetPassword() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => usersApi.resetPassword(id),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: usersKey }),
+  });
+}
+
 export function useUpdateUser() {
   const queryClient = useQueryClient();
   return useMutation({
