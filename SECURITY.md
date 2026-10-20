@@ -29,8 +29,11 @@ allow-list, no API docs in production, and a first-run setup code. Every route r
 a signed-in session by default, and a test walks every route as an employee login to check
 that only the staff routes open.
 
-Supply chain: `pip-audit` and `npm audit` run in CI, Dependabot is on, and the built frontend
-is checked in CI for compatibility with a strict Content-Security-Policy.
+Supply chain and scanning: `pip-audit` and `npm audit` run in CI; CodeQL (Python and
+TypeScript) and a gitleaks scan of the whole history run on every pull request and weekly;
+GitHub secret scanning and push protection are on; workflow actions are pinned to commit
+hashes and Dependabot keeps them and the dependencies current; and the built frontend is
+checked in CI for compatibility with a strict Content-Security-Policy.
 
 The details are in the *Accounts and sign-in* and *Two-step sign-in* sections of the
 [README](README.md) and in [deploy/README.md](deploy/README.md).

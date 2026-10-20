@@ -1,0 +1,18 @@
+# Configuration for the secret scan in .github/workflows/security.yml.
+# It scans the whole git history with gitleaks' default rules, plus the narrow
+# exceptions below. Each one is made-up test data, named exactly so that a real
+# secret anywhere else (including elsewhere in these same files' neighbours)
+# is still found.
+
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "The data-loss-prevention tests deliberately contain sample private-key headers, a sample JWT and a documented example cloud key, to prove the detectors find them"
+paths = ['''frontend/src/shared/__tests__/detectors\.test\.ts''']
+
+[[allowlists]]
+description = "A made-up one-time password shown by a user-interface test"
+condition = "AND"
+paths = ['''frontend/src/features/users/__tests__/UsersList\.test\.tsx''']
+regexes = ['''Tmp-Pass-9x8y7z''']
