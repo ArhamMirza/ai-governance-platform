@@ -1,4 +1,9 @@
 version: 2
+
+# Minor and patch updates arrive together, one pull request per ecosystem, so a
+# week's worth of small bumps is one thing to review rather than ten. Major
+# versions stay separate, because those are the ones that can break something.
+
 updates:
   # Backend (pip, via pyproject.toml)
   - package-ecosystem: "pip"
@@ -6,6 +11,9 @@ updates:
     schedule:
       interval: "weekly"
     open-pull-requests-limit: 10
+    groups:
+      backend-minor-and-patch:
+        update-types: ["minor", "patch"]
 
   # Frontend (npm)
   - package-ecosystem: "npm"
@@ -13,9 +21,45 @@ updates:
     schedule:
       interval: "weekly"
     open-pull-requests-limit: 10
+    groups:
+      frontend-minor-and-patch:
+        update-types: ["minor", "patch"]
+    ignore:
+      # jsdom 30 needs Node 22.22 or newer; this project supports Node 20.
+      # Revisit when the Node baseline moves.
+      - dependency-name: "jsdom"
+        update-types: ["version-update:semver-major"]
 
-  # GitHub Actions themselves (pinned action versions)
+  # Browser extension (npm) and its real-browser test
+  - package-ecosystem: "npm"
+    directory: "/extension"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 10
+    groups:
+      extension-minor-and-patch:
+        update-types: ["minor", "patch"]
+    ignore:
+      # jsdom 30 needs Node 22.22 or newer; this project supports Node 20.
+      # Revisit when the Node baseline moves.
+      - dependency-name: "jsdom"
+        update-types: ["version-update:semver-major"]
+
+  - package-ecosystem: "npm"
+    directory: "/extension/e2e"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    groups:
+      extension-e2e-minor-and-patch:
+        update-types: ["minor", "patch"]
+
+  # GitHub Actions themselves. Every action is pinned to a commit hash with its
+  # version in a comment; Dependabot reads that form and moves both together.
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
       interval: "weekly"
+    groups:
+      actions-minor-and-patch:
+        update-types: ["minor", "patch"]

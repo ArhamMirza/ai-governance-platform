@@ -28,7 +28,7 @@ platform).
 
 ## Run it
 
-You need Node 20+, Chrome and/or Edge, and `openssl` on the path (to make a
+You need Node 22+, Chrome and/or Edge, and `openssl` on the path (to make a
 throwaway certificate: some AI domains are on the browser's HTTPS-only list).
 
 1. **Start the platform with demo data**

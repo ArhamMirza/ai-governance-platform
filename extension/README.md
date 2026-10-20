@@ -88,7 +88,7 @@ README isn't legal advice.
 
 ## Build
 
-Needs Node 20+.
+Needs Node 22+.
 
 ```bash
 cd extension

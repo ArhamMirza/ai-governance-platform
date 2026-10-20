@@ -51,7 +51,9 @@ jobs:
 
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
         with:
-          node-version: "20"
+          # Node 20 reached end of life in April 2026, and vitest and jest-dom
+          # already require 22 or newer.
+          node-version: "22"
           cache: npm
           cache-dependency-path: frontend/package-lock.json
 
@@ -83,7 +85,9 @@ jobs:
 
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
         with:
-          node-version: "20"
+          # Node 20 reached end of life in April 2026, and vitest and jest-dom
+          # already require 22 or newer.
+          node-version: "22"
           cache: npm
           cache-dependency-path: extension/package-lock.json
 
