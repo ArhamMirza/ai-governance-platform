@@ -9,7 +9,7 @@ import secrets
 
 from sqlalchemy.orm import Session
 
-from app.core import password_policy
+from app.core import email_address, password_policy
 from app.core.exceptions import ConflictError, NotFoundError, ValidationError
 from app.core.security import hash_password
 from app.models.user import User
@@ -86,9 +86,9 @@ def _get_or_raise(db: Session, user_id: int) -> User:
 
 
 def create_user(db: Session, data: UserCreate, actor_id: int | None) -> User:
-    if "@" not in data.email:
-        raise ValidationError("Enter a valid email address.")
-    email = data.email.strip().lower()
+    email = email_address.normalise(data.email)
+    if (problem := email_address.problem_with(email)) is not None:
+        raise ValidationError(problem)
     if user_repository.get_by_email(db, email) is not None:
         raise ConflictError(f"A user with email {email} already exists.")
     password_policy.require(data.password, email=email, name=data.name)

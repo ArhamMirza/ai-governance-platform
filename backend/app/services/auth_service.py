@@ -11,7 +11,7 @@ from datetime import UTC, datetime, timedelta
 
 from sqlalchemy.orm import Session as DbSession
 
-from app.core import mfa_ticket, password_policy, setup_code
+from app.core import email_address, mfa_ticket, password_policy, setup_code
 from app.core.attempt_limiter import AttemptLimiter
 from app.core.exceptions import (
     AuthenticationError,
@@ -126,9 +126,9 @@ def register(db: DbSession, data: RegisterRequest, ip: str | None = None) -> Use
                 "The setup code is missing or wrong. It is printed in the server's log when "
                 "it starts, or it is the SETUP_CODE you configured."
             )
-    if "@" not in data.email:
-        raise ValidationError("Enter a valid email address.")
-    email = data.email.strip().lower()
+    email = email_address.normalise(data.email)
+    if (problem := email_address.problem_with(email)) is not None:
+        raise ValidationError(problem)
     password_policy.require(data.password, email=email, name=data.name)
 
     user = User(
