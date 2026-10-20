@@ -20,12 +20,11 @@ make a scanner happy would be a far worse bug than the one it prevents.
 """
 
 from datetime import UTC, datetime
-from pathlib import Path
 
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
-from app.core import ai_prompting, embeddings
+from app.core import ai_prompting, embeddings, evidence_files
 from app.core.chunking import Chunk, chunk_segments
 from app.models.document_chunk import DocumentChunk, IndexStatus, SourceType
 from app.models.evidence import Evidence
@@ -98,7 +97,7 @@ def index_evidence(db: Session, evidence_id: int) -> Evidence | None:
     document_index_repository.clear_for_source(db, SourceType.EVIDENCE, evidence_id)
 
     try:
-        data = Path(evidence.storage_path).read_bytes()
+        data = evidence_files.path_for(evidence.storage_path).read_bytes()
     except OSError as exc:
         _mark(
             evidence,

@@ -5,7 +5,7 @@ from fastapi import UploadFile
 from sqlalchemy import Connection, Engine
 from sqlalchemy.orm import Session
 
-from app.core.config import get_settings
+from app.core import evidence_files
 from app.core.exceptions import NotFoundError, ValidationError
 from app.models.document_chunk import SourceType
 from app.models.evidence import Evidence
@@ -45,7 +45,7 @@ MAX_SIZE_BYTES = 25 * 1024 * 1024
 
 
 def _storage_dir() -> Path:
-    path = Path(get_settings().evidence_storage_dir)
+    path = evidence_files.directory()
     path.mkdir(parents=True, exist_ok=True)
     return path
 
@@ -160,7 +160,7 @@ def delete_all_for_entity(db: Session, entity_type: str, entity_id: int) -> None
     subfolder is exactly as real as evidence filed flat, and was previously
     left behind by this function."""
     for evidence in evidence_repository.list_for_entity(db, entity_type, entity_id):
-        Path(evidence.storage_path).unlink(missing_ok=True)
+        evidence_files.path_for(evidence.storage_path).unlink(missing_ok=True)
         # These documents can be tagged to framework controls too -- see
         # delete_evidence for why the tags can't outlive the file.
         framework_service.delete_tags(db, "Evidence", evidence.id)
@@ -172,7 +172,7 @@ def delete_all_for_entity(db: Session, entity_type: str, entity_id: int) -> None
 def delete_evidence(db: Session, evidence_id: int, actor_id: int | None) -> None:
     evidence = _get_or_raise(db, evidence_id)
     entity_type, entity_id, filename = evidence.entity_type, evidence.entity_id, evidence.filename
-    Path(evidence.storage_path).unlink(missing_ok=True)
+    evidence_files.path_for(evidence.storage_path).unlink(missing_ok=True)
     # A document can be tagged to framework controls, and the Statement of
     # Applicability reads those tags as evidence that a control is covered.
     # Leaving them behind would keep a deleted document counting as coverage.

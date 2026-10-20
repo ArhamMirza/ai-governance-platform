@@ -12,6 +12,7 @@ htmlcov/
 *.db
 *.sqlite3
 backend/storage/
+backend/backups/
 
 # --- Node / frontend ---
 node_modules/

@@ -4,6 +4,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from app.core import evidence_files
 from app.core.exceptions import NotFoundError, ValidationError
 from app.models.evidence import Evidence
 from app.services import evidence_service
@@ -38,7 +39,7 @@ def db() -> MagicMock:
 @pytest.fixture(autouse=True)
 def storage_dir(tmp_path, monkeypatch):
     fake_settings = SimpleNamespace(evidence_storage_dir=str(tmp_path))
-    monkeypatch.setattr(evidence_service, "get_settings", lambda: fake_settings)
+    monkeypatch.setattr(evidence_files, "get_settings", lambda: fake_settings)
     return tmp_path
 
 

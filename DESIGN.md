@@ -113,8 +113,8 @@ These recur throughout the code and explain most of its shape.
   that. Sync endpoints run in FastAPI's threadpool, which is why `core/concurrency.py`
   exists (see §4.3).
 - **Why SQLite.** One file holds records, the full-text index (FTS5) and the vector index
-  (sqlite-vec), so a backup is one file and search needs no second service. The cost is
-  no concurrent writers and no managed backups. Repositories isolate the engine, and
+  (sqlite-vec), so search needs no second service and a backup is the database plus the
+  uploads folder. The cost is no concurrent writers and backups you schedule yourself. Repositories isolate the engine, and
   Alembic is used from the start, so moving to PostgreSQL is a configuration and
   migration exercise rather than a rewrite (it is the first thing to do for real data).
 
@@ -391,6 +391,15 @@ The headline controls; [SECURITY.md](SECURITY.md) lists limits and
   A file can never create or change an administrator, change your own account, bring back
   a deactivated one, or deactivate anybody: people missing from the file are only listed.
   Capped at 200 people a file, because each new account costs a deliberately slow hash.
+- **Backup and restore** (`app/backup.py`) — one command makes a `.tar.gz` holding a
+  consistent copy of the database (SQLite's online backup, so the API keeps running), every
+  upload and a manifest of SHA-256 checksums, then verifies it. Restore checks the archive,
+  unpacks only the names this tool writes (nothing can land outside the target) and only
+  into a folder that does not exist yet. Uploads are found by stored name under
+  `EVIDENCE_STORAGE_DIR` (`core/evidence_files.py`), not by the full path the database once
+  recorded, so a restore into another folder or machine still serves its files. Archives
+  are not encrypted and do not hold `SECRET_KEY`; scheduling and off-machine copies are the
+  operator's (deploy/README.md).
 - **Secrets at rest** — AI provider keys and TOTP secrets under Fernet; the enrollment key
   and session tokens as hashes.
 - **Access** — default deny, a test that walks every route as an employee, segregation of
@@ -514,7 +523,8 @@ the app does not claim a clause is met because a feature exists.
   reflect work done.
 - A dedicated concerns-officer role; single sign-on; email (so new accounts get starting
   passwords handed over rather than a set-up link).
-- PostgreSQL, automated backups, a container setup, encryption at rest, a session idle
+- PostgreSQL, backups the app schedules and monitors itself (the command exists; see §8),
+  a container setup, encryption at rest, a session idle
   timeout, a sandboxed document parser, and an independent security review.
 - In-app spreadsheet formulas beyond the risk score; multi-tenancy.
 
@@ -525,7 +535,7 @@ the app does not claim a clause is met because a feature exists.
 | Layered FastAPI (routers → services → repositories) | Services are unit-testable without HTTP; repositories isolate the engine. | More files than a flat app. |
 | Documents as folders of uploads; sheets as JSON rows | Organizations already have documents and spreadsheets; the app consolidates them instead of replacing them. | No in-app authoring or formulas. |
 | Status computed live, not stored | Cannot drift from the records it depends on. | Every read does the work; fine at this scale. |
-| SQLite + FTS5 + sqlite-vec | One file, one backup, no extra service. | Single writer; PostgreSQL is the step for real use. |
+| SQLite + FTS5 + sqlite-vec | One database file, a command for consistent backups, no extra service. | Single writer; PostgreSQL is the step for real use. |
 | Local embeddings, reranker and OCR | Nothing leaves the machine to search evidence. | A larger install and a CPU cost at indexing. |
 | No streaming answers | Citations are verified first; streaming would show unverified text. | A short wait. |
 | Read-only AI tools | A successful prompt injection yields a wrong sentence, not a governance decision. | The assistant cannot take an action for you. |

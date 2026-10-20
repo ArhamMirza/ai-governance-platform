@@ -7,7 +7,7 @@ from sqlalchemy import create_engine, select
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
 
-from app.core import embeddings, ocr, reranking, vector_store
+from app.core import embeddings, evidence_files, ocr, reranking, vector_store
 from app.core.database import Base, get_db
 from app.core.framework_reference_data import as_rows
 from app.core.governance_role_seed_data import DEFAULT_ROLES
@@ -18,7 +18,7 @@ from app.models.framework_control import FrameworkControl
 from app.models.framework_soa_entry import FrameworkSoaEntry
 from app.models.governance_role import GovernanceRole
 from app.models.user import User, UserRole
-from app.services import auth_service, evidence_service, governance_role_service
+from app.services import auth_service, governance_role_service
 
 TEST_DATABASE_URL = "sqlite:///:memory:"
 
@@ -118,7 +118,7 @@ def _clear_login_lockouts():
 @pytest.fixture(autouse=True)
 def evidence_storage_dir(tmp_path, monkeypatch):
     fake_settings = SimpleNamespace(evidence_storage_dir=str(tmp_path))
-    monkeypatch.setattr(evidence_service, "get_settings", lambda: fake_settings)
+    monkeypatch.setattr(evidence_files, "get_settings", lambda: fake_settings)
     return tmp_path
 
 

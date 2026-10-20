@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 
+from app.core import evidence_files
 from app.core.database import get_db
 from app.dependencies import get_current_user
 from app.models.ai_tool import AIToolRequest
@@ -41,7 +42,7 @@ def library(db: Session = Depends(get_db)) -> list[StaffLibraryItem]:
 def download_document(evidence_id: int, db: Session = Depends(get_db)) -> FileResponse:
     evidence = staff_service.shared_document(db, evidence_id)
     return FileResponse(
-        path=evidence.storage_path,
+        path=evidence_files.path_for(evidence.storage_path),
         filename=evidence.filename,
         media_type=evidence.content_type,
     )
