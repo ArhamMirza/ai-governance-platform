@@ -647,7 +647,7 @@ export function HandbookPage() {
         </p>
         <dl className="handbook-deflist">
           <div><dt>Passwords</dt><dd>At least 12 characters. A password is refused if it is a common word, even a disguised one (<code>P@ssw0rd2024!</code>), a keyboard or number run, almost all one character, or built from your own name or email. Your last five can&rsquo;t be reused. A few unrelated words works well.</dd></div>
-          <div><dt>A temporary password</dt><dd>If an admin created your account, or reset your password, the one you were given is temporary: you can do nothing else until you choose your own.</dd></div>
+          <div><dt>A temporary password</dt><dd>If an admin created your account, or reset your password, the one you were given is temporary: you can do nothing else until you choose your own. If it isn&rsquo;t used within seven days it stops working, and an administrator has to issue a new one.</dd></div>
           <div><dt>Two-step sign-in</dt><dd>Turn it on with an authenticator app (Google or Microsoft Authenticator, Authy, 1Password): scan the code, enter one code to prove it works, then save your <strong>ten recovery codes</strong>. They are shown once, each works once, and they are for when your phone isn&rsquo;t to hand. After that, signing in needs your password and a code.</dd></div>
           <div><dt>Turning it off, or new recovery codes</dt><dd>Both need your password and a current code, so someone at an unlocked laptop can&rsquo;t do either.</dd></div>
           <div><dt>Other devices</dt><dd><em>Sign out of other devices</em> ends every session except this one. Changing your password does the same.</dd></div>
@@ -656,6 +656,7 @@ export function HandbookPage() {
 
         <h3 style={{ marginTop: 22 }}>For administrators</h3>
         <ul>
+          <li><strong>Import from CSV</strong> (in <a href="/users">Users</a>) adds staff in bulk from a file with <em>name</em>, <em>email</em> and optionally <em>role</em> (blank means employee). A preview shows what each line would do before anything happens, and uploading a corrected file later is safe because people are matched on email. Each new person gets a starting password, shown to you once with a download button; give them out privately. A file can&rsquo;t create or change an administrator, and people missing from it are only listed, never deactivated.</li>
           <li><strong>Reset password</strong> (in <a href="/users">Users</a>) gives a person a one-time password, shown to you once, and signs them out everywhere.</li>
           <li><strong>Reset two-step</strong> is for someone who has lost both their phone and their recovery codes. It signs them out everywhere, and you can&rsquo;t do it for yourself &mdash; ask another administrator.</li>
           <li><strong>Sign-in security</strong> (also in Users) can <em>require two-step sign-in for administrators</em>. It starts off. You can only switch it on once you have two-step sign-in yourself, and from then on an administrator without it can do nothing but set it up.</li>

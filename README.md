@@ -167,7 +167,11 @@ platform: see [extension/e2e/README.md](extension/e2e/README.md).
   they reset, can do nothing but choose a new password at first sign-in. Existing
   accounts whose password falls short of the rules are asked to change it the same way.
 - **Resetting.** *Users → Reset password* issues a one-time password, shown once and
-  never stored readably, and signs the person out everywhere.
+  never stored readably, and signs the person out everywhere. A password an administrator
+  issued and nobody has used stops working after seven days.
+- **Importing staff.** *Users → Import from CSV* adds and updates accounts from a file
+  (name, email, optional role), with a preview first. Re-uploading a corrected file is
+  safe; a file can never create or change an administrator or deactivate anyone.
 - **Sessions** end everywhere when a password is changed or reset, a role is changed,
   or an account is deactivated. *Your account* has "Sign out of other devices".
 - **Lockout.** Five wrong passwords lock an account for 15 minutes; 20 wrong attempts

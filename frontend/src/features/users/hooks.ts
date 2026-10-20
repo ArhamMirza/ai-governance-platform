@@ -43,6 +43,21 @@ export function useResetPassword() {
   });
 }
 
+/** Changes nothing: it only reads the file and says what an import would do. */
+export function usePreviewUserImport() {
+  return useMutation({ mutationFn: (file: File) => usersApi.previewImport(file) });
+}
+
+/** The starting passwords come back once, in the mutation result, and are not
+ * cached, so they can't reappear on a later visit. */
+export function useRunUserImport() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (file: File) => usersApi.runImport(file),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: usersKey }),
+  });
+}
+
 export function useResetTwoStep() {
   const queryClient = useQueryClient();
   return useMutation({

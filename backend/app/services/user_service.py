@@ -101,6 +101,7 @@ def create_user(db: Session, data: UserCreate, actor_id: int | None) -> User:
         password_hash=hash_password(data.password),
         role=data.role,
         must_change_password=True,
+        temporary_password_expires_at=auth_service.temporary_password_deadline(),
     )
     user = user_repository.create(db, user)
     audit_service.log(
@@ -127,10 +128,14 @@ def update_user(db: Session, user_id: int, data: UserUpdate, actor_id: int | Non
     return user
 
 
-def _temporary_password(email: str, name: str) -> str:
+def temporary_password(email: str, name: str) -> str:
+    """A random one-time password. It never starts with a symbol, so a
+    spreadsheet that is handed the list will not mistake it for a formula."""
     while True:
         candidate = secrets.token_urlsafe(12)
-        if password_policy.problem_with(candidate, email=email, name=name) is None:
+        if candidate[0].isalnum() and (
+            password_policy.problem_with(candidate, email=email, name=name) is None
+        ):
             return candidate
 
 
@@ -142,7 +147,7 @@ def reset_password(db: Session, user_id: int, actor_id: int) -> str:
     if user_id == actor_id:
         raise ConflictError("Change your own password from your account page instead.")
     user = _get_or_raise(db, user_id)
-    temporary = _temporary_password(user.email, user.name)
+    temporary = temporary_password(user.email, user.name)
     auth_service.replace_password(db, user, temporary, must_change=True)
     ended = auth_service.end_sessions(db, user.id)
     audit_service.log(

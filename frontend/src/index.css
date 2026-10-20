@@ -5500,3 +5500,23 @@ select {
 .text-warning {
   color: var(--warning-text);
 }
+
+/* Importing people from a CSV */
+.import-panel {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--card-shadow);
+  padding: 20px 22px;
+  margin: 0 0 24px;
+}
+
+.import-panel > div {
+  margin-bottom: 14px;
+}
+
+.import-actions {
+  display: flex;
+  gap: 10px;
+  margin: 14px 0;
+}

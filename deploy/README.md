@@ -49,8 +49,10 @@ typefaces are loaded from there. Self-hosting the fonts would let you remove bot
 4. Turn on **two-step sign-in** for that account (*Your account*), save the recovery
    codes, then under *Users → Sign-in security* require it for administrators. The
    setting can only be switched on by an administrator who already has it.
-5. Create the other accounts under *Users*. Each starts with a temporary password the
-   person must replace at first sign-in.
+5. Create the other accounts under *Users*, one at a time or from a CSV (*Import from
+   CSV*: name, email, optional role; up to 200 people a file). Each starts with a
+   temporary password that is shown to you once, that the person must replace at first
+   sign-in, and that stops working after seven days if it is not used.
 
 ## Check it
 

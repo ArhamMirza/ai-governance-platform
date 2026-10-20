@@ -166,6 +166,12 @@ def authenticate(db: DbSession, data: LoginRequest, ip: str | None = None) -> Us
         raise AuthenticationError("Incorrect email or password.")
     if not user.is_active:
         raise AuthenticationError("This account has been deactivated.")
+    # Only said once the password is right, so it tells a stranger nothing.
+    expires = user.temporary_password_expires_at
+    if expires is not None and expires.replace(tzinfo=None) < now:
+        raise AuthenticationError(
+            "Your temporary password has expired. Ask an administrator for a new one."
+        )
 
     _failed_logins.pop(email, None)
     session_repository.delete_expired(db, now)
@@ -268,6 +274,16 @@ def sign_out_everywhere(db: DbSession, user: User, keep_token: str | None) -> in
     return ended
 
 
+# How long a password an administrator issued stays usable. After that the
+# person has to ask for a new one, so a list of starting passwords that was
+# never collected stops being worth anything.
+TEMPORARY_PASSWORD_DAYS = 7
+
+
+def temporary_password_deadline() -> datetime:
+    return datetime.now(UTC) + timedelta(days=TEMPORARY_PASSWORD_DAYS)
+
+
 def replace_password(db: DbSession, user: User, new_password: str, *, must_change: bool) -> User:
     """Sets a new password, remembering the old one so it can't come back.
     The caller has already checked the new one against the rules."""
@@ -276,6 +292,7 @@ def replace_password(db: DbSession, user: User, new_password: str, *, must_chang
     )
     user.password_hash = hash_password(new_password)
     user.must_change_password = must_change
+    user.temporary_password_expires_at = temporary_password_deadline() if must_change else None
     user.password_changed_at = datetime.now(UTC)
     return user_repository.save(db, user)
 
