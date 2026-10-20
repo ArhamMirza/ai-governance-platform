@@ -73,7 +73,7 @@ anything. Search runs on this machine; a model provider is only called if you co
 
 ## Getting started
 
-You need Python 3.11+ and Node 20+.
+You need Python 3.11+ and Node 22+.
 
 ### Backend
 

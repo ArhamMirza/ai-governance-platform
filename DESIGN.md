@@ -435,7 +435,7 @@ frontend/src/
 
 ## 11. CI and deployment
 
-- **CI** (`.github/workflows/ci.yml`): three jobs on every PR and push to `main` —
+- **CI** (`.github/workflows/ci.yml`; Python 3.11, Node 22): three jobs on every PR and push to `main` —
   backend (ruff, pip-audit, pytest with coverage), frontend (oxlint, npm audit, vitest,
   production build, the CSP check on the built page), extension (oxlint, npm audit,
   vitest, build). `main` is protected: changes arrive by pull request with those checks

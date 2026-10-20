@@ -6,6 +6,8 @@ TanStack Query v5, react-hook-form with zod, react-router, and plain CSS with de
 
 ## Commands
 
+Node 22 or newer (what CI runs, and what vitest requires).
+
 ```bash
 npm install
 cp .env.example .env     # VITE_API_BASE_URL, default http://localhost:8000/api/v1
