@@ -94,6 +94,18 @@ async function platform(method, p, body) {
 }
 check("signed in to the platform as the CAIGO", loginResponse.status === 200);
 await platform("PUT", "/ai-use/settings", { unapproved_site_action: "warn" });
+// New and seeded rules start on "block", but these checks need one of each of the
+// other two actions: a rule that warns (and lets the person go on) and one that only
+// counts. Set them here so the run does not depend on how the platform was left.
+const rules = (await platform("GET", "/dlp-rules")).body ?? [];
+for (const [name, action] of [
+  ["Client and project names", "warn"],
+  ["Internal ticket numbers", "monitor"],
+]) {
+  const rule = rules.find((r) => r.name === name);
+  const done = rule && (await platform("PUT", `/dlp-rules/${rule.id}`, { action })).status === 200;
+  check(`the "${name}" rule is set to ${action} for this run`, Boolean(done), rule ? "" : "no such rule; run python -m app.seed");
+}
 const key = (await platform("POST", "/ai-use/enrollment-key")).body.key;
 check("an enrollment key was issued", key.startsWith("aigk_"));
 

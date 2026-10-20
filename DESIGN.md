@@ -358,7 +358,7 @@ counts every five minutes. The content script intercepts paste, Enter-to-send, s
 clicks, form submits and text-file uploads in the capture phase, runs the same detectors
 and warns, blocks or counts. It fails open until it has a first policy and then keeps the
 last good one. It is verified in real Chrome and Edge against a running platform
-(49 checks each), and its limits are documented honestly: it covers only browsers it is
+(51 checks each), and its limits are documented honestly: it covers only browsers it is
 installed in, must be force-installed to be binding, checks text patterns rather than
 meaning, and replayed events are untrusted.
 

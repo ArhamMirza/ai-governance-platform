@@ -10,7 +10,7 @@ redirect and script-registration APIs, and a real keyboard and mouse.
 It is run by hand and is not part of CI (it needs a browser and a running
 platform).
 
-## What it checks (49 checks)
+## What it checks (51 checks)
 
 - starts unconfigured and shows the `!` badge; connects and clears it
 - fetches the policy with the enrollment key; installs one redirect rule for
@@ -75,7 +75,10 @@ browser's path if it isn't found), `EXTENSION_DIR` (default `../dist`).
 ## Notes
 
 - **Use a throwaway platform database.** The test creates an enrollment key,
-  switches the unapproved-site setting, and adds usage counts.
+  switches the unapproved-site setting, sets the *Client and project names* rule to
+  *warn* and *Internal ticket numbers* to *monitor* (rules are seeded on *block*, and
+  the checks need one of each), and adds usage counts. Run `python -m app.seed` first so
+  those rules exist.
 - The test **refuses to run against a production build**: it needs the DEV
   build's settings override. The DEV build is for testing only and must never
   be deployed; production builds don't read that setting.
