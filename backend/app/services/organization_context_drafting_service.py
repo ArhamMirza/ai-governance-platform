@@ -40,6 +40,7 @@ from app.core.exceptions import (
 from app.models.ai_draft import AiDraft, DraftStatus
 from app.models.document_chunk import SourceType
 from app.models.organization_context import OrganizationContext
+from app.schemas.organization_context_draft import DraftSourceReadiness
 from app.services import (
     ai_assist_service,
     audit_service,
@@ -138,6 +139,63 @@ class _BadOutput(Exception):
 # ---------- reading ----------
 
 
+def source_readiness(db: Session) -> list[DraftSourceReadiness]:
+    """What a draft would have to read right now, so a person can fill in what
+    is missing first. Counted by the same code that builds the sources, so the
+    numbers cannot disagree with what the draft actually sees."""
+    kinds = [
+        (
+            "ai_systems",
+            "AI systems in the inventory",
+            "/ai-systems",
+            drafting_context.ai_systems_summary,
+            "It cannot say what the organization uses AI for.",
+        ),
+        (
+            "policies",
+            "Policies",
+            "/policies",
+            drafting_context.policies_summary,
+            "It cannot say what rules the organization has set.",
+        ),
+        (
+            "procedures",
+            "Procedures",
+            "/procedures",
+            drafting_context.procedures_summary,
+            "It cannot say how the organization works in practice.",
+        ),
+        (
+            "ai_tools",
+            "Approved AI tools",
+            "/ai-tools",
+            drafting_context.ai_tools_summary,
+            "It cannot say which AI tools staff are allowed to use, or from whom.",
+        ),
+        (
+            "suppliers",
+            "Suppliers",
+            "/suppliers",
+            drafting_context.suppliers_summary,
+            "It cannot name the vendors behind the organization's AI.",
+        ),
+    ]
+    result = []
+    for key, label, href, summary, empty_note in kinds:
+        found = summary(db)
+        result.append(
+            DraftSourceReadiness(
+                key=key,
+                label=label,
+                count=found["count"] if found else 0,
+                href=href,
+                empty_note=empty_note,
+            )
+        )
+    return result
+
+
+
 def latest_draft(db: Session) -> AiDraft | None:
     context = organization_context_service.get_or_create(db)
     return db.scalar(
@@ -212,6 +270,8 @@ def _gather(db: Session) -> tuple[list[dict], list[retrieval_service.CoverageGap
         drafting_context.ai_systems_summary(db),
         drafting_context.policies_summary(db),
         drafting_context.procedures_summary(db),
+        drafting_context.ai_tools_summary(db),
+        drafting_context.suppliers_summary(db),
         pinned_context.governance_roles(db),
     ):
         if entry is not None:

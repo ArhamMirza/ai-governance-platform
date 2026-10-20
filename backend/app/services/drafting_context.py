@@ -15,7 +15,14 @@ from sqlalchemy.orm import Session
 
 from app.models.policy import PolicyStatus
 from app.models.procedure import ProcedureStatus
-from app.services import ai_system_inventory_service, policy_service, procedure_service
+from app.models.supplier import SupplierStatus
+from app.services import (
+    ai_system_inventory_service,
+    ai_tool_service,
+    policy_service,
+    procedure_service,
+    supplier_service,
+)
 
 MAX_SUMMARY_ROWS = 20
 
@@ -43,6 +50,7 @@ def ai_systems_summary(db: Session) -> dict | None:
         "section": None,
         "kind": "AISystemsSummary",
         "text": _capped(lines),
+        "count": len(lines),
         "href": "/ai-systems",
         "download_evidence_id": None,
         "read_by_ocr": False,
@@ -66,6 +74,7 @@ def policies_summary(db: Session, *, exclude_id: int | None = None) -> dict | No
         "section": None,
         "kind": "PoliciesSummary",
         "text": _capped(lines),
+        "count": len(lines),
         "href": "/policies",
         "download_evidence_id": None,
         "read_by_ocr": False,
@@ -89,7 +98,63 @@ def procedures_summary(db: Session, *, exclude_id: int | None = None) -> dict | 
         "section": None,
         "kind": "ProceduresSummary",
         "text": _capped(lines),
+        "count": len(lines),
         "href": "/procedures",
+        "download_evidence_id": None,
+        "read_by_ocr": False,
+        "injection_findings": [],
+    }
+
+
+def ai_tools_summary(db: Session) -> dict | None:
+    """The tools the organization has actually approved for use. A tool that is
+    only catalogued (known, not allowed) or has been revoked is left out: it says
+    nothing about what the organization uses, and listing it would suggest it does."""
+    lines = []
+    for tool in ai_tool_service.approved_tools(db):
+        who = f" ({tool.vendor})" if tool.vendor else ""
+        kind = str(tool.kind).replace("_", " ")
+        lines.append(
+            f"- {tool.name}{who}: {kind}, approved for up to "
+            f"{tool.max_data_classification} data"
+            + (" with limits" if tool.status == "restricted" else "")
+        )
+    if not lines:
+        return None
+    return {
+        "n": 0,
+        "title": "Approved AI tools",
+        "section": None,
+        "kind": "AIToolsSummary",
+        "text": _capped(lines),
+        "count": len(lines),
+        "href": "/ai-tools",
+        "download_evidence_id": None,
+        "read_by_ocr": False,
+        "injection_findings": [],
+    }
+
+
+def suppliers_summary(db: Session) -> dict | None:
+    """Active third parties behind the organization's AI. Names, type and what
+    they provide only: no contacts or contract details."""
+    lines = []
+    for supplier in supplier_service.list_suppliers(db):
+        if supplier.status != SupplierStatus.ACTIVE:
+            continue
+        kind = str(supplier.supplier_type).replace("_", " ")
+        detail = (supplier.description or "").strip()
+        lines.append(f"- {supplier.name} ({kind})" + (f": {detail}" if detail else ""))
+    if not lines:
+        return None
+    return {
+        "n": 0,
+        "title": "Suppliers",
+        "section": None,
+        "kind": "SuppliersSummary",
+        "text": _capped(lines),
+        "count": len(lines),
+        "href": "/suppliers",
         "download_evidence_id": None,
         "read_by_ocr": False,
         "injection_findings": [],
