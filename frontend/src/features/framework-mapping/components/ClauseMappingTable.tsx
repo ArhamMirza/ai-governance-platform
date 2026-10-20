@@ -50,10 +50,10 @@ export function ClauseMappingTable({ framework }: ClauseMappingTableProps) {
   const clauses = entries.filter((entry) => entry.category === "clause");
   const showSections = framework === "iso_42001";
 
-  let lastSection: string | null = null;
-
-  function renderRow(entry: FrameworkMappingEntry) {
-    const section = showSections ? leadingNumber(entry.code) : null;
+  function renderRow(entry: FrameworkMappingEntry, index: number) {
+    const sectionOf = (e: FrameworkMappingEntry) => (showSections ? leadingNumber(e.code) : null);
+    const section = sectionOf(entry);
+    const lastSection = index > 0 ? sectionOf(clauses[index - 1]) : null;
     const sectionHeader =
       section !== null && section !== lastSection && ISO_CLAUSE_SECTIONS[section] ? (
         <tr key={`section-${section}`} className="table-section-row">
@@ -62,7 +62,6 @@ export function ClauseMappingTable({ framework }: ClauseMappingTableProps) {
           </td>
         </tr>
       ) : null;
-    lastSection = section;
 
     return (
       <Fragment key={entry.id}>
@@ -88,7 +87,7 @@ export function ClauseMappingTable({ framework }: ClauseMappingTableProps) {
             <th>Tagged Items</th>
           </tr>
         </thead>
-        <tbody>{clauses.map((entry) => renderRow(entry))}</tbody>
+        <tbody>{clauses.map((entry, i) => renderRow(entry, i))}</tbody>
       </table>
     </div>
   );
