@@ -14,7 +14,7 @@
      Mono   -- identifiers, numerals, column labels, status codes, eyebrows.
    ========================================================================= */
 
-@import url("https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;450;500;600;700&family=IBM+Plex+Serif:wght@500;600&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Libre+Franklin:wght@600;700;800&family=Public+Sans:wght@400;500;600;700&family=Red+Hat+Mono:wght@400;500;600&display=swap");
 
 :root {
   /* -- Neutrals. Biased warm (hue ~85) so they read as paper and ink, not
@@ -74,9 +74,9 @@
   --card-shadow: 0 1px 2px oklch(25% 0.015 85 / 0.06), 0 1px 1px oklch(25% 0.015 85 / 0.04);
   --shadow-md: 0 16px 40px oklch(20% 0.01 75 / 0.16), 0 2px 8px oklch(20% 0.01 75 / 0.08);
 
-  --sans: "IBM Plex Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
-  --serif: "IBM Plex Serif", ui-serif, Georgia, "Times New Roman", serif;
-  --mono: "IBM Plex Mono", ui-monospace, "SF Mono", "Cascadia Mono", Menlo, monospace;
+  --sans: "Public Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --display: "Libre Franklin", "Public Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "Red Hat Mono", ui-monospace, "SF Mono", "Cascadia Mono", Menlo, monospace;
 
   /* Tight, technical. Not a pill in sight unless it's genuinely a chip. */
   --radius-sm: 3px;
@@ -210,8 +210,8 @@
 body {
   margin: 0;
   font-family: var(--sans);
-  font-size: 13.5px;
-  line-height: 1.5;
+  font-size: 14px;
+  line-height: 1.55;
   color: var(--text);
   /* Deliberately transparent. :root carries the page ground, and because
      the root element has a background it is the one propagated to the
@@ -241,28 +241,27 @@ h5 {
 /* The page title is the one place the serif speaks -- it names the record,
    the way a controlled document's title block does. */
 h1 {
-  font-family: var(--serif);
-  font-weight: 600;
-  font-size: 25px;
-  line-height: 1.15;
-  letter-spacing: -0.015em;
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: 27px;
+  line-height: 1.12;
+  letter-spacing: -0.025em;
 }
 
 h2 {
-  font-family: var(--sans);
-  font-size: 17px;
-  font-weight: 600;
-  letter-spacing: -0.012em;
+  font-family: var(--display);
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -0.015em;
 }
 
 h3 {
-  font-family: var(--sans);
-  font-size: 13px;
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--text-muted);
-  margin: 30px 0 10px;
+  font-family: var(--display);
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: -0.005em;
+  color: var(--text);
+  margin: 28px 0 10px;
 }
 
 h4,
@@ -360,11 +359,10 @@ ul {
 }
 
 .sidebar-brand-sub {
-  font-family: var(--mono);
-  font-weight: 400;
-  font-size: 10px;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
+  font-family: var(--sans);
+  font-weight: 600;
+  font-size: 12px;
+  letter-spacing: 0.01em;
   color: var(--text-inverse-muted);
   line-height: 1.3;
 }
@@ -384,11 +382,10 @@ ul {
 /* The group headings carry the structure of the management system itself,
    so they are set as labels in the data face rather than as small headings. */
 .sidebar-group-label {
-  font-family: var(--mono);
-  font-size: 9.5px;
-  font-weight: 500;
-  text-transform: uppercase;
-  letter-spacing: 0.14em;
+  font-family: var(--sans);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
   color: oklch(52% 0.008 75);
   padding: 0 0 6px 13px;
 }
@@ -455,11 +452,10 @@ ul {
 }
 
 .theme-toggle button {
-  font-family: var(--mono);
-  font-size: 9.5px;
-  font-weight: 500;
-  text-transform: uppercase;
-  letter-spacing: 0.07em;
+  font-family: var(--sans);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
   padding: 5px 0;
   background: none;
   background-image: none;
@@ -492,12 +488,11 @@ ul {
 }
 
 .sidebar-account-role {
-  font-family: var(--mono);
-  font-size: 10px;
-  font-weight: 500;
+  font-family: var(--sans);
+  font-size: 12px;
+  font-weight: 600;
   color: var(--text-inverse-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.01em;
   margin-bottom: 10px;
 }
 
@@ -588,7 +583,7 @@ ul {
 }
 
 .auth-pitch {
-  font-family: var(--serif);
+  font-family: var(--display);
   font-size: 32px;
   font-weight: 600;
   line-height: 1.2;
@@ -665,22 +660,20 @@ ul {
 }
 
 .auth-brand-sub {
-  font-family: var(--mono);
-  font-weight: 400;
-  font-size: 10px;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
+  font-family: var(--sans);
+  font-weight: 600;
+  font-size: 12px;
+  letter-spacing: 0.01em;
   color: var(--text-inverse-muted);
   line-height: 1.3;
 }
 
 .auth-eyebrow {
   display: block;
-  font-family: var(--mono);
-  font-size: 10.5px;
-  font-weight: 500;
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
+  font-family: var(--sans);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
   color: var(--primary);
   margin-bottom: 8px;
 }
@@ -691,7 +684,7 @@ ul {
 }
 
 .auth-form h1 {
-  font-family: var(--serif);
+  font-family: var(--display);
   font-size: 24px;
   margin-bottom: 6px;
 }
@@ -934,11 +927,10 @@ form > div {
 
 label {
   display: block;
-  font-family: var(--mono);
-  font-size: 10.5px;
-  font-weight: 500;
-  text-transform: uppercase;
-  letter-spacing: 0.07em;
+  font-family: var(--sans);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
   color: var(--text-faint);
   margin-bottom: 5px;
 }
@@ -995,11 +987,10 @@ input[type="file"] {
 }
 
 input[type="file"]::file-selector-button {
-  font-family: var(--mono);
-  font-size: 11px;
-  font-weight: 500;
-  text-transform: uppercase;
-  letter-spacing: 0.07em;
+  font-family: var(--sans);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
   color: var(--text-muted);
   background: linear-gradient(to bottom, var(--btn-top), var(--btn-bottom));
   border: 1px solid var(--border-strong);
@@ -1089,12 +1080,11 @@ section > table {
 thead th {
   text-align: left;
   padding: 13px 20px;
-  font-family: var(--mono);
-  font-size: 10px;
-  font-weight: 500;
+  font-family: var(--sans);
+  font-size: 12px;
+  font-weight: 600;
   color: var(--th-label, var(--text-muted));
-  text-transform: uppercase;
-  letter-spacing: 0.11em;
+  letter-spacing: 0.01em;
   border-bottom: 1px solid var(--primary-line);
   background: var(--th-fill, var(--bg-sunken));
   white-space: nowrap;
@@ -1214,11 +1204,10 @@ td button {
 
 .flag-chip {
   display: inline-block;
-  font-family: var(--mono);
-  font-size: 10px;
-  font-weight: 500;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
+  font-family: var(--sans);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
   color: var(--danger-text);
   margin-right: 6px;
 }
@@ -1245,11 +1234,10 @@ td button {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  font-family: var(--mono);
-  font-size: 10.5px;
-  font-weight: 500;
-  letter-spacing: 0.07em;
-  text-transform: uppercase;
+  font-family: var(--sans);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
   padding: 2.5px 9px 2.5px 8px;
   border-radius: var(--radius-sm);
   border: 1px solid var(--neutral-line);
@@ -1417,12 +1405,11 @@ td button {
 }
 
 .dashboard-section > h2 {
-  font-family: var(--mono);
-  font-size: 10.5px;
-  font-weight: 500;
+  font-family: var(--sans);
+  font-size: 12px;
+  font-weight: 600;
   color: var(--text-faint);
-  text-transform: uppercase;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.01em;
   padding-bottom: 8px;
   margin-bottom: 14px;
   border-bottom: 1px solid var(--rule);
@@ -1488,12 +1475,11 @@ td button {
 }
 
 .stat-card-label {
-  font-family: var(--mono);
-  font-size: 10px;
-  font-weight: 500;
+  font-family: var(--sans);
+  font-size: 12px;
+  font-weight: 600;
   color: var(--text-faint);
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.01em;
   margin-bottom: 8px;
 }
 
@@ -1710,11 +1696,10 @@ td button {
 
 .attention-group h3 {
   margin: 12px 0 2px;
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--text-faint);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0;
+  color: var(--text-muted);
 }
 
 .attention-panel ul {
@@ -1805,11 +1790,10 @@ td button {
 }
 
 .criteria-default-badge {
-  font-family: var(--mono);
-  font-size: 10px;
-  font-weight: 500;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
+  font-family: var(--sans);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
   padding: 3px 9px;
   border-radius: var(--radius-sm);
   border: 1px solid var(--primary-line);
@@ -1949,12 +1933,12 @@ nav[aria-label="breadcrumb"] button:hover:not(:disabled) {
 
 .risk-matrix caption {
   text-align: left;
-  font-family: var(--mono);
-  font-size: 10.5px;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
+  font-family: var(--sans);
+  font-size: 12px;
+  letter-spacing: 0.01em;
   color: var(--text-faint);
   margin-bottom: 10px;
+  font-weight: 600;
 }
 
 .risk-matrix th {
@@ -2106,11 +2090,10 @@ nav[aria-label="breadcrumb"] button:hover:not(:disabled) {
 /* Export is a real action, so it looks like one instead of a bare link. */
 .grid-toolbar a {
   margin-left: auto;
-  font-family: var(--mono);
-  font-size: 10.5px;
-  font-weight: 500;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
+  font-family: var(--sans);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
   color: var(--text-muted);
   background: linear-gradient(to bottom, var(--btn-top), var(--btn-bottom));
   border: 1px solid var(--border-strong);
@@ -2158,11 +2141,10 @@ nav[aria-label="breadcrumb"] button:hover:not(:disabled) {
 .table-section-row:hover td {
   background: var(--section-fill, var(--primary-subtle));
   box-shadow: inset 3px 0 0 var(--primary);
-  font-family: var(--mono);
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.09em;
-  font-weight: 500;
+  font-family: var(--sans);
+  font-size: 12px;
+  letter-spacing: 0.01em;
+  font-weight: 600;
   color: var(--primary);
   padding-top: 10px;
   padding-bottom: 10px;
@@ -2185,10 +2167,10 @@ nav[aria-label="breadcrumb"] button:hover:not(:disabled) {
 
 .data-grid-group-row th {
   text-align: left;
-  font-family: var(--mono);
-  font-size: 10.5px;
-  text-transform: uppercase;
-  letter-spacing: 0.09em;
+  font-family: var(--sans);
+  font-size: 12px;
+  letter-spacing: 0.01em;
+  font-weight: 600;
 }
 
 .data-grid td input,
@@ -2414,12 +2396,11 @@ nav[aria-label="breadcrumb"] button:hover:not(:disabled) {
 }
 
 .framework-tag-group legend {
-  font-family: var(--mono);
-  font-size: 10px;
-  font-weight: 500;
+  font-family: var(--sans);
+  font-size: 12px;
+  font-weight: 600;
   color: var(--text-faint);
-  text-transform: uppercase;
-  letter-spacing: 0.09em;
+  letter-spacing: 0.01em;
   padding: 0 0 8px;
 }
 
@@ -2455,10 +2436,9 @@ nav[aria-label="breadcrumb"] button:hover:not(:disabled) {
 
 .framework-tag-suggested-label {
   margin-left: 6px;
-  font-size: 10.5px;
+  font-size: 12px;
   font-weight: 700;
-  letter-spacing: 0.02em;
-  text-transform: uppercase;
+  letter-spacing: 0;
   color: var(--primary);
 }
 
@@ -2605,12 +2585,11 @@ nav[aria-label="breadcrumb"] button:hover:not(:disabled) {
 
 .impact-factor-score-label {
   display: block;
-  font-family: var(--mono);
-  font-size: 10.5px;
-  font-weight: 500;
+  font-family: var(--sans);
+  font-size: 12px;
+  font-weight: 600;
   color: var(--text-faint);
-  text-transform: uppercase;
-  letter-spacing: 0.07em;
+  letter-spacing: 0.01em;
   margin-bottom: 5px;
 }
 
@@ -2693,11 +2672,10 @@ nav[aria-label="breadcrumb"] button:hover:not(:disabled) {
 
 .risk-header-tags-label {
   display: block;
-  font-family: var(--mono);
-  font-size: 10.5px;
-  font-weight: 500;
-  text-transform: uppercase;
-  letter-spacing: 0.07em;
+  font-family: var(--sans);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
   color: var(--text-faint);
   margin-bottom: 6px;
 }
@@ -2722,7 +2700,7 @@ nav[aria-label="breadcrumb"] button:hover:not(:disabled) {
 }
 
 .record-header-top h2 {
-  font-family: var(--serif);
+  font-family: var(--display);
   font-size: 22px;
   font-weight: 600;
   letter-spacing: -0.015em;
@@ -2730,11 +2708,10 @@ nav[aria-label="breadcrumb"] button:hover:not(:disabled) {
 }
 
 .record-version {
-  font-family: var(--mono);
-  font-size: 11px;
-  font-weight: 500;
-  text-transform: uppercase;
-  letter-spacing: 0.09em;
+  font-family: var(--sans);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
   color: var(--text-faint);
   margin: 0;
 }
@@ -2810,11 +2787,10 @@ article h3 + ul li,
      be cleared explicitly or it reintroduces the vertical gap the flex
      summary row was built to avoid. */
   margin: 0;
-  font-family: var(--mono);
-  font-size: 10.5px;
-  font-weight: 500;
-  text-transform: uppercase;
-  letter-spacing: 0.09em;
+  font-family: var(--sans);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
   color: var(--text-muted);
 }
 
@@ -3187,10 +3163,9 @@ article h3 + p {
 
 .governance-role-card-header h3 {
   margin: 0;
-  font-size: 12px;
-  font-weight: 600;
-  letter-spacing: 0.07em;
-  text-transform: uppercase;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0;
   color: var(--th-label, var(--text));
 }
 
@@ -3258,11 +3233,10 @@ article h3 + p {
 }
 
 .governance-role-body > h4 {
-  font-family: var(--mono);
-  font-size: 10.5px;
-  font-weight: 500;
-  text-transform: uppercase;
-  letter-spacing: 0.09em;
+  font-family: var(--sans);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
   color: var(--text-faint);
   margin: 0 0 8px;
 }
@@ -3352,11 +3326,10 @@ button.is-primary:hover:not(:disabled) {
 }
 
 .role-delegation h4 {
-  font-family: var(--mono);
-  font-size: 10.5px;
-  font-weight: 500;
-  text-transform: uppercase;
-  letter-spacing: 0.09em;
+  font-family: var(--sans);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
   color: var(--text-faint);
   margin: 0 0 8px;
 }
@@ -3533,12 +3506,11 @@ button.is-primary:hover:not(:disabled) {
 }
 
 .modal-panel h4 {
-  font-family: var(--mono);
-  font-size: 10.5px;
-  font-weight: 500;
+  font-family: var(--sans);
+  font-size: 12px;
+  font-weight: 600;
   color: var(--text-faint);
-  text-transform: uppercase;
-  letter-spacing: 0.09em;
+  letter-spacing: 0.01em;
   margin: 0 0 10px;
 }
 
@@ -3568,7 +3540,7 @@ h2 + .status-badge {
 
 .handbook h2 {
   margin-top: 0;
-  font-family: var(--serif);
+  font-family: var(--display);
   font-size: 19px;
   font-weight: 600;
 }
@@ -3985,11 +3957,10 @@ h2 + .status-badge {
 
 .assistant-eyebrow {
   display: block;
-  font-family: var(--mono);
-  font-size: 10px;
-  font-weight: 500;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
+  font-family: var(--sans);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
   color: var(--text-faint);
   margin-bottom: 3px;
 }
@@ -4505,11 +4476,10 @@ form.assistant-composer {
 }
 
 .draft-group-title {
-  font-family: var(--mono);
-  font-size: 10.5px;
-  font-weight: 500;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
+  font-family: var(--sans);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
   color: var(--text-faint);
   margin: 0;
 }
@@ -4564,11 +4534,10 @@ form.assistant-composer {
 }
 
 .draft-badge {
-  font-family: var(--mono);
-  font-size: 10px;
-  font-weight: 500;
-  text-transform: uppercase;
-  letter-spacing: 0.07em;
+  font-family: var(--sans);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
   border-radius: var(--radius-sm);
   border: 1px solid transparent;
   padding: 1.5px 7px;
@@ -4607,11 +4576,10 @@ form.assistant-composer {
 }
 
 .draft-caption {
-  font-family: var(--mono);
-  font-size: 10px;
-  font-weight: 500;
-  letter-spacing: 0.09em;
-  text-transform: uppercase;
+  font-family: var(--sans);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
   color: var(--text-faint);
   margin: 0;
 }
