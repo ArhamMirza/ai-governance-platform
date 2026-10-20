@@ -23,6 +23,7 @@ def _to_read(db: Session, tool: AITool) -> AIToolRead:
         id=tool.id,
         name=tool.name,
         vendor=tool.vendor,
+        kind=tool.kind,
         domains=tool.domains,
         description=tool.description,
         status=tool.status,

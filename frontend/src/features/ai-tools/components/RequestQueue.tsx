@@ -4,7 +4,7 @@ import { Link } from "react-router-dom";
 import { readError } from "../../../shared/api/readError";
 import { useUserDirectory } from "../../users/hooks";
 import { useAIToolRequests, useDecideAIToolRequest } from "../hooks";
-import { CLASSIFICATION_OPTIONS } from "../labels";
+import { CLASSIFICATION_OPTIONS, isWeb, kindLabel } from "../labels";
 import type { AIToolRequest, DataClassification } from "../types";
 import { AIToolStatusBadge } from "./AIToolStatusBadge";
 
@@ -13,8 +13,10 @@ function RequestRow({ request, requester }: { request: AIToolRequest; requester:
   const decide = useDecideAIToolRequest();
   const open = request.status === "requested";
   // A request for a tool already in the catalogue, or one that gave an
-  // address, needs no address from the person answering it.
-  const needsDomain = open && request.tool_id === null && request.domain === null;
+  // address, needs no address from the person answering it -- and a tool that
+  // isn't on the web has none to give.
+  const needsDomain =
+    open && isWeb(request.kind) && request.tool_id === null && request.domain === null;
   const [classification, setClassification] = useState<DataClassification>("internal");
   const [conditions, setConditions] = useState("");
   const [domain, setDomain] = useState("");
@@ -40,7 +42,7 @@ function RequestRow({ request, requester }: { request: AIToolRequest; requester:
         {request.tool_id !== null && <Link to={`/ai-tools/${request.tool_id}`}>View tool</Link>}
       </p>
       <p className="approval-note">
-        Asked by {requester} on {request.requested_on}
+        Asked by {requester} on {request.requested_on} · {kindLabel(request.kind)}
         {request.domain && ` · ${request.domain}`}
       </p>
       <blockquote>{request.purpose}</blockquote>

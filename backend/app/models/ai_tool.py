@@ -17,6 +17,19 @@ class AIToolStatus(StrEnum):
     REVOKED = "revoked"
 
 
+class AIToolKind(StrEnum):
+    """What sort of thing a tool is. Only a `web` tool has addresses, and only
+    those are watched by the browser extension; the rest are governed by being
+    on the register -- approved, with conditions, on a review date -- while IT
+    controls what is actually installed."""
+
+    WEB = "web"
+    DESKTOP_APP = "desktop_app"
+    LOCAL_MODEL = "local_model"
+    EDITOR_PLUGIN = "editor_plugin"
+    BROWSER_EXTENSION = "browser_extension"
+
+
 class DataClassification(StrEnum):
     """The most sensitive data a tool may be given."""
 
@@ -45,6 +58,7 @@ class AITool(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     name: Mapped[str] = mapped_column(String(200))
     vendor: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    kind: Mapped[str] = mapped_column(String(20), default=AIToolKind.WEB, server_default="web")
     # Normalised domains the tool is reached at -- see app.core.ai_tool_domains.
     domains: Mapped[list[str]] = mapped_column(JSON, default=list)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
@@ -84,6 +98,7 @@ class AIToolRequest(Base):
     # The tool asked for, when it is already in the catalogue.
     tool_id: Mapped[int | None] = mapped_column(Integer, nullable=True, index=True)
     tool_name: Mapped[str] = mapped_column(String(200))
+    kind: Mapped[str] = mapped_column(String(20), default=AIToolKind.WEB, server_default="web")
     domain: Mapped[str | None] = mapped_column(String(253), nullable=True)
     purpose: Mapped[str] = mapped_column(Text)
     data_involved: Mapped[str | None] = mapped_column(Text, nullable=True)

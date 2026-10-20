@@ -120,6 +120,7 @@ def _own_request_view(request: AIToolRequest) -> StaffAIToolRequestRead:
     return StaffAIToolRequestRead(
         id=request.id,
         tool_name=request.tool_name,
+        kind=request.kind,
         domain=request.domain,
         purpose=request.purpose,
         requested_on=request.requested_on,
@@ -137,6 +138,7 @@ def approved_ai_tools(db: Session = Depends(get_db)) -> list[StaffAITool]:
             id=tool.id,
             name=tool.name,
             vendor=tool.vendor,
+            kind=tool.kind,
             domains=tool.domains,
             status=tool.status,
             max_data_classification=tool.max_data_classification,
@@ -150,7 +152,7 @@ def approved_ai_tools(db: Session = Depends(get_db)) -> list[StaffAITool]:
 def requestable_ai_tools(db: Session = Depends(get_db)) -> list[StaffRequestableTool]:
     """Known tools that are not allowed yet, to pick from when asking."""
     return [
-        StaffRequestableTool(id=tool.id, name=tool.name, vendor=tool.vendor)
+        StaffRequestableTool(id=tool.id, name=tool.name, vendor=tool.vendor, kind=tool.kind)
         for tool in ai_tool_service.requestable_tools(db)
     ]
 

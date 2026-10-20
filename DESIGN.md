@@ -314,7 +314,14 @@ A second half of the product, added after the records. See
 `core/ai_tool_catalog_data.py` (twelve to start). Each tool has a status (catalogued,
 approved, restricted or revoked; a site that is not approved is treated as unapproved), the
 **most sensitive data class it may be given** (public, internal or confidential), domains,
-conditions and a review date.
+conditions and a review date. A tool also has a **kind**: a website or web app, a desktop
+app, a model run on the organization's own machines, an editor plugin or a browser
+extension. Only a web tool has domains, and only web tools are sent to the browser
+extension; the rest are governed by being on the register, approved with conditions
+(for example "llama3.3 8B only, installed by IT, bound to localhost") and a review date,
+while whoever manages the computers installs only what is approved. The platform does
+not detect or block a local app: that needs software on the machine, which is IT's
+(see the decision log).
 Employees request a tool from the staff home; the CAIGO approves or rejects with a note,
 and nobody decides their own request. Domain matching is by whole label
 (`chatgpt.com.evil.net` is not `chatgpt.com`), with punycode handled and the most specific
@@ -543,6 +550,7 @@ the app does not claim a clause is met because a feature exists.
 | Block-by-default for unapproved AI sites | An override should be a decision, not the default. | More requests to the CAIGO. |
 | Standard-library crypto for passwords and TOTP | Few dependencies to audit; both are small, well-specified algorithms. | PBKDF2 rather than argon2id. |
 | One deployment, one organization | Keeps access control simple and auditable. | No hosted multi-customer mode. |
+| Local and desktop AI is governed by approval, not detected or blocked | The browser extension cannot see native apps, and blocking inside them needs software on the machine (endpoint DLP, run by whoever manages the computers), which is a different product with a much larger privacy footprint. A gateway in front of local model servers is the likely next step. | A local tool nobody reported stays invisible. |
 
 ---
 

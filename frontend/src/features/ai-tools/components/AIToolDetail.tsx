@@ -13,6 +13,8 @@ import {
   CLASSIFICATION_OPTIONS,
   actionsFor,
   classificationLabel,
+  isWeb,
+  kindLabel,
   splitDomains,
 } from "../labels";
 import type { AITool, AIToolAction, AIToolUpdateInput, DataClassification } from "../types";
@@ -169,7 +171,8 @@ export function AIToolDetail({ toolId }: { toolId: number }) {
           <AIToolFlags tool={tool} />
         </div>
         <p>
-          {tool.domains.join(", ")}
+          {kindLabel(tool.kind)}
+          {tool.domains.length > 0 && ` · ${tool.domains.join(", ")}`}
           {allowed &&
             ` · may be given ${classificationLabel(tool.max_data_classification).toLowerCase()} data`}
           {tool.review_due && ` · review by ${tool.review_due}`}
@@ -179,19 +182,21 @@ export function AIToolDetail({ toolId }: { toolId: number }) {
       <DecisionPanel key={`${tool.status}-${tool.updated_at}`} tool={tool} />
 
       {TEXT_FIELDS.map(textInput)}
-      <div>
-        <label htmlFor="ai-tool-domains-edit">Addresses</label>
-        <textarea
-          id="ai-tool-domains-edit"
-          defaultValue={tool.domains.join("\n")}
-          onBlur={(e) => {
-            const domains = splitDomains(e.target.value);
-            if (domains.length > 0 && domains.join("\n") !== tool.domains.join("\n")) {
-              save({ domains });
-            }
-          }}
-        />
-      </div>
+      {isWeb(tool.kind) && (
+        <div>
+          <label htmlFor="ai-tool-domains-edit">Addresses</label>
+          <textarea
+            id="ai-tool-domains-edit"
+            defaultValue={tool.domains.join("\n")}
+            onBlur={(e) => {
+              const domains = splitDomains(e.target.value);
+              if (domains.length > 0 && domains.join("\n") !== tool.domains.join("\n")) {
+                save({ domains });
+              }
+            }}
+          />
+        </div>
+      )}
       <div>
         <label htmlFor="ai-tool-owner">Owner</label>
         <select

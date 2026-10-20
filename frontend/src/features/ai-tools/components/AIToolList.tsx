@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 
 import { useAITools } from "../hooks";
-import { classificationLabel, isFlagged } from "../labels";
+import { classificationLabel, isFlagged, kindLabel } from "../labels";
 import type { AITool, AIToolStatus } from "../types";
 import { AIToolStatusBadge } from "./AIToolStatusBadge";
 
@@ -58,7 +58,7 @@ export function AIToolList() {
           <thead>
             <tr>
               <th>Tool</th>
-              <th>Address</th>
+              <th>Kind</th>
               <th>Status</th>
               <th>May be given</th>
               <th>Review due</th>
@@ -74,7 +74,12 @@ export function AIToolList() {
                     <AIToolFlags tool={tool} />
                     {tool.vendor && <div className="approval-note">{tool.vendor}</div>}
                   </td>
-                  <td>{tool.domains.join(", ")}</td>
+                  <td>
+                    {kindLabel(tool.kind)}
+                    {tool.domains.length > 0 && (
+                      <div className="approval-note">{tool.domains.join(", ")}</div>
+                    )}
+                  </td>
                   <td>
                     <AIToolStatusBadge status={tool.status} />
                   </td>

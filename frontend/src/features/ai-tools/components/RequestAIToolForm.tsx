@@ -5,6 +5,8 @@ import { z } from "zod";
 
 import { readError } from "../../../shared/api/readError";
 import { useRequestAITool, useRequestableAITools } from "../hooks";
+import { KIND_OPTIONS, isWeb } from "../labels";
+import type { AIToolKind } from "../types";
 
 /** The picker's value for a tool that isn't in the list. */
 const SOMETHING_ELSE = "";
@@ -13,6 +15,7 @@ const requestSchema = z
   .object({
     tool: z.string(),
     tool_name: z.string(),
+    kind: z.enum(["web", "desktop_app", "local_model", "editor_plugin", "browser_extension"]),
     domain: z.string(),
     purpose: z.string().trim().min(10, "Tell us a little more about what you'd use it for"),
     data_involved: z.string(),
@@ -49,6 +52,7 @@ export function RequestAIToolForm({ initial, onRequested }: RequestAIToolFormPro
     defaultValues: {
       tool: SOMETHING_ELSE,
       tool_name: initial?.name ?? "",
+      kind: "web",
       domain: initial?.domain ?? "",
       purpose: "",
       data_involved: "",
@@ -64,6 +68,7 @@ export function RequestAIToolForm({ initial, onRequested }: RequestAIToolFormPro
     if (match) setValue("tool", String(match.id));
   }, [initialName, known, setValue]);
   const picked = watch("tool") !== SOMETHING_ELSE;
+  const kind: AIToolKind = watch("kind");
 
   const onSubmit = handleSubmit((values) => {
     const chosen = known?.find((tool) => String(tool.id) === values.tool);
@@ -73,8 +78,9 @@ export function RequestAIToolForm({ initial, onRequested }: RequestAIToolFormPro
       {
         tool_id: chosen ? chosen.id : null,
         tool_name: toolName,
-        // A known tool already has its address; only a new one needs it.
-        domain: chosen ? null : values.domain.trim() || null,
+        // A known tool already has its kind and address; only a new one needs them.
+        kind: chosen ? chosen.kind : values.kind,
+        domain: chosen || !isWeb(values.kind) ? null : values.domain.trim() || null,
         purpose: values.purpose.trim(),
         data_involved: values.data_involved.trim() || null,
       },
@@ -109,9 +115,21 @@ export function RequestAIToolForm({ initial, onRequested }: RequestAIToolFormPro
             {errors.tool_name && <p role="alert">{errors.tool_name.message}</p>}
           </div>
           <div>
-            <label htmlFor="request-domain">Its website, if you know it</label>
-            <input id="request-domain" placeholder="example.com" {...register("domain")} />
+            <label htmlFor="request-kind">What kind of tool is it?</label>
+            <select id="request-kind" {...register("kind")}>
+              {KIND_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
           </div>
+          {isWeb(kind) && (
+            <div>
+              <label htmlFor="request-domain">Its website, if you know it</label>
+              <input id="request-domain" placeholder="example.com" {...register("domain")} />
+            </div>
+          )}
         </>
       )}
       <div>

@@ -3,15 +3,16 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
-from app.models.ai_tool import AIToolRequestStatus, AIToolStatus, DataClassification
+from app.models.ai_tool import AIToolKind, AIToolRequestStatus, AIToolStatus, DataClassification
 from app.schemas.framework_control import FrameworkControlRead
 
 
 class AIToolCreate(BaseModel):
     name: str = Field(min_length=1, max_length=200)
     vendor: str | None = None
-    # Domains or URLs; stored as bare normalised domains.
-    domains: list[str] = Field(min_length=1)
+    kind: AIToolKind = AIToolKind.WEB
+    # Domains or URLs; stored as bare normalised domains. Only a web tool has any.
+    domains: list[str] = []
     description: str | None = None
     owner_id: int | None = None
     supplier_id: int | None = None
@@ -20,7 +21,8 @@ class AIToolCreate(BaseModel):
 class AIToolUpdate(BaseModel):
     name: str | None = Field(default=None, min_length=1, max_length=200)
     vendor: str | None = None
-    domains: list[str] | None = Field(default=None, min_length=1)
+    kind: AIToolKind | None = None
+    domains: list[str] | None = None
     description: str | None = None
     owner_id: int | None = None
     supplier_id: int | None = None
@@ -51,6 +53,7 @@ class AIToolRead(BaseModel):
     id: int
     name: str
     vendor: str | None
+    kind: AIToolKind
     domains: list[str]
     description: str | None
     status: AIToolStatus
@@ -74,6 +77,7 @@ class AIToolRequestCreate(BaseModel):
 
     tool_id: int | None = None
     tool_name: str = Field(min_length=1, max_length=200)
+    kind: AIToolKind = AIToolKind.WEB
     domain: str | None = None
     purpose: str = Field(min_length=10)
     data_involved: str | None = None
@@ -94,6 +98,7 @@ class AIToolRequestRead(BaseModel):
     requester_id: int
     tool_id: int | None
     tool_name: str
+    kind: AIToolKind
     domain: str | None
     purpose: str
     data_involved: str | None
@@ -111,6 +116,7 @@ class StaffAITool(BaseModel):
     id: int
     name: str
     vendor: str | None
+    kind: AIToolKind
     domains: list[str]
     status: Literal["approved", "restricted"]
     max_data_classification: DataClassification
@@ -122,6 +128,7 @@ class StaffAIToolRequestRead(BaseModel):
 
     id: int
     tool_name: str
+    kind: AIToolKind
     domain: str | None
     purpose: str
     requested_on: date
@@ -137,3 +144,4 @@ class StaffRequestableTool(BaseModel):
     id: int
     name: str
     vendor: str | None
+    kind: AIToolKind

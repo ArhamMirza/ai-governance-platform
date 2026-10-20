@@ -1,5 +1,5 @@
 import { useStaffAITools } from "../hooks";
-import { classificationLabel } from "../labels";
+import { classificationLabel, kindLabel } from "../labels";
 
 /** The AI tools an employee may use, and the rules that go with each. */
 export function StaffAITools() {
@@ -20,7 +20,7 @@ export function StaffAITools() {
             {tool.vendor && <span className="approval-note"> {tool.vendor}</span>}
           </p>
           <p>
-            {tool.domains.join(", ")} · up to{" "}
+            {tool.domains.length > 0 ? tool.domains.join(", ") : kindLabel(tool.kind)} · up to{" "}
             <strong>{classificationLabel(tool.max_data_classification).toLowerCase()}</strong> data
             {tool.status === "restricted" && " · limited use"}
           </p>

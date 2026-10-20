@@ -22,6 +22,7 @@ from app.core.exceptions import (
 )
 from app.models.ai_tool import (
     AITool,
+    AIToolKind,
     AIToolRequest,
     AIToolRequestStatus,
     AIToolStatus,
@@ -79,6 +80,17 @@ def _check_domains_free(db: Session, domains: list[str], own_id: int | None) -> 
             raise ConflictError(f"{sorted(clash)[0]} already belongs to {other.name}.")
 
 
+def _check_kind_and_domains(kind: str, domains: list[str]) -> None:
+    """A web tool is reached at addresses the browser can watch, so it needs at
+    least one. Any other kind has none: giving a desktop app or a local model a
+    web address would leave the browser unable to say which tool a visit is to."""
+    if kind == AIToolKind.WEB:
+        if not domains:
+            raise ValidationError("A web tool needs at least one address.")
+    elif domains:
+        raise ValidationError("Only a web tool has addresses; leave them out for this kind.")
+
+
 def _check_supplier(db: Session, supplier_id: int | None) -> None:
     if supplier_id is not None and supplier_repository.get(db, supplier_id) is None:
         raise NotFoundError("Supplier", supplier_id)
@@ -95,6 +107,7 @@ def get_tool(db: Session, tool_id: int) -> AITool:
 def create_tool(db: Session, data: AIToolCreate, actor_id: int | None) -> AITool:
     fields = data.model_dump()
     fields["domains"] = _normalise_domains(data.domains)
+    _check_kind_and_domains(data.kind, fields["domains"])
     _check_domains_free(db, fields["domains"], None)
     _check_supplier(db, data.supplier_id)
     tool = ai_tool_repository.create(db, AITool(**fields, status=AIToolStatus.CATALOGUED))
@@ -107,12 +120,16 @@ def create_tool(db: Session, data: AIToolCreate, actor_id: int | None) -> AITool
 def update_tool(db: Session, tool_id: int, data: AIToolUpdate, actor_id: int | None) -> AITool:
     tool = _get_or_raise(db, tool_id)
     changes = data.model_dump(exclude_unset=True)
-    for required in ("name", "domains"):
+    for required in ("name", "domains", "kind"):
         if required in changes and changes[required] is None:
-            raise ValidationError("A tool needs a name and at least one domain.")
+            raise ValidationError(f"A tool needs a {required}.")
     if "domains" in changes:
         changes["domains"] = _normalise_domains(changes["domains"])
         _check_domains_free(db, changes["domains"], tool.id)
+    if "kind" in changes or "domains" in changes:
+        _check_kind_and_domains(
+            changes.get("kind", tool.kind), changes.get("domains", tool.domains)
+        )
     if "supplier_id" in changes:
         _check_supplier(db, changes["supplier_id"])
     for field, value in changes.items():
@@ -253,12 +270,17 @@ def create_request(
     db: Session, data: AIToolRequestCreate, requester_id: int, today: date | None = None
 ) -> AIToolRequest:
     tool_name = data.tool_name.strip()
+    kind = data.kind
+    # Only a web tool has an address to give.
     domain = ai_tool_domains.normalize_domain(data.domain) if data.domain else None
+    if kind != AIToolKind.WEB:
+        domain = None
     if data.tool_id is not None:
         tool = _get_or_raise(db, data.tool_id)
         if tool.status in ALLOWED_STATUSES:
             raise ValidationError(f"{tool.name} is already approved; see the approved tools.")
         tool_name = tool.name
+        kind = tool.kind
     elif domain is not None:
         known = tool_for_host(db, domain)
         if known is not None and known.status in ALLOWED_STATUSES:
@@ -277,6 +299,7 @@ def create_request(
             requester_id=requester_id,
             tool_id=data.tool_id,
             tool_name=tool_name,
+            kind=kind,
             domain=domain,
             purpose=data.purpose.strip(),
             data_involved=(data.data_involved or "").strip() or None,
@@ -355,6 +378,10 @@ def _tool_for_approval(
     catalogued at its address, or a new one."""
     if request.tool_id is not None:
         return _get_or_raise(db, request.tool_id)
+    if request.kind != AIToolKind.WEB:
+        return create_tool(
+            db, AIToolCreate(name=request.tool_name, kind=request.kind, domains=[]), actor_id
+        )
     domain = ai_tool_domains.normalize_domain(data.domain) if data.domain else request.domain
     if domain is None:
         raise ValidationError("Add the tool's domain, so the browser knows which site to allow.")
