@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 import { readError } from "../../../shared/api/readError";
 import type { TaggedItem } from "../../framework-mapping/types";
@@ -30,10 +30,17 @@ function SoaRow({ entry }: { entry: FrameworkSoaEntry }) {
   const [applicability, setApplicability] = useState(entry.applicability);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
+  // Take in a changed server value (a background refetch, someone else's
+  // edit) while rendering, rather than in an effect that renders twice.
+  const [seen, setSeen] = useState({
+    justification: entry.justification,
+    applicability: entry.applicability,
+  });
+  if (seen.justification !== entry.justification || seen.applicability !== entry.applicability) {
+    setSeen({ justification: entry.justification, applicability: entry.applicability });
     setJustification(entry.justification ?? "");
     setApplicability(entry.applicability);
-  }, [entry.justification, entry.applicability]);
+  }
 
   const save = async (next: FrameworkSoaEntry["applicability"], reason: string) => {
     setError(null);

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 import { readError } from "../../../shared/api/readError";
 import { formatUserOption } from "../../users/formatUserOption";
@@ -139,9 +139,11 @@ export function GovernanceRoleCard({ role, allRoles, canManage }: GovernanceRole
   // someone else's edit to this role (a background refetch) would never
   // reach the textarea, leaving it showing what was here when this card
   // first rendered.
-  useEffect(() => {
+  const [seenResponsibilities, setSeenResponsibilities] = useState(role.responsibilities);
+  if (seenResponsibilities !== role.responsibilities) {
+    setSeenResponsibilities(role.responsibilities);
     setResponsibilities(role.responsibilities);
-  }, [role.responsibilities]);
+  }
 
   const holderIds = new Set(role.holders.map((h) => h.id));
   const assignableUsers = (directory ?? []).filter((u) => !holderIds.has(u.id));

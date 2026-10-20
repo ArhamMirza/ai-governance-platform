@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 import { readError } from "../../../shared/api/readError";
 import type { AiProvider } from "../api";
@@ -36,14 +36,16 @@ export function AiSettingsForm() {
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
 
-  useEffect(() => {
-    if (!settings) return;
+  // Fill the form from the stored settings whenever they (re)load.
+  const [loaded, setLoaded] = useState(settings);
+  if (settings && settings !== loaded) {
+    setLoaded(settings);
     setProvider(settings.provider);
     setModel(settings.model);
     setFastModel(settings.fast_model ?? "");
     setBaseUrl(settings.base_url ?? "");
     setBudget(settings.daily_token_budget);
-  }, [settings]);
+  }
 
   if (isLoading) return <p>Loading...</p>;
 
