@@ -10,6 +10,7 @@ from app.models.ai_dlp import AIUseSettings
 from app.schemas.ai_use import (
     AIUseSettingsRead,
     AIUseSettingsUpdate,
+    CoverageRead,
     EnrollmentKeyIssued,
     UsageSummary,
 )
@@ -62,3 +63,11 @@ def usage(
     days: int = Query(default=30, ge=1, le=365), db: Session = Depends(get_db)
 ) -> UsageSummary:
     return ai_usage_service.usage_summary(db, days)
+
+
+@router.get("/coverage", response_model=CoverageRead)
+def coverage(
+    days: int = Query(default=7, ge=1, le=90), db: Session = Depends(get_db)
+) -> CoverageRead:
+    """Who has the extension and is reaching the platform."""
+    return ai_usage_service.coverage(db, days)

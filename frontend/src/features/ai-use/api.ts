@@ -3,6 +3,7 @@ import type {
   AIUseSettings,
   AIUseSettingsInput,
   BuiltinDetector,
+  Coverage,
   DLPRule,
   DLPRuleInput,
   DLPRuleUpdateInput,
@@ -25,6 +26,7 @@ export const aiUseApi = {
   updateSettings: (data: AIUseSettingsInput) =>
     httpClient.put<AIUseSettings>("/ai-use/settings", data),
   rotateKey: () => httpClient.post<EnrollmentKeyIssued>("/ai-use/enrollment-key", {}),
+  coverage: (days: number) => httpClient.get<Coverage>(`/ai-use/coverage?days=${days}`),
   usage: (days: number) => httpClient.get<UsageSummary>(`/ai-use/usage?days=${days}`),
 };
 

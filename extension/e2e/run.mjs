@@ -338,6 +338,10 @@ try {
   check("a client-name warning is counted against its rule", usage.by_rule.some((r) => /Client/.test(r.rule_name ?? "")), JSON.stringify(usage.by_rule));
   check("the platform's usage holds no text from the pages", !/4111|PROJ-1234|gardening/.test(flat));
   check("unidentified browser profiles are filed under the placeholder", usage.by_user.some((u) => u.user_ref === "unidentified@browser.invalid"), JSON.stringify(usage.by_user.map((u) => u.user_ref)));
+  const coverage = (await platform("GET", "/ai-use/coverage")).body;
+  check("the browser tells the platform it is here, with no counts attached", coverage.unmatched_reporters >= 1, JSON.stringify(coverage));
+  const checkedIn = await swEval(async () => (await chrome.storage.local.get("checkin")).checkin);
+  check("it remembers it has done so today and won't repeat it", /^\d{4}-\d{2}-\d{2}$/.test(checkedIn ?? ""), String(checkedIn));
   const left = await swEval(async () => (await chrome.storage.local.get("events")).events);
   check("the buffer is emptied once the platform has taken the counts", left.length === 0, JSON.stringify(left));
 

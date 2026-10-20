@@ -10,7 +10,7 @@ redirect and script-registration APIs, and a real keyboard and mouse.
 It is run by hand and is not part of CI (it needs a browser and a running
 platform).
 
-## What it checks (47 checks)
+## What it checks (49 checks)
 
 - starts unconfigured and shows the `!` badge; connects and clears it
 - fetches the policy with the enrollment key; installs one redirect rule for
@@ -23,7 +23,8 @@ platform).
   more sensitive data than the tool is cleared for raises a warning, where
   **Cancel** keeps it unsent and **Send anyway** sends it
 - the counts waiting to be sent contain no text from the page, only the allowed
-  fields; they reach the platform's Usage page and the buffer empties
+  fields; they reach the platform's Usage page and the buffer empties; the browser
+  also checks in once a day, with no counts, so the platform can show who is covered
 - a refused key is reported, the last good policy stays in force, the badge returns
 
 ## Run it

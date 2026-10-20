@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.dependencies import require_agent_key
-from app.schemas.ai_use import AgentEvents, AgentEventsAccepted, AgentPolicy
+from app.schemas.ai_use import AgentCheckin, AgentEvents, AgentEventsAccepted, AgentPolicy
 from app.services import ai_usage_service
 
 router = APIRouter(prefix="/agent", tags=["agent"], dependencies=[Depends(require_agent_key)])
@@ -34,3 +34,11 @@ def get_policy(
 @router.post("/events", response_model=AgentEventsAccepted, status_code=202)
 def post_events(data: AgentEvents, db: Session = Depends(get_db)) -> AgentEventsAccepted:
     return AgentEventsAccepted(accepted=ai_usage_service.record_events(db, data))
+
+
+@router.post("/checkin", status_code=204)
+def post_checkin(data: AgentCheckin, db: Session = Depends(get_db)) -> Response:
+    """"This browser has the extension", once a day. Counts nothing and keeps no
+    history: it only lets the platform say who is covered."""
+    ai_usage_service.record_checkin(db, data)
+    return Response(status_code=204)

@@ -3,7 +3,7 @@ from datetime import date
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
-from app.models.ai_dlp import AIUsageEvent, AIUseSettings, DLPRule
+from app.models.ai_dlp import AIAgentCheckin, AIUsageEvent, AIUseSettings, DLPRule
 
 
 def get_rule(db: Session, rule_id: int) -> DLPRule | None:
@@ -87,3 +87,15 @@ def delete_events_before(db: Session, cutoff: date) -> int:
     result = db.execute(delete(AIUsageEvent).where(AIUsageEvent.day < cutoff))
     db.commit()
     return result.rowcount or 0
+
+
+def get_checkin(db: Session, user_ref: str) -> AIAgentCheckin | None:
+    return db.scalars(select(AIAgentCheckin).where(AIAgentCheckin.user_ref == user_ref)).first()
+
+
+def add_checkin(db: Session, checkin: AIAgentCheckin) -> None:
+    db.add(checkin)
+
+
+def list_checkins(db: Session) -> list[AIAgentCheckin]:
+    return list(db.scalars(select(AIAgentCheckin)))

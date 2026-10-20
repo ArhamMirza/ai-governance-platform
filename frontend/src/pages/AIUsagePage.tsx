@@ -1,4 +1,5 @@
 import { AIToolsSubNav } from "../features/ai-use/components/AIToolsSubNav";
+import { CoveragePanel } from "../features/ai-use/components/CoveragePanel";
 import { UsagePanel } from "../features/ai-use/components/UsagePanel";
 import { useCurrentUser } from "../features/auth/hooks";
 import { hasPermission } from "../features/auth/permissions";
@@ -20,7 +21,10 @@ export function AIUsagePage() {
       </div>
       <AIToolsSubNav />
       {allowed ? (
-        <UsagePanel />
+        <>
+          <CoveragePanel />
+          <UsagePanel />
+        </>
       ) : (
         <p>Only administrators can see who used what.</p>
       )}

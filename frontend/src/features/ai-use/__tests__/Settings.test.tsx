@@ -8,10 +8,11 @@ import { ApiError } from "../../../shared/api/httpClient";
 import { createTestQueryClient } from "../../../test/testQueryClient";
 import { aiUseApi, staffAiUseApi } from "../api";
 import { AIToolsSubNav } from "../components/AIToolsSubNav";
+import { CoveragePanel } from "../components/CoveragePanel";
 import { AIUseSettingsPanel } from "../components/AIUseSettingsPanel";
 import { StaffAIUseNotice } from "../components/StaffAIUseNotice";
 import { UsagePanel } from "../components/UsagePanel";
-import { makeSettings, makeUsage } from "./fixtures";
+import { makeCoverage, makeSettings, makeUsage } from "./fixtures";
 
 vi.mock("../api");
 
@@ -172,15 +173,19 @@ describe("UsagePanel", () => {
       (tile) => tile.textContent,
     );
     // Types with no events aren't listed as zeros.
-    expect(tiles).toEqual(["Visits to unapproved AI sites14", "Sensitive data caught6"]);
+    expect(tiles).toEqual([
+      "Visits to unapproved AI sites14",
+      "Sensitive data caught6",
+      "Times someone went ahead past a warning3",
+    ]);
 
     const rows = screen.getAllByRole("row").map((row) => row.textContent);
     expect(rows).toContainEqual(expect.stringContaining("Claude" + "claude.ai"));
     // A site that isn't in the catalogue falls back to its address.
-    expect(rows).toContainEqual(expect.stringMatching(/^grok\.com.*5.*2.*0$/));
+    expect(rows).toContainEqual(expect.stringMatching(/^grok\.com.*5.*2.*0.*0$/));
     expect(rows).toContainEqual(expect.stringContaining("Payment card numbers65"));
-    expect(rows).toContainEqual(expect.stringContaining("Elena Employeeelena@example.com96"));
-    expect(rows).toContainEqual(expect.stringMatching(/^bob@example\.com50$/));
+    expect(rows).toContainEqual(expect.stringContaining("Elena Employeeelena@example.com963"));
+    expect(rows).toContainEqual(expect.stringMatching(/^bob@example\.com500$/));
     expect(screen.getByLabelText("By day")).toHaveTextContent("2026-06-02");
     expect(screen.getByLabelText("By day")).toHaveTextContent("10 site visits, 6 caught");
     expect(screen.getByLabelText("By day")).toHaveTextContent("4 site visits, 0 caught");
@@ -227,6 +232,62 @@ describe("UsagePanel", () => {
     renderWithProviders(<UsagePanel />);
 
     expect(await screen.findByText(/Nothing reported in this period/)).toBeInTheDocument();
+  });
+});
+
+describe("UsagePanel overrides", () => {
+  it("leaves the override tile out when nobody went ahead past a warning", async () => {
+    vi.mocked(aiUseApi.usage).mockResolvedValue(makeUsage({ overrides: 0 }));
+
+    renderWithProviders(<UsagePanel />);
+
+    await screen.findByText("Visits to unapproved AI sites");
+    expect(screen.queryByText(/went ahead past a warning/)).not.toBeInTheDocument();
+  });
+});
+
+describe("CoveragePanel", () => {
+  it("says how many people have reported and lists those who haven't, worst first", async () => {
+    vi.mocked(aiUseApi.coverage).mockResolvedValue(makeCoverage());
+
+    renderWithProviders(<CoveragePanel />);
+
+    expect(await screen.findByText(/1 of 3/)).toBeInTheDocument();
+    expect(screen.getByText(/reported in\s+the last 7 days/)).toBeInTheDocument();
+    const rows = screen.getAllByRole("row").map((row) => row.textContent);
+    expect(rows).toContainEqual(expect.stringContaining("Nora Nevernora@example.comNever reportedNever"));
+    expect(rows).toContainEqual(
+      expect.stringContaining("Quentin Quietquentin@example.comGone quiet2026-05-01"),
+    );
+    // Someone who is reporting needs no row.
+    expect(rows.join()).not.toContain("Elena");
+  });
+
+  it("explains browsers that match no account", async () => {
+    vi.mocked(aiUseApi.coverage).mockResolvedValue(makeCoverage({ unmatched_reporters: 2 }));
+
+    renderWithProviders(<CoveragePanel />);
+
+    expect(await screen.findByText(/2 other browsers reported in under an address/)).toBeInTheDocument();
+  });
+
+  it("shows no table when everyone has reported", async () => {
+    vi.mocked(aiUseApi.coverage).mockResolvedValue(
+      makeCoverage({ active_people: 1, reporting: 1, people: [makeCoverage().people[2]] }),
+    );
+
+    renderWithProviders(<CoveragePanel />);
+
+    expect(await screen.findByText(/1 of 1/)).toBeInTheDocument();
+    expect(screen.queryByRole("table")).not.toBeInTheDocument();
+  });
+
+  it("says so when it can't load", async () => {
+    vi.mocked(aiUseApi.coverage).mockRejectedValue(new ApiError(500, "nope"));
+
+    renderWithProviders(<CoveragePanel />);
+
+    expect(await screen.findByText("Failed to load coverage.")).toBeInTheDocument();
   });
 });
 

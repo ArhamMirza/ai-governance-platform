@@ -142,3 +142,27 @@ export async function flushEvents(
   }
   return { sent, dropped, status: { kind: "ok", message: "Counts sent." } };
 }
+
+/**
+ * Tells the platform this browser has the extension: who, and which version,
+ * and nothing else. It is how the platform knows who is covered, including
+ * people who haven't visited an AI site and so have no counts. Returns whether
+ * the platform took it, so the caller can try again later if not.
+ */
+export async function sendCheckin(
+  config: Config,
+  email: string,
+  version: string,
+  doFetch: Fetch = fetch,
+): Promise<boolean> {
+  try {
+    const response = await doFetch(`${config.serverUrl}/api/v1/agent/checkin`, {
+      method: "POST",
+      headers: { ...headers(config), "Content-Type": "application/json" },
+      body: JSON.stringify({ user_email: email, version }),
+    });
+    return response.ok;
+  } catch {
+    return false;
+  }
+}

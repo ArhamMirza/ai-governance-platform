@@ -122,6 +122,8 @@ def _attention(
     ai_tools_review_overdue_count: int,
     unapproved_ai_use_week_count: int,
     dlp_matches_week_count: int,
+    ai_overrides_week_count: int,
+    ai_coverage_gap_count: int,
 ) -> list[AttentionItem]:
     """Actionable items, grouped by area and most urgent first. Zero-count
     items are dropped so the panel only ever shows things that need doing."""
@@ -344,6 +346,20 @@ def _attention(
             group=INVENTORY_GROUP,
             label="Sensitive data stopped from going into AI tools in the last 7 days",
             count=dlp_matches_week_count,
+            severity="warning",
+        ),
+        AttentionItem(
+            key="ai_overrides_week",
+            group=INVENTORY_GROUP,
+            label="Times someone went ahead past an AI warning in the last 7 days",
+            count=ai_overrides_week_count,
+            severity="warning",
+        ),
+        AttentionItem(
+            key="ai_coverage_gap",
+            group=INVENTORY_GROUP,
+            label="People whose browser has not reported to the platform in 7 days",
+            count=ai_coverage_gap_count,
             severity="warning",
         ),
         AttentionItem(
@@ -677,6 +693,8 @@ def get_summary(db: Session, actor_id: int) -> DashboardSummary:
             ai_tools_review_overdue_count=ai_tool_service.review_overdue_count(db, today),
             unapproved_ai_use_week_count=ai_usage_service.week_counts(db, today)[0],
             dlp_matches_week_count=ai_usage_service.week_counts(db, today)[1],
+            ai_overrides_week_count=ai_usage_service.week_overrides(db, today),
+            ai_coverage_gap_count=ai_usage_service.coverage_gap_count(db, today),
         ),
         matrix=risk_analytics_service.matrix_cells(all_risk_rows),
         criteria=risk_criteria_service.get_criteria(db),

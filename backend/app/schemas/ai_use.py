@@ -148,6 +148,15 @@ class AgentEventsAccepted(BaseModel):
     accepted: int
 
 
+class AgentCheckin(BaseModel):
+    """"This browser has the extension." Nothing else can be sent."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    user_email: str = Field(min_length=3, max_length=320)
+    version: str | None = Field(default=None, pattern=r"^[0-9A-Za-z.+-]{1,20}$")
+
+
 # ---------- the usage dashboard ----------
 
 
@@ -163,6 +172,7 @@ class UsageByDomain(BaseModel):
     unapproved: int
     blocked: int
     dlp_matches: int
+    overrides: int = 0
 
 
 class UsageByRule(BaseModel):
@@ -177,6 +187,7 @@ class UsageByUser(BaseModel):
     user_name: str | None
     unapproved: int
     dlp_matches: int
+    overrides: int = 0
 
 
 class UsageByDay(BaseModel):
@@ -187,6 +198,9 @@ class UsageByDay(BaseModel):
 
 class UsageSummary(BaseModel):
     days: int
+    # Times someone went ahead past a warning, in total. Each one is a person
+    # deciding to override the policy, so they are worth reading, not just counting.
+    overrides: int = 0
     by_type: list[UsageByType]
     by_domain: list[UsageByDomain]
     by_rule: list[UsageByRule]
@@ -199,3 +213,29 @@ class StaffAIUseNotice(BaseModel):
 
     staff_notice: str | None
     unapproved_site_action: Literal["monitor", "warn", "block"]
+
+
+# ---------- who has the extension ----------
+
+
+class CoveragePerson(BaseModel):
+    user_id: int
+    name: str
+    email: str
+    last_seen: date | None
+    extension_version: str | None
+    status: Literal["reporting", "quiet", "never"]
+
+
+class CoverageRead(BaseModel):
+    """Which people's browsers have reported in lately. Judged from the
+    check-ins, so it says "this person's extension is reaching us", not that
+    nothing was used elsewhere."""
+
+    days: int
+    active_people: int
+    reporting: int
+    people: list[CoveragePerson]
+    # Reporting browsers whose email matches nobody in the platform -- usually
+    # a personal profile or a different address from the one on file.
+    unmatched_reporters: int

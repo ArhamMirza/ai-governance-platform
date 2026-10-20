@@ -1,6 +1,7 @@
 from app.models.ai_assist import AiAssistSettings, AiUsage
 from app.models.ai_conversation import AiConversation, AiMessage, MessageRole
 from app.models.ai_dlp import (
+    AIAgentCheckin,
     AIUsageAction,
     AIUsageEvent,
     AIUsageEventType,
@@ -86,6 +87,7 @@ __all__ = [
     "AIIncidentStatus",
     "AIObjective",
     "AIUsageAction",
+    "AIAgentCheckin",
     "AIUsageEvent",
     "AIUsageEventType",
     "AIUseSettings",

@@ -35,7 +35,8 @@ a React frontend, a FastAPI backend, and a single SQLite file.
 **Governing staff use of AI.** A register of approved AI tools that employees request and
 the Chief AI Governance Officer decides, data-loss-prevention rules, and a **Chrome/Edge
 extension** that blocks or warns on unapproved AI sites and stops sensitive text being
-pasted into AI chats. It reports daily counts only: never the text.
+pasted into AI chats. It reports daily counts only (never the text), and a Usage page
+shows who has it installed and how often people go ahead past a warning.
 
 **An optional assistant.** Search and chat over the record, with citations that are checked
 before you see them, and drafting help. It can read and propose; it cannot change

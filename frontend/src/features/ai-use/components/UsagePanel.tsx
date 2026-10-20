@@ -85,6 +85,12 @@ export function UsagePanel() {
                   <dd>{total(summary, type)}</dd>
                 </div>
               ))}
+            {summary.overrides > 0 && (
+              <div>
+                <dt>Times someone went ahead past a warning</dt>
+                <dd>{summary.overrides}</dd>
+              </div>
+            )}
           </dl>
 
           <h3>By AI site</h3>
@@ -95,6 +101,7 @@ export function UsagePanel() {
                 <th>Unapproved visits</th>
                 <th>Blocked</th>
                 <th>Sensitive data caught</th>
+                <th>Went ahead anyway</th>
               </tr>
             </thead>
             <tbody>
@@ -107,6 +114,7 @@ export function UsagePanel() {
                   <td>{row.unapproved}</td>
                   <td>{row.blocked}</td>
                   <td>{row.dlp_matches}</td>
+                  <td>{row.overrides}</td>
                 </tr>
               ))}
             </tbody>
@@ -143,6 +151,7 @@ export function UsagePanel() {
                 <th>Person</th>
                 <th>Unapproved visits</th>
                 <th>Sensitive data caught</th>
+                <th>Went ahead anyway</th>
               </tr>
             </thead>
             <tbody>
@@ -154,6 +163,7 @@ export function UsagePanel() {
                   </td>
                   <td>{row.unapproved}</td>
                   <td>{row.dlp_matches}</td>
+                  <td>{row.overrides}</td>
                 </tr>
               ))}
             </tbody>

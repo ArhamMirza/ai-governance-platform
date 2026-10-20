@@ -11,6 +11,7 @@ import { reportingEmail } from "./config.ts";
 import { DEV_CONFIG_KEY, loadConfig } from "./configSource.ts";
 import { EventBuffer, type EventType, type UsageAction, utcDay } from "./events.ts";
 import {
+  CHECKIN_KEY,
   EVENTS_KEY,
   type ExtensionMessage,
   POLICY_KEY,
@@ -18,7 +19,7 @@ import {
 } from "./messages.ts";
 import { type Policy, classify } from "./policy.ts";
 import { ALLOW_RULE_ID_BASE, REDIRECT_RULE_ID_BASE, allowRule, contentScriptMatches, redirectRules } from "./rules.ts";
-import { type StoredPolicy, type SyncStatus, flushEvents, syncPolicy } from "./sync.ts";
+import { type StoredPolicy, type SyncStatus, flushEvents, sendCheckin, syncPolicy } from "./sync.ts";
 
 const BLOCKED_PAGE = "/blocked.html";
 const CONTENT_SCRIPT_ID = "ai-governance-guard";
@@ -128,19 +129,33 @@ async function reapply(): Promise<void> {
   if (policy !== null) await applyPolicy(policy);
 }
 
+async function profileEmail(): Promise<string> {
+  try {
+    const { email } = await chrome.identity.getProfileUserInfo({ accountStatus: "ANY" as never });
+    return reportingEmail(email);
+  } catch {
+    return reportingEmail(undefined);
+  }
+}
+
 async function flush(): Promise<void> {
   const config = await loadConfig();
   if (config === null) return;
+  await checkInIfDue(config);
   const pending = await buffer();
   if (pending.size === 0) return;
-  let email: string | undefined;
-  try {
-    email = (await chrome.identity.getProfileUserInfo({ accountStatus: "ANY" as never })).email;
-  } catch {
-    email = undefined;
-  }
-  await flushEvents(config, reportingEmail(email), pending);
+  await flushEvents(config, await profileEmail(), pending);
   await saveBuffer();
+}
+
+/** Tells the platform this browser is here, at most once a day. */
+async function checkInIfDue(config: NonNullable<Awaited<ReturnType<typeof loadConfig>>>): Promise<void> {
+  const today = utcDay(new Date());
+  const last = (await chrome.storage.local.get(CHECKIN_KEY))[CHECKIN_KEY];
+  if (last === today) return;
+  if (await sendCheckin(config, await profileEmail(), chrome.runtime.getManifest().version)) {
+    await chrome.storage.local.set({ [CHECKIN_KEY]: today });
+  }
 }
 
 // ---------- events from pages ----------

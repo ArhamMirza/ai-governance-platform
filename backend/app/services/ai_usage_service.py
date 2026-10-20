@@ -19,14 +19,24 @@ from sqlalchemy.orm import Session
 from app.core import agent_key, ai_tool_domains
 from app.core.attempt_limiter import AttemptLimiter
 from app.core.exceptions import AuthenticationError, NotFoundError, ValidationError
-from app.models.ai_dlp import AIUsageEvent, AIUsageEventType, AIUseSettings, DLPAction
+from app.models.ai_dlp import (
+    AIAgentCheckin,
+    AIUsageAction,
+    AIUsageEvent,
+    AIUsageEventType,
+    AIUseSettings,
+    DLPAction,
+)
 from app.repositories import ai_use_repository, user_repository
 from app.schemas.ai_use import (
+    AgentCheckin,
     AgentEvents,
     AgentPolicy,
     AgentRule,
     AgentTool,
     AIUseSettingsUpdate,
+    CoveragePerson,
+    CoverageRead,
     UsageByDay,
     UsageByDomain,
     UsageByRule,
@@ -233,6 +243,30 @@ def record_events(db: Session, data: AgentEvents, today: date | None = None) -> 
     return len(prepared)
 
 
+def record_checkin(db: Session, data: AgentCheckin, today: date | None = None) -> None:
+    """Notes that this person's browser has reported in today. One row per
+    person, overwritten each day -- so it is a roll call, not a log."""
+    email = data.user_email.strip().lower()
+    if not _EMAIL.match(email):
+        raise ValidationError("user_email must be an email address.")
+    reference = _today(today)
+    existing = ai_use_repository.get_checkin(db, email)
+    if existing is None:
+        ai_use_repository.add_checkin(
+            db,
+            AIAgentCheckin(
+                user_ref=email,
+                first_seen=reference,
+                last_seen=reference,
+                extension_version=data.version,
+            ),
+        )
+    else:
+        existing.last_seen = max(existing.last_seen, reference)
+        existing.extension_version = data.version
+    ai_use_repository.commit(db)
+
+
 def purge_expired(db: Session, today: date | None = None) -> int:
     """Deletes counts older than the retention period. Returns how many rows went."""
     settings = settings_or_default(db)
@@ -257,6 +291,67 @@ def week_counts(db: Session, today: date | None = None) -> tuple[int, int]:
     return sites, dlp
 
 
+def week_overrides(db: Session, today: date | None = None) -> int:
+    """Times someone clicked through a warning in the last seven days."""
+    since = _today(today) - timedelta(days=6)
+    return sum(
+        event.count
+        for event in ai_use_repository.list_events_since(db, since)
+        if event.action == AIUsageAction.OVERRIDDEN
+    )
+
+
+def coverage(db: Session, days: int = 7, today: date | None = None) -> CoverageRead:
+    """Who has reported in within the last `days` days, among everyone who has
+    an active account (they are all expected to have the extension)."""
+    reference = _today(today)
+    since = reference - timedelta(days=days - 1)
+    checkins = {c.user_ref: c for c in ai_use_repository.list_checkins(db)}
+    active = [u for u in user_repository.list_all(db) if u.is_active]
+    known = {u.email.lower() for u in active}
+
+    people = []
+    for user in active:
+        checkin = checkins.get(user.email.lower())
+        if checkin is None:
+            status = "never"
+        elif checkin.last_seen >= since:
+            status = "reporting"
+        else:
+            status = "quiet"
+        people.append(
+            CoveragePerson(
+                user_id=user.id,
+                name=user.name,
+                email=user.email,
+                last_seen=checkin.last_seen if checkin else None,
+                extension_version=checkin.extension_version if checkin else None,
+                status=status,
+            )
+        )
+    # Those who need attention first: never reported, then gone quiet, longest ago first.
+    order = {"never": 0, "quiet": 1, "reporting": 2}
+    people.sort(key=lambda p: (order[p.status], p.last_seen or date.min, p.name.lower()))
+    return CoverageRead(
+        days=days,
+        active_people=len(people),
+        reporting=sum(1 for p in people if p.status == "reporting"),
+        people=people,
+        unmatched_reporters=sum(
+            1 for ref, c in checkins.items() if ref not in known and c.last_seen >= since
+        ),
+    )
+
+
+def coverage_gap_count(db: Session, today: date | None = None) -> int:
+    """People who have no recent report -- but only once a key has been issued,
+    because before that the rollout hasn't started and nobody could report."""
+    if settings_or_default(db).enrollment_key_hash is None:
+        return 0
+    result = coverage(db, 7, today)
+    return result.active_people - result.reporting
+
+
 def usage_summary(db: Session, days: int = 30, today: date | None = None) -> UsageSummary:
     reference = _today(today)
     events = ai_use_repository.list_events_since(db, reference - timedelta(days=days - 1))
@@ -269,8 +364,13 @@ def usage_summary(db: Session, days: int = 30, today: date | None = None) -> Usa
     by_rule: dict[int, dict[str, int]] = defaultdict(lambda: defaultdict(int))
     by_user: dict[str, dict[str, int]] = defaultdict(lambda: defaultdict(int))
     by_day: dict[date, dict[str, int]] = defaultdict(lambda: defaultdict(int))
+    overrides = 0
     for e in events:
         by_type[e.event_type] += e.count
+        if e.action == AIUsageAction.OVERRIDDEN:
+            overrides += e.count
+            by_domain[e.domain]["overrides"] += e.count
+            by_user[e.user_ref]["overrides"] += e.count
         is_site = e.event_type in _SITE_EVENTS
         is_dlp = e.event_type == AIUsageEventType.DLP_MATCH
         if is_site:
@@ -290,6 +390,7 @@ def usage_summary(db: Session, days: int = 30, today: date | None = None) -> Usa
 
     return UsageSummary(
         days=days,
+        overrides=overrides,
         by_type=[UsageByType(event_type=k, count=v) for k, v in sorted(by_type.items())],
         by_domain=[
             UsageByDomain(
@@ -299,6 +400,7 @@ def usage_summary(db: Session, days: int = 30, today: date | None = None) -> Usa
                 unapproved=c["unapproved"],
                 blocked=c["blocked"],
                 dlp_matches=c["dlp"],
+                overrides=c["overrides"],
             )
             for domain, c in sorted(
                 by_domain.items(), key=lambda i: -(i[1]["unapproved"] + i[1]["dlp"])
@@ -319,6 +421,7 @@ def usage_summary(db: Session, days: int = 30, today: date | None = None) -> Usa
                 user_name=names.get(ref),
                 unapproved=c["unapproved"],
                 dlp_matches=c["dlp"],
+                overrides=c["overrides"],
             )
             for ref, c in sorted(
                 by_user.items(), key=lambda i: -(i[1]["unapproved"] + i[1]["dlp"])

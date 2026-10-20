@@ -104,3 +104,18 @@ class AIUsageEvent(Base):
     rule_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
     action: Mapped[str] = mapped_column(String(20))
     count: Mapped[int] = mapped_column(Integer, default=1)
+
+
+class AIAgentCheckin(Base):
+    """That a person's browser has the extension and is reaching the platform:
+    one row per person, holding the last day it reported in. A day and a
+    version number, never a time of day, an address or a device -- enough to
+    tell who is covered, not enough to follow anyone around."""
+
+    __tablename__ = "ai_agent_checkins"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_ref: Mapped[str] = mapped_column(String(320), unique=True, index=True)
+    first_seen: Mapped[date] = mapped_column(Date)
+    last_seen: Mapped[date] = mapped_column(Date, index=True)
+    extension_version: Mapped[str | None] = mapped_column(String(20), nullable=True)

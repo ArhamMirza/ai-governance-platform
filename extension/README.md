@@ -34,7 +34,7 @@ What it does, on the AI sites the platform has catalogued:
   uploads, and the dialog.
 - **A real-browser test** (`e2e/`) loads the built extension into **real Chrome
   and real Edge** against a running platform and drives it with a real keyboard
-  and mouse: 47 checks pass in each. See [e2e/README.md](e2e/README.md).
+  and mouse: 49 checks in each. See [e2e/README.md](e2e/README.md).
 - **Not tested here:** force-install by enterprise policy and managed storage
   (they need a managed machine), Chrome Web Store / Edge Add-ons packaging, or
   any real AI site: the test uses a stand-in chat page, so it shows the
@@ -182,7 +182,10 @@ With the extension connected and a seeded or real platform:
 8. **Files.** Attach a `.txt` with a test card number: refused. Attach a clean
    `.txt`: goes through. Attach a PDF: goes through unchecked (as documented).
 9. **Counts.** Within ~5 minutes the platform's **Usage** page shows the
-   counts for you — and no text.
+   counts for you — and no text. The same page's **Who has the extension**
+   section lists you as reporting (or, if the browser profile's address matches
+   no account, counts you as a reporter that matches nobody). The extension
+   checks in once a day.
 10. **Outage.** Stop the platform; sites keep following the last policy.
 
 ## Roll it out to everyone
