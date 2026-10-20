@@ -48,3 +48,47 @@ export interface UserAccountabilities {
   datasets_owned: string[];
   open_risk_items: number;
 }
+
+export type ImportAction = "create" | "update" | "unchanged" | "skip";
+
+export interface UserImportRow {
+  line: number;
+  name: string;
+  email: string;
+  role: string | null;
+  action: ImportAction;
+  note: string | null;
+}
+
+export interface UserImportMissing {
+  id: number;
+  name: string;
+  email: string;
+  role: string;
+}
+
+export interface UserImportPreview {
+  rows: UserImportRow[];
+  create: number;
+  update: number;
+  unchanged: number;
+  skip: number;
+  missing_from_file: UserImportMissing[];
+}
+
+export interface UserImportCreated {
+  name: string;
+  email: string;
+  role: string;
+  temporary_password: string;
+}
+
+/** The starting passwords are in here and nowhere else. */
+export interface UserImportResult {
+  created: UserImportCreated[];
+  updated: number;
+  unchanged: number;
+  skipped: UserImportRow[];
+  password_expires_on: string;
+  missing_from_file: UserImportMissing[];
+}

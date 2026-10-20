@@ -363,7 +363,8 @@ The headline controls; [SECURITY.md](SECURITY.md) lists limits and
 - **Passwords** — PBKDF2-HMAC-SHA256, 600,000 iterations, stdlib only. Twelve characters
   minimum, refused if common (even dressed up), a keyboard run, near-constant, or built
   from the person's name or email; last five not reusable. Admin-created and reset
-  passwords are temporary and force a change.
+  passwords are temporary and force a change; one nobody has used stops working after
+  seven days (`temporary_password_expires_at`; accounts that predate it are unaffected).
 - **Sessions** — opaque random token in an HttpOnly, `SameSite=Strict` cookie (`__Host-`
   prefixed when secure); only its SHA-256 is stored; 14-day lifetime; ended everywhere on
   password change/reset, role change or deactivation.
@@ -382,6 +383,14 @@ The headline controls; [SECURITY.md](SECURITY.md) lists limits and
   cross-site request check for cookie-bearing state changes, an explicit CORS allow-list.
 - **First account** — needs a setup code printed in the server log (or `SETUP_CODE`) on a
   real deployment.
+- **Importing people** (`user_import_service`) — *Users → Import from CSV* takes `name`,
+  `email` and an optional `role`. A preview says what each line would do and changes
+  nothing; the import then works the file out again rather than trusting the preview.
+  Matching is on email, so the same file twice does nothing. New accounts get a random
+  starting password, returned once (never stored readably, never in the audit trail).
+  A file can never create or change an administrator, change your own account, bring back
+  a deactivated one, or deactivate anybody: people missing from the file are only listed.
+  Capped at 200 people a file, because each new account costs a deliberately slow hash.
 - **Secrets at rest** — AI provider keys and TOTP secrets under Fernet; the enrollment key
   and session tokens as hashes.
 - **Access** — default deny, a test that walks every route as an employee, segregation of
@@ -503,7 +512,8 @@ the app does not claim a clause is met because a feature exists.
 - Packaged extension rollout files; a hardware-key (WebAuthn) second factor.
 - Evidence packs (PDF/Word/ZIP) for auditors; more tagging so the compliance numbers
   reflect work done.
-- Employee import from CSV; a dedicated concerns-officer role; single sign-on; email.
+- A dedicated concerns-officer role; single sign-on; email (so new accounts get starting
+  passwords handed over rather than a set-up link).
 - PostgreSQL, automated backups, a container setup, encryption at rest, a session idle
   timeout, a sandboxed document parser, and an independent security review.
 - In-app spreadsheet formulas beyond the risk score; multi-tenancy.

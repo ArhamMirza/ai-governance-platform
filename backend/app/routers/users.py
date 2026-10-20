@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, File, UploadFile
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
@@ -12,7 +12,8 @@ from app.schemas.user import (
     UserDirectoryEntry,
     UserUpdate,
 )
-from app.services import governance_role_service, mfa_service, user_service
+from app.schemas.user_import import UserImportPreview, UserImportResult
+from app.services import governance_role_service, mfa_service, user_import_service, user_service
 
 router = APIRouter(prefix="/users", tags=["users"])
 
@@ -59,6 +60,27 @@ def create_user(
     actor: User = Depends(require_manage_users_user),
 ) -> UserRead:
     return user_service.create_user(db, data, actor.id)
+
+
+@router.post("/import/preview", response_model=UserImportPreview)
+def preview_import(
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    actor: User = Depends(require_manage_users_user),
+) -> UserImportPreview:
+    """What a CSV of staff would do, without doing any of it."""
+    return user_import_service.preview(db, file.file.read(user_import_service.MAX_BYTES + 1), actor)
+
+
+@router.post("/import", response_model=UserImportResult)
+def run_import(
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    actor: User = Depends(require_manage_users_user),
+) -> UserImportResult:
+    """Creates and updates the accounts in a CSV. The starting passwords of the
+    new ones are in this response and nowhere else."""
+    return user_import_service.run(db, file.file.read(user_import_service.MAX_BYTES + 1), actor)
 
 
 @router.post("/{user_id}/reset-password", response_model=TemporaryPassword)

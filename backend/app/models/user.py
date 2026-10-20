@@ -41,6 +41,11 @@ class User(Base):
     password_changed_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
+    # When a password an administrator issued stops working if it has not been
+    # used to sign in and replaced. Empty for a password the person chose.
+    temporary_password_expires_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     # Their authenticator app, if they have started setting one up (app.models.mfa).
     mfa = relationship("UserMFA", uselist=False, lazy="joined", cascade="all, delete-orphan")
 
