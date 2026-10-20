@@ -52,7 +52,8 @@ DEFAULT_RETENTION_DAYS = 90
 # weekend reports Friday's counts on Monday -- but nothing from the future.
 FUTURE_TOLERANCE_DAYS = 1
 
-_EMAIL = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+# Domain labels exclude "." so the pattern has one way to match, not many.
+_EMAIL = re.compile(r"^[^@\s]+@[^@\s.]+(?:\.[^@\s.]+)+$")
 
 # Wrong keys are counted per caller address, so a stranger who finds the
 # endpoint can't walk the key space.
