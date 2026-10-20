@@ -4435,6 +4435,13 @@ form.assistant-composer {
   margin: 0;
 }
 
+/* What a draft will read, shown before it is asked for */
+.draft-readiness ul {
+  margin: 6px 0 8px;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
 .draft-guidance-field {
   display: flex;
   flex-direction: column;

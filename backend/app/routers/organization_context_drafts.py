@@ -16,6 +16,7 @@ from app.schemas.ai_draft import GenerateDraftRequest
 from app.schemas.organization_context import OrganizationContextRead
 from app.schemas.organization_context_draft import (
     ApplyOrganizationContextDraftRequest,
+    DraftSourceReadiness,
     OrganizationContextDraftRead,
 )
 from app.services import organization_context_drafting_service as drafting
@@ -30,6 +31,15 @@ def generate_draft(
     actor_id: int | None = Depends(get_current_actor_id),
 ) -> OrganizationContextDraftRead:
     return drafting.generate_draft(db, actor_id, data.instructions if data else None)
+
+
+@router.get("/readiness", response_model=list[DraftSourceReadiness])
+def readiness(
+    db: Session = Depends(get_db),
+    _actor_id: int | None = Depends(get_current_actor_id),
+) -> list[DraftSourceReadiness]:
+    """What a draft would read right now, so what is missing can be filled in first."""
+    return drafting.source_readiness(db)
 
 
 @router.get("/latest", response_model=OrganizationContextDraftRead | None)

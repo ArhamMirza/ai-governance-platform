@@ -53,6 +53,16 @@ export interface OrganizationContextDraft {
   coverage_gaps: { evidence_id: number; filename: string; detail: string | null }[] | null;
 }
 
+/** One kind of record the draft reads, and how much of it there is. */
+export interface DraftSourceReadiness {
+  key: string;
+  label: string;
+  count: number;
+  href: string;
+  /** What the draft cannot say while this is empty. */
+  empty_note: string;
+}
+
 export interface AcceptedNarrativeField {
   key: string;
   value: string;
@@ -85,6 +95,7 @@ export const organizationContextDraftApi = {
   generate: (instructions?: string) =>
     httpClient.post<OrganizationContextDraft>(BASE, { instructions: instructions || null }),
   latest: () => httpClient.get<OrganizationContextDraft | null>(`${BASE}/latest`),
+  readiness: () => httpClient.get<DraftSourceReadiness[]>(`${BASE}/readiness`),
   apply: (draftId: number, accepted: AcceptedContextDraft) =>
     httpClient.post<OrganizationContext>(`${BASE}/${draftId}/apply`, accepted),
   discard: (draftId: number) => httpClient.post<void>(`${BASE}/${draftId}/discard`),
@@ -99,6 +110,17 @@ export function useLatestOrganizationContextDraft(enabled: boolean) {
     queryKey: draftKey,
     queryFn: organizationContextDraftApi.latest,
     enabled,
+  });
+}
+
+/** What a draft would read right now. Refetched each time the panel opens, so
+ * filling something in and coming back shows it. */
+export function useDraftSourceReadiness(enabled: boolean) {
+  return useQuery({
+    queryKey: [...draftKey, "readiness"],
+    queryFn: organizationContextDraftApi.readiness,
+    enabled,
+    staleTime: 0,
   });
 }
 

@@ -327,6 +327,15 @@ and nobody decides their own request. Domain matching is by whole label
 (`chatgpt.com.evil.net` is not `chatgpt.com`), with punycode handled and the most specific
 domain winning (`core/ai_tool_domains.py` on the server, `policy.ts` in the extension).
 
+**What the organization-context draft reads.** The AI system inventory, policies,
+procedures, the governance roles, the **approved AI tools** and the **active suppliers**
+(names, type and what they provide only: no contacts or contract details; a tool that is
+merely catalogued or revoked is left out, since it says nothing about use). Each is a
+numbered source a proposal must cite. Guidance typed into the draft box steers scope and
+tone but is never a source, so a fact only mentioned there is left out. Before a draft is
+asked for, the panel lists what it will read, with counts from the same code that builds
+the sources, and links to where each empty kind is filled in.
+
 **Data rules (DLP)** (`core/dlp_rules.py`, `frontend/src/shared/dlp/detectors.ts`). Built-in
 detectors (card numbers with a Luhn check, IBANs with mod-97, SSN, NINO, CNIC, API keys,
 private keys, JWTs, password assignments), keyword lists and custom regexes, each with a

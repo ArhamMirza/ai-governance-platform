@@ -1,14 +1,54 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 
 import { readError } from "../../../shared/api/readError";
 import { DraftGuidanceField } from "../../../shared/components/DraftGuidanceField";
 import { useAiAssistStatus } from "../../ai-assist/hooks";
 import {
+  useDraftSourceReadiness,
   useGenerateOrganizationContextDraft,
   useLatestOrganizationContextDraft,
 } from "../aiDraft";
 import type { OrganizationContext } from "../types";
 import { OrganizationContextDraftReview } from "./OrganizationContextDraftReview";
+
+/** What the draft will read, with a nudge toward whatever is still empty: the
+ * draft only states what these records say, so filling them in first is what
+ * makes it good. */
+function DraftReadiness() {
+  const { data: sources } = useDraftSourceReadiness(true);
+  if (!sources) return null;
+  const empty = sources.filter((source) => source.count === 0);
+
+  return (
+    <div className="draft-readiness">
+      <h5 className="draft-review-title">What the draft will read</h5>
+      <ul className="plain-list">
+        {sources.map((source) => (
+          <li key={source.key}>
+            {source.count > 0 ? (
+              <>
+                {source.label}: <strong>{source.count}</strong>
+              </>
+            ) : (
+              <>
+                {source.label}: <strong>none yet.</strong> {source.empty_note}{" "}
+                <Link to={source.href}>Add some</Link>
+              </>
+            )}
+          </li>
+        ))}
+      </ul>
+      <p className="approval-note">
+        {empty.length > 0
+          ? "Fill these in first for a better draft. "
+          : ""}
+        The draft only states what these records say. Guidance you type below steers it, but it
+        can&rsquo;t add facts: to get something in, record it above.
+      </p>
+    </div>
+  );
+}
 
 /**
  * Where a person asks for the organization's context to be drafted, and
@@ -63,6 +103,7 @@ export function OrganizationContextDraftPanel({ context }: { context: Organizati
           rests on. Nothing is saved until you review it.
         </p>
       </div>
+      <DraftReadiness />
       <DraftGuidanceField
         label="Guidance (optional)"
         placeholder="e.g. Keep the description under two sentences; emphasize our GDPR posture."

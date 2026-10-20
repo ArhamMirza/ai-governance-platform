@@ -178,6 +178,87 @@ def test_every_ai_system_policy_and_procedure_reaches_the_model(configured, mode
     assert "How models get reviewed." in prompt
 
 
+def test_approved_tools_and_active_suppliers_reach_the_model_and_can_be_cited(
+    configured, model
+) -> None:
+    from datetime import date
+
+    from app.models.ai_tool import AITool, AIToolKind, AIToolStatus
+    from app.models.supplier import Supplier, SupplierStatus
+
+    db = configured
+    db.add_all(
+        [
+            AITool(
+                name="ChatGPT",
+                vendor="OpenAI",
+                kind=AIToolKind.WEB,
+                domains=["chatgpt.com"],
+                status=AIToolStatus.APPROVED,
+                max_data_classification="internal",
+            ),
+            AITool(
+                name="Ollama",
+                kind=AIToolKind.LOCAL_MODEL,
+                domains=[],
+                status=AIToolStatus.RESTRICTED,
+                max_data_classification="confidential",
+            ),
+            AITool(name="Grok", domains=["grok.com"], status=AIToolStatus.CATALOGUED),
+            AITool(name="Gone AI", domains=["gone.ai"], status=AIToolStatus.REVOKED),
+            Supplier(
+                name="OpenAI",
+                supplier_type="model_provider",
+                description="Provides the language models behind ChatGPT.",
+                status=SupplierStatus.ACTIVE,
+                contact_name="Sam Seller",
+                contact_email="sam@openai.example",
+                contract_reference="CONTRACT-77",
+                contract_end=date(2030, 1, 1),
+            ),
+            Supplier(name="Former Vendor", supplier_type="other", status=SupplierStatus.INACTIVE),
+        ]
+    )
+    db.commit()
+
+    draft = drafting.generate_draft(db, actor_id=None)
+
+    prompt = model.prompt()
+    # What the organization has approved is there, with what it was approved for...
+    assert "ChatGPT (OpenAI): web, approved for up to internal data" in prompt
+    assert "Ollama: local model, approved for up to confidential data with limits" in prompt
+    assert "OpenAI (model provider): Provides the language models behind ChatGPT." in prompt
+    # ...but a tool that is merely known, or withdrawn, says nothing about use.
+    assert "Grok" not in prompt and "Gone AI" not in prompt and "Former Vendor" not in prompt
+    # No contact or contract details are ever sent to a model.
+    for private in ("Sam Seller", "sam@openai.example", "CONTRACT-77"):
+        assert private not in prompt
+    # And they are real, openable sources a proposal can cite.
+    titles = {src["title"]: src["href"] for src in draft.sources}
+    assert titles["Approved AI tools"] == "/ai-tools"
+    assert titles["Suppliers"] == "/suppliers"
+
+
+def test_nothing_about_tools_or_suppliers_is_sent_when_there_are_none(configured, model) -> None:
+    drafting.generate_draft(configured, actor_id=None)
+
+    prompt = model.prompt()
+    assert "Approved AI tools" not in prompt
+    assert "Suppliers" not in prompt
+
+
+def test_guidance_still_cannot_supply_a_fact_the_records_lack(configured, model) -> None:
+    drafting.generate_draft(
+        configured, actor_id=None, extra_instructions="We use OpenAI across the company."
+    )
+
+    prompt = model.prompt()
+    assert "does not change which sources may be cited" in prompt
+    # It is in the prompt as untrusted guidance, not as a source anyone can cite.
+    assert "OpenAI" in prompt
+    assert "Approved AI tools" not in prompt and "Suppliers" not in prompt
+
+
 def test_interested_party_guidance_asks_for_general_internal_and_external_categories(
     configured, model
 ) -> None:

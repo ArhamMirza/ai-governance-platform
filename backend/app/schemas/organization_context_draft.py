@@ -66,3 +66,14 @@ class ApplyOrganizationContextDraftRequest(BaseModel):
     narrative: list[AcceptedNarrativeField] = []
     issues: list[AcceptedIssueRow] = []
     interested_parties: list[AcceptedInterestedParty] = []
+
+
+class DraftSourceReadiness(BaseModel):
+    """One kind of record the draft reads, and how much of it there is."""
+
+    key: str
+    label: str
+    count: int
+    href: str
+    # What the draft cannot say while this is empty.
+    empty_note: str

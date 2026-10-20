@@ -9,6 +9,7 @@ import {
   type OrganizationContextDraft,
   useApplyOrganizationContextDraft,
   useDiscardOrganizationContextDraft,
+  useDraftSourceReadiness,
   useGenerateOrganizationContextDraft,
   useLatestOrganizationContextDraft,
 } from "../aiDraft";
@@ -20,6 +21,7 @@ vi.mock("../aiDraft", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../aiDraft")>()),
   useApplyOrganizationContextDraft: vi.fn(),
   useDiscardOrganizationContextDraft: vi.fn(),
+  useDraftSourceReadiness: vi.fn(),
   useGenerateOrganizationContextDraft: vi.fn(),
   useLatestOrganizationContextDraft: vi.fn(),
 }));
@@ -155,6 +157,8 @@ beforeEach(() => {
     mutateAsync: generate,
     isPending: false,
   } as never);
+  // What the draft will read is covered by its own test; here there is nothing to list.
+  vi.mocked(useDraftSourceReadiness).mockReturnValue({ data: [] } as never);
 });
 
 describe("OrganizationContextDraftReview", () => {
