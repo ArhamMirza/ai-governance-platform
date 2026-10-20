@@ -13,11 +13,11 @@ who are in the system but missing from the file are only listed.
 
 import csv
 import io
-import re
 from dataclasses import dataclass
 
 from sqlalchemy.orm import Session
 
+from app.core import email_address
 from app.core.exceptions import ConflictError, ValidationError
 from app.models.user import User, UserRole
 from app.repositories import user_repository
@@ -46,8 +46,6 @@ _HEADERS = {
     "email": {"email", "e-mail", "email address", "work email"},
     "role": {"role", "access", "account type"},
 }
-# Domain labels exclude "." so the pattern has one way to match, not many.
-_EMAIL = re.compile(r"^[^@\s]+@[^@\s.]+(?:\.[^@\s.]+)+$")
 
 
 @dataclass
@@ -138,7 +136,7 @@ def _problem(line: _Line, seen: dict[str, int]) -> str | None:
         return "No name."
     if len(line.name) > 200:
         return "The name is longer than 200 characters."
-    if not line.email or len(line.email) > 320 or not _EMAIL.match(line.email):
+    if email_address.problem_with(line.email) is not None:
         return "That is not an email address."
     if line.email in seen:
         return f"Appears twice in the file (first on line {seen[line.email]})."

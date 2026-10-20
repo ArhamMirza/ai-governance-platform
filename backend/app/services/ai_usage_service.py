@@ -10,13 +10,12 @@ any other field) and record_events (it refuses any other site).
 
 import hashlib
 import json
-import re
 from collections import defaultdict
 from datetime import UTC, date, datetime, timedelta
 
 from sqlalchemy.orm import Session
 
-from app.core import agent_key, ai_tool_domains
+from app.core import agent_key, ai_tool_domains, email_address
 from app.core.attempt_limiter import AttemptLimiter
 from app.core.exceptions import AuthenticationError, NotFoundError, ValidationError
 from app.models.ai_dlp import (
@@ -53,8 +52,6 @@ DEFAULT_RETENTION_DAYS = 90
 # weekend reports Friday's counts on Monday -- but nothing from the future.
 FUTURE_TOLERANCE_DAYS = 1
 
-# Domain labels exclude "." so the pattern has one way to match, not many.
-_EMAIL = re.compile(r"^[^@\s]+@[^@\s.]+(?:\.[^@\s.]+)+$")
 
 # Wrong keys are counted per caller address, so a stranger who finds the
 # endpoint can't walk the key space.
@@ -206,7 +203,7 @@ def record_events(db: Session, data: AgentEvents, today: date | None = None) -> 
     reference = _today(today)
     settings = settings_or_default(db)
     email = data.user_email.strip().lower()
-    if not _EMAIL.match(email):
+    if email_address.problem_with(email) is not None:
         raise ValidationError("user_email must be an email address.")
     earliest = reference - timedelta(days=settings.retention_days)
     latest = reference + timedelta(days=FUTURE_TOLERANCE_DAYS)
@@ -250,7 +247,7 @@ def record_checkin(db: Session, data: AgentCheckin, today: date | None = None) -
     """Notes that this person's browser has reported in today. One row per
     person, overwritten each day -- so it is a roll call, not a log."""
     email = data.user_email.strip().lower()
-    if not _EMAIL.match(email):
+    if email_address.problem_with(email) is not None:
         raise ValidationError("user_email must be an email address.")
     reference = _today(today)
     existing = ai_use_repository.get_checkin(db, email)

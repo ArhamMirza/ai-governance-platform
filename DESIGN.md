@@ -390,6 +390,11 @@ The headline controls; [SECURITY.md](SECURITY.md) lists limits and
   cross-site request check for cookie-bearing state changes, an explicit CORS allow-list.
 - **First account** — needs a setup code printed in the server log (or `SETUP_CODE`) on a
   real deployment.
+- **Email addresses** (`core/email_address.py`) — one rule for account creation, first
+  registration, the CSV import and the extension's reports: it catches typos (`bob@x`,
+  `bob@@company.com`) but not fakes, and there is no verification, because the platform sends
+  no email and accounts are created only by administrators. Addresses are stored trimmed and
+  lowercased. Proving a mailbox belongs to a person needs email sending (not built).
 - **Importing people** (`user_import_service`) — *Users → Import from CSV* takes `name`,
   `email` and an optional `role`. A preview says what each line would do and changes
   nothing; the import then works the file out again rather than trusting the preview.
