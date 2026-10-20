@@ -16,3 +16,9 @@ description = "A made-up one-time password shown by a user-interface test"
 condition = "AND"
 paths = ['''frontend/src/features/users/__tests__/UsersList\.test\.tsx''']
 regexes = ['''Tmp-Pass-9x8y7z''']
+
+[[allowlists]]
+description = "Two made-up starting passwords shown by the CSV-import user-interface test"
+condition = "AND"
+paths = ['''frontend/src/features/users/__tests__/ImportUsersPanel\.test\.tsx''']
+regexes = ['''Xk3mPq9rT2vL''', '''Ab4cDe5fGh6J''']
