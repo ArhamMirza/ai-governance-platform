@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import { UNIDENTIFIED_USER, parseConfig, reportingEmail, requestUrl } from "../src/config.ts";
 import { EventBuffer, MAX_BATCH, MAX_COUNT, type UsageEvent, utcDay } from "../src/events.ts";
-import { flushEvents, syncPolicy } from "../src/sync.ts";
+import { flushEvents, sendCheckin, syncPolicy } from "../src/sync.ts";
 import { makePolicy } from "./fixtures.ts";
 
 const config = { serverUrl: "https://gov.example.com", portalUrl: "https://portal.example.com", enrollmentKey: "aigk_key" };
@@ -356,5 +356,25 @@ describe("flushEvents", () => {
 
     expect(result.sent).toBe(MAX_BATCH);
     expect(buffer.size).toBe(5);
+  });
+});
+
+describe("sendCheckin", () => {
+  it("says who and which version, with the key, and nothing else", async () => {
+    const doFetch = vi.fn().mockResolvedValue(reply(204));
+
+    const sent = await sendCheckin(config, "elena@example.com", "1.2.0", doFetch);
+
+    const [url, init] = doFetch.mock.calls[0];
+    expect(url).toBe("https://gov.example.com/api/v1/agent/checkin");
+    expect(init.method).toBe("POST");
+    expect(init.headers.Authorization).toBe("Bearer aigk_key");
+    expect(JSON.parse(init.body)).toEqual({ user_email: "elena@example.com", version: "1.2.0" });
+    expect(sent).toBe(true);
+  });
+
+  it("reports failure, without throwing, when the platform refuses or can't be reached", async () => {
+    expect(await sendCheckin(config, "a@b.co", "1.0.0", vi.fn().mockResolvedValue(reply(401)))).toBe(false);
+    expect(await sendCheckin(config, "a@b.co", "1.0.0", vi.fn().mockRejectedValue(new TypeError("offline")))).toBe(false);
   });
 });

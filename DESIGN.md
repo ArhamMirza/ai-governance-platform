@@ -70,7 +70,8 @@ These recur throughout the code and explain most of its shape.
   instructions (OWASP LLM01).
 - **Privacy by construction.** The extension evaluates rules in the browser and reports
   counts only: no text, no URLs, no times, and only for sites in the tool catalogue.
-  The server's schema refuses any other field.
+  Once a day it also checks in (who, and which version) so coverage can be shown. The
+  server's schema refuses any other field.
 - **Failures leave a record.** Indexing a document, drafting, extension sync: each ends in
   a recorded outcome rather than an exception that loses the source.
 - **One place for each rule.** Reference data (controls, roles, impact factors), scoring,
@@ -334,6 +335,15 @@ staff read. One enrollment key for the organization is shown once and stored as 
 hash; failures are rate limited. Usage events are daily aggregates
 `(user, day, domain, event type, rule, action, count)` and nothing else.
 
+**Coverage and overrides.** The extension checks in once a day (`POST /agent/checkin`:
+email and version, nothing else), which keeps one row per person holding the last day it
+reported. The Usage page compares that with the active accounts and lists whose browser
+has never reported or has gone quiet for seven days; check-ins from an address that
+matches no account are counted but not named. Going ahead past a warning is already a
+recorded action (`overridden`); the Usage page totals it by site and person, and the
+dashboard raises it, and any gap in coverage once a key has been issued, as attention
+items. There is no email: an alert is a line on the dashboard.
+
 **The extension** (`extension/`, Manifest V3, one build for Chrome and Edge). The service
 worker fetches the policy (with ETag), applies it as `declarativeNetRequest` redirects for
 unapproved domains, registers the checking script *only* on catalogued domains, and sends
@@ -341,7 +351,7 @@ counts every five minutes. The content script intercepts paste, Enter-to-send, s
 clicks, form submits and text-file uploads in the capture phase, runs the same detectors
 and warns, blocks or counts. It fails open until it has a first policy and then keeps the
 last good one. It is verified in real Chrome and Edge against a running platform
-(47 checks each), and its limits are documented honestly: it covers only browsers it is
+(49 checks each), and its limits are documented honestly: it covers only browsers it is
 installed in, must be force-installed to be binding, checks text patterns rather than
 meaning, and replayed events are untrusted.
 
@@ -490,8 +500,6 @@ the app does not claim a clause is met because a feature exists.
 
 ## 13. Not built yet
 
-- A coverage view of which laptops have the extension, and alerts when someone overrides
-  a warning (counts are currently reviewed on the Usage page).
 - Packaged extension rollout files; a hardware-key (WebAuthn) second factor.
 - Evidence packs (PDF/Word/ZIP) for auditors; more tagging so the compliance numbers
   reflect work done.

@@ -38,3 +38,5 @@ export type ExtensionMessage = DlpMessage | InterstitialMessage | ContinueMessag
 export const POLICY_KEY = "policy";
 export const STATUS_KEY = "status";
 export const EVENTS_KEY = "events";
+/** The UTC day this browser last told the platform it was here. */
+export const CHECKIN_KEY = "checkin";

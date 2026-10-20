@@ -75,6 +75,7 @@ export interface UsageByDomain {
   unapproved: number;
   blocked: number;
   dlp_matches: number;
+  overrides: number;
 }
 
 export interface UsageByRule {
@@ -89,6 +90,7 @@ export interface UsageByUser {
   user_name: string | null;
   unapproved: number;
   dlp_matches: number;
+  overrides: number;
 }
 
 export interface UsageByDay {
@@ -99,6 +101,8 @@ export interface UsageByDay {
 
 export interface UsageSummary {
   days: number;
+  /** Times someone went ahead past a warning. */
+  overrides: number;
   by_type: UsageByType[];
   by_domain: UsageByDomain[];
   by_rule: UsageByRule[];
@@ -110,4 +114,22 @@ export interface UsageSummary {
 export interface StaffAIUseNotice {
   staff_notice: string | null;
   unapproved_site_action: DLPAction;
+}
+
+export interface CoveragePerson {
+  user_id: number;
+  name: string;
+  email: string;
+  last_seen: string | null;
+  extension_version: string | null;
+  status: "reporting" | "quiet" | "never";
+}
+
+/** Whose browser has the extension and is reaching the platform. */
+export interface Coverage {
+  days: number;
+  active_people: number;
+  reporting: number;
+  people: CoveragePerson[];
+  unmatched_reporters: number;
 }

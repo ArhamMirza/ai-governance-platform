@@ -1,4 +1,10 @@
-import type { AIUseSettings, BuiltinDetector, DLPRule, UsageSummary } from "../types";
+import type {
+  AIUseSettings,
+  BuiltinDetector,
+  Coverage,
+  DLPRule,
+  UsageSummary,
+} from "../types";
 
 export function makeRule(overrides: Partial<DLPRule> = {}): DLPRule {
   return {
@@ -41,6 +47,7 @@ export const DETECTORS: BuiltinDetector[] = [
 export function makeUsage(overrides: Partial<UsageSummary> = {}): UsageSummary {
   return {
     days: 30,
+    overrides: 3,
     by_type: [
       { event_type: "unapproved_site", count: 14 },
       { event_type: "dlp_match", count: 6 },
@@ -53,6 +60,7 @@ export function makeUsage(overrides: Partial<UsageSummary> = {}): UsageSummary {
         unapproved: 9,
         blocked: 0,
         dlp_matches: 6,
+        overrides: 3,
       },
       {
         domain: "grok.com",
@@ -61,17 +69,54 @@ export function makeUsage(overrides: Partial<UsageSummary> = {}): UsageSummary {
         unapproved: 5,
         blocked: 2,
         dlp_matches: 0,
+        overrides: 0,
       },
     ],
     by_rule: [{ rule_id: 1, rule_name: "Payment card numbers", matches: 6, blocked: 5 }],
     by_user: [
-      { user_ref: "elena@example.com", user_name: "Elena Employee", unapproved: 9, dlp_matches: 6 },
-      { user_ref: "bob@example.com", user_name: null, unapproved: 5, dlp_matches: 0 },
+      { user_ref: "elena@example.com", user_name: "Elena Employee", unapproved: 9, dlp_matches: 6, overrides: 3 },
+      { user_ref: "bob@example.com", user_name: null, unapproved: 5, dlp_matches: 0, overrides: 0 },
     ],
     by_day: [
       { day: "2026-06-01", unapproved: 4, dlp_matches: 0 },
       { day: "2026-06-02", unapproved: 10, dlp_matches: 6 },
     ],
+    ...overrides,
+  };
+}
+
+export function makeCoverage(overrides: Partial<Coverage> = {}): Coverage {
+  return {
+    days: 7,
+    active_people: 3,
+    reporting: 1,
+    people: [
+      {
+        user_id: 3,
+        name: "Nora Never",
+        email: "nora@example.com",
+        last_seen: null,
+        extension_version: null,
+        status: "never",
+      },
+      {
+        user_id: 2,
+        name: "Quentin Quiet",
+        email: "quentin@example.com",
+        last_seen: "2026-05-01",
+        extension_version: "0.1.0",
+        status: "quiet",
+      },
+      {
+        user_id: 1,
+        name: "Elena Employee",
+        email: "elena@example.com",
+        last_seen: "2026-06-02",
+        extension_version: "0.1.0",
+        status: "reporting",
+      },
+    ],
+    unmatched_reporters: 0,
     ...overrides,
   };
 }

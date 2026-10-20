@@ -16,6 +16,10 @@ export function StaffAIUseNotice() {
     <section aria-label="How AI use is monitored" className="reporter-concern">
       <h3>How your use of AI tools is monitored</h3>
       <p>{ON_UNAPPROVED[notice.unapproved_site_action]}</p>
+      <p>
+        Once a day the extension also tells the platform that it is installed, and which version.
+        It sends nothing about what you browse or type.
+      </p>
       {notice.staff_notice ? (
         <p>{notice.staff_notice}</p>
       ) : (

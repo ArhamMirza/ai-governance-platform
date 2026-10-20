@@ -56,6 +56,8 @@ const ATTENTION_LINKS: Record<string, string> = {
   ai_tools_review_overdue: "/ai-tools",
   unapproved_ai_use_week: "/ai-tools/usage",
   dlp_matches_week: "/ai-tools/usage",
+  ai_overrides_week: "/ai-tools/usage",
+  ai_coverage_gap: "/ai-tools/usage",
   communications_overdue: "/communications",
   concerns_awaiting_triage: "/concerns",
 };

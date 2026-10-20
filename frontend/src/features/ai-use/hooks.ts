@@ -85,6 +85,13 @@ export function useAIUsage(days: number) {
   });
 }
 
+export function useAICoverage(days: number) {
+  return useQuery({
+    queryKey: ["ai-use", "coverage", days],
+    queryFn: () => aiUseApi.coverage(days),
+  });
+}
+
 export function useStaffAIUseNotice() {
   return useQuery({ queryKey: ["staff-ai-use-notice"], queryFn: () => staffAiUseApi.notice() });
 }

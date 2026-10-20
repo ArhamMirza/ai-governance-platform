@@ -833,4 +833,147 @@ def test_every_route_under_agent_refuses_a_caller_without_the_key(
             )
             checked += 1
             assert response.status_code == 401, (method, route_path)
-    assert checked == 2
+    assert checked == 3
+
+
+# ---------- who has the extension ----------
+
+
+def checkin(client: TestClient, key: str, email: str = "elena@example.com", **extra):
+    return client.post(
+        "/api/v1/agent/checkin",
+        headers=bearer(key),
+        json={"user_email": email, **extra},
+    )
+
+
+def test_checking_in_needs_the_key(client: TestClient, test_user: User) -> None:
+    key = issue_key(client)
+    body = {"user_email": "elena@example.com"}
+
+    assert client.post("/api/v1/agent/checkin", json=body).status_code == 401
+    wrong = client.post("/api/v1/agent/checkin", json=body, headers=bearer("aigk_x"))
+    assert wrong.status_code == 401
+    assert checkin(client, key).status_code == 204
+
+
+def test_a_check_in_keeps_one_row_per_person_and_nothing_more(
+    client: TestClient, test_user: User, db_session
+) -> None:
+    from app.models.ai_dlp import AIAgentCheckin
+
+    key = issue_key(client)
+    checkin(client, key, "Elena@Example.com", version="1.2.0")
+    checkin(client, key, "elena@example.com", version="1.3.0")
+
+    rows = db_session.query(AIAgentCheckin).all()
+    assert len(rows) == 1
+    assert rows[0].user_ref == "elena@example.com"
+    assert rows[0].extension_version == "1.3.0"
+    assert rows[0].last_seen == rows[0].first_seen
+
+
+def test_a_check_in_carries_nothing_but_who_and_which_version(
+    client: TestClient, test_user: User
+) -> None:
+    key = issue_key(client)
+
+    assert checkin(client, key, url="https://example.com").status_code == 422
+    assert checkin(client, key, version="<script>").status_code == 422
+    assert checkin(client, key, email="not-an-email").status_code == 400
+
+
+def test_coverage_says_who_has_reported_who_went_quiet_and_who_never_has(
+    client: TestClient, test_user: User, make_user, db_session
+) -> None:
+    from app.models.ai_dlp import AIAgentCheckin
+
+    key = issue_key(client)
+    make_user(name="Elena Employee", email="elena@example.com", role=UserRole.EMPLOYEE)
+    make_user(name="Quentin Quiet", email="quentin@example.com", role=UserRole.EMPLOYEE)
+    make_user(name="Nora Never", email="nora@example.com", role=UserRole.EMPLOYEE)
+    make_user(name="Gone Away", email="gone@example.com", is_active=False)
+    checkin(client, key, "elena@example.com", version="1.0.0")
+    checkin(client, key, "quentin@example.com")
+    checkin(client, key, "stranger@gmail.com")
+    old = (datetime.now(UTC) - timedelta(days=20)).date()
+    quentin = db_session.query(AIAgentCheckin).filter_by(user_ref="quentin@example.com").one()
+    quentin.last_seen = old
+    db_session.commit()
+
+    result = client.get("/api/v1/ai-use/coverage").json()
+
+    status = {p["email"]: p["status"] for p in result["people"]}
+    assert status["elena@example.com"] == "reporting"
+    assert status["quentin@example.com"] == "quiet"
+    assert status["nora@example.com"] == "never"
+    assert "gone@example.com" not in status
+    assert result["reporting"] == 1
+    assert result["active_people"] == len(result["people"])
+    assert result["unmatched_reporters"] == 1
+    # The ones who need attention come first.
+    assert result["people"][0]["status"] == "never"
+    assert result["people"][-1]["status"] == "reporting"
+
+
+def test_only_an_administrator_can_read_coverage(
+    client: TestClient, test_user: User, login_as, make_user
+) -> None:
+    viewer = make_user(role=UserRole.VIEWER)
+    login_as(viewer)
+
+    assert client.get("/api/v1/ai-use/coverage").status_code == 403
+
+
+# ---------- overrides ----------
+
+
+def test_the_summary_counts_times_someone_went_ahead_past_a_warning(
+    client: TestClient, test_user: User, catalogue
+) -> None:
+    key = issue_key(client)
+    send(
+        client,
+        key,
+        [
+            event(action="warned", count=6),
+            event(action="overridden", count=2),
+            event(domain="claude.ai", action="overridden", count=1),
+        ],
+    )
+    send(client, key, [event(action="overridden", count=4)], email="bob@example.com")
+
+    summary = client.get("/api/v1/ai-use/usage").json()
+
+    assert summary["overrides"] == 7
+    users = {u["user_ref"]: u["overrides"] for u in summary["by_user"]}
+    assert users == {"elena@example.com": 3, "bob@example.com": 4}
+    domains = {d["domain"]: d["overrides"] for d in summary["by_domain"]}
+    assert domains == {"chatgpt.com": 6, "claude.ai": 1}
+
+
+def test_the_dashboard_flags_recent_overrides_and_people_who_have_not_reported(
+    client: TestClient, test_user: User, make_user, catalogue
+) -> None:
+    def attention() -> dict:
+        return {a["key"]: a for a in client.get("/api/v1/dashboard/summary").json()["attention"]}
+
+    # Before a key exists the rollout hasn't started, so nobody is "missing".
+    assert "ai_coverage_gap" not in attention()
+
+    key = issue_key(client)
+    make_user(name="Elena Employee", email="elena@example.com", role=UserRole.EMPLOYEE)
+    send(
+        client,
+        key,
+        [
+            event(action="overridden", count=3),
+            event(day=days(-8), action="overridden", count=9),
+        ],
+    )
+    checkin(client, key, "elena@example.com")
+
+    items = attention()
+    assert items["ai_overrides_week"]["count"] == 3
+    # Everyone else with an account (the admin the tests sign in as) hasn't reported.
+    assert items["ai_coverage_gap"]["count"] >= 1
