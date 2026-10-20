@@ -1,7 +1,7 @@
 """AI assistance: one place that talks to a model, on the org's chosen provider.
 
 Two surfaces sit on top of this -- a per-field "draft this for me" button and
-(next) a chat assistant -- so there is exactly one place where the provider is
+the chat assistant -- so there is exactly one place where the provider is
 chosen, one place the untrusted-content envelope is applied, one place tokens
 are accounted for, and one place the read-and-draft-only boundary is enforced.
 

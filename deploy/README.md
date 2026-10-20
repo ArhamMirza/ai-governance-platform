@@ -8,7 +8,7 @@ person on a network. None of it is needed on your own laptop.
 | Setting | Value | Why |
 |---|---|---|
 | `ENVIRONMENT` | `production` | Turns on the checks below, hides the API docs, and makes the first account need a setup code. |
-| `SECRET_KEY` | a long random value | Signs sessions and encrypts stored AI provider keys. The app refuses to start on the example value. `python -c "import secrets; print(secrets.token_urlsafe(48))"` |
+| `SECRET_KEY` | a long random value | Encrypts stored AI provider keys and two-step sign-in secrets, and signs two-step sign-in tickets. The app refuses to start on the example value. Rotating it later makes those stored secrets unreadable (provider keys are re-entered; people with two-step sign-in use a recovery code, or an administrator resets them). Sessions are not affected. `python -c "import secrets; print(secrets.token_urlsafe(48))"` |
 | `COOKIE_SECURE` | `true` | The session cookie is only sent over https, and takes the browser-enforced `__Host-` prefix. The app refuses to start without it. |
 | `CORS_ORIGINS` | the exact address(es) people use, e.g. `https://governance.example.com` | A wildcard is refused. Not needed when the app and API share one address (see the proxy examples). |
 | `SETUP_CODE` | optional | If you leave it unset the server makes one up at each start and prints it in its log. Needed once, to create the first account. |
@@ -46,6 +46,11 @@ typefaces are loaded from there. Self-hosting the fonts would let you remove bot
 1. Start the API. Its log prints `enter this setup code: ...` (unless you set `SETUP_CODE`).
 2. Open the site and create the first account with that code.
 3. The code is not asked for again, and registration closes.
+4. Turn on **two-step sign-in** for that account (*Your account*), save the recovery
+   codes, then under *Users → Sign-in security* require it for administrators. The
+   setting can only be switched on by an administrator who already has it.
+5. Create the other accounts under *Users*. Each starts with a temporary password the
+   person must replace at first sign-in.
 
 ## Check it
 

@@ -1,7 +1,7 @@
 """Deployment settings, and the one that must not be left at its example.
 
-secret_key signs session cookies and derives the key that encrypts stored AI
-provider credentials. The value in .env.example is published in this
+secret_key derives the key that encrypts stored AI provider credentials and
+two-step sign-in secrets. The value in .env.example is published in this
 repository, so a deployment running on it is not encrypting anything from
 anyone who has read the source.
 """

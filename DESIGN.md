@@ -1,539 +1,524 @@
-# AI Governance Platform — MVP Design Document
+# AI Governance Platform — Design Document
 
-## 1. Purpose & Scope
+How the platform is built and why. This is a living document: it describes the code as
+it stands, and where a decision was not obvious it says what was chosen and what it
+costs. For how to run it see the [README](README.md); for what it does and doesn't
+defend against see [SECURITY.md](SECURITY.md); for the browser extension in detail see
+[extension/README.md](extension/README.md); for deployment see
+[deploy/README.md](deploy/README.md).
 
-A locally-run, full-stack application to help an organization manage AI governance
-activities in line with the **EU AI Act** and **ISO/IEC 42001** (AI Management
-System standard). The MVP focuses on four pillars, split across two different
-interaction models:
+Contents: [1 Purpose](#1-purpose-and-scope) · [2 Principles](#2-design-principles) ·
+[3 Architecture](#3-architecture) · [4 Backend](#4-backend) · [5 Governance records](#5-governance-records) ·
+[6 AI assistance](#6-ai-assistance) · [7 Governing staff use of AI](#7-governing-staff-use-of-ai-tools) ·
+[8 Security](#8-security-architecture) · [9 Frontend](#9-frontend) · [10 Testing](#10-testing-and-quality) ·
+[11 CI and deployment](#11-ci-and-deployment) · [12 Standards map](#12-where-the-standards-are-handled) ·
+[13 Not built](#13-not-built-yet) · [14 Decisions](#14-decision-log)
 
-**Document consolidation** (Policies, Procedures) — for MVP, the goal is *not* an
-in-app authoring/editor experience. It's a place to organize and centralize
-existing governance documents that already exist elsewhere (Word docs, PDFs,
-scanned sign-offs). A Policy/Procedure is a **folder of uploaded documents** moving
-through a draft/review/approve workflow — not a markdown document being edited in
-the browser. An AI-assisted policy drafting/editing experience is an explicit
-**post-MVP** feature (see §9) once the consolidation workflow is solid.
+## 1. Purpose and scope
 
-**Spreadsheet-based data** (AI System Inventory, Risk Assessments) — rather than
-fixed web forms with a rigid schema, these are **sheet-backed**: a user can either
-upload an existing `.xlsx`/`.csv` (their current inventory/risk register) or start
-a blank one, and edit it in-app as a data grid with the columns they actually use.
-The uploaded/edited data is parsed into structured rows so it stays queryable, but
-the *interaction model* is "spreadsheet", not "form". AI-assisted sheet generation
-is an explicit **post-MVP** feature (see §9).
+A full-stack application that helps one organization run an AI management system in line
+with **ISO/IEC 42001** (AI management systems) and the **EU AI Act**, and that goes a step
+beyond record-keeping by governing how staff actually use AI tools.
 
-1. **Policy Management** — organize policy documents into folders, move each
-   Policy through a draft/review/approve/retired workflow. Policies are
-   **organization-wide**: they do not reference any specific AI System.
-2. **Procedure Management** — same folder + workflow model as Policies. Also
-   **organization-wide**, with no link to specific AI Systems; a Procedure may
-   optionally link to the Policy it implements.
-3. **AI System Inventory** — a single, organization-wide **spreadsheet**: each row
-   is an AI system/use-case, columns are its attributes (name, purpose, lifecycle
-   stage, risk tier, etc.), uploadable/editable/exportable as a sheet.
-4. **AI Risk Assessment** — performed **against a specific AI System** (one row in
-   the inventory sheet); each assessment is its own **spreadsheet** of risk items
-   (likelihood, impact, mitigation, residual risk), uploadable/editable/exportable.
-5. **Evidence & Document Management** — the underlying file-storage/organization
-   system. Policy/Procedure folders are *built on* this (see §4.2); it also
-   supports attaching supporting files to Risk Assessments/Risk Items as proof of
-   compliance activity.
+It has two halves:
 
-In short: Policies and Procedures live above the AI System Inventory (they govern
-the organization as a whole); Risk Assessments live below it (each one is scoped
-to one row in the inventory sheet).
+1. **The management system** — the records an auditor asks for: context, policies and
+   procedures, an AI system inventory with a gated life cycle, impact and risk
+   assessments, objectives, competence, communication, change planning, internal audits,
+   management review, corrective actions, improvements, incidents, concerns, suppliers,
+   evidence, and a Statement of Applicability. A compliance view computes, live, how well
+   each clause, Annex A control and EU AI Act article is covered.
+2. **AI-use governance** — a register of approved third-party AI tools (employees request,
+   the Chief AI Governance Officer decides), data-loss-prevention rules, and a Chrome/Edge
+   extension that blocks or warns on unapproved AI sites and stops sensitive text being
+   pasted into AI chats, reporting only counts back.
 
-Everything else (auditing trails, dashboards, compliance mapping) supports these
-pillars. The system runs entirely locally: React frontend, FastAPI backend,
-SQLite database, local filesystem storage — no external services required for the MVP.
+Around both sits an optional **AI assistant** (search and chat over the record, plus
+drafting help) that can read and propose but never change anything.
 
-### Out of scope for MVP (explicitly deferred)
-- Multi-tenant / multi-org support
-- Authentication providers (SSO/OAuth) — MVP uses simple local auth (single admin
-  user or basic username/password) since it runs locally
-- **AI-assisted policy/procedure drafting and editing** — MVP is consolidation
-  (folders + uploads) only; an in-app AI writing assistant is a named post-MVP goal
-- **AI-assisted sheet generation** (e.g. "draft me a risk register") — MVP supports
-  upload-an-existing-sheet or build-one-manually only
-- In-app spreadsheet formulas/functions (SUM, VLOOKUP, etc.) — cells hold values,
-  not formulas, for MVP; computed columns (like risk score) are computed by the
-  app's business logic, not a general formula engine
-- Automated evidence collection from external systems (model registries, MLOps
-  pipelines)
-- PDF/CE-marking style regulatory submission generation
-- Real-time collaboration (concurrent editing)
-- Notifications/email
-- Full Annex III/IV documentation generators (technical documentation, conformity
-  assessment) — the MVP produces the underlying data model these could be built on
-  later
+**One organization per deployment.** There is no multi-tenancy. It runs on one machine:
+React frontend, FastAPI backend, a single SQLite file and local file storage, with local
+ML models for search. The only external call is to an AI provider, and only if one is
+configured.
 
-## 2. Why This Shape (Research Summary)
+**Status:** a portfolio project. It has not had an independent security review and is not
+ready to hold a real organization's data; see [SECURITY.md](SECURITY.md).
 
-**Backend — FastAPI.** Best-practice 2026 guidance converges on a layered structure
-that separates **routers → services → repositories → models/schemas**, with
-cross-cutting concerns (config, security, db session) in a `core/` module. For a
-single-domain MVP a layered structure is preferred over full domain-driven design;
-the code should be *organized so it can migrate to a domain-per-folder layout* once
-more modules (e.g. vendor risk, incident management) are added later. Dependency
-injection (FastAPI's `Depends`) is used to keep services testable in isolation from
-HTTP and from the database.
+## 2. Design principles
 
-**Frontend — React.** 2026 guidance favors **feature-based / vertical-slice**
-folders (group by domain: `policies/`, `procedures/`, `risk-assessments/`) over
-grouping by technical type (`components/`, `hooks/`). Business/domain logic is kept
-out of components via custom hooks and a thin API-client layer, so UI framework
-choice stays a swappable detail. Server state (data fetched from the API) is
-managed via **TanStack Query**; local/UI state via component state or a small store
-if needed — no heavy global state library required for MVP.
+These recur throughout the code and explain most of its shape.
 
-**Compliance framework mapping.**
-- *ISO/IEC 42001* is structured as a PDCA (Plan-Do-Check-Act) management system,
-  clauses 4–10, with **Clause 6.1 (risk & opportunity planning)** and **Clause 8.4
-  (AI system impact assessment)** as the core risk-assessment obligations, backed by
-  Annex A controls and required "documented information" (i.e., policies and
-  procedures with version/approval history).
-- *EU AI Act* (as amended, Digital Omnibus timeline) requires for
-  high-risk systems: a documented **risk management system**, **technical
-  documentation**, **logging**, **human oversight** measures, and a **quality
-  management system**. Deadlines for Annex III/Annex I systems have shifted to
-  Dec 2027 / Aug 2028 respectively, but organizations are building the underlying
-  governance infrastructure now.
+- **Computed live, never stored.** A control's compliance status, an AI system's stage
+  gate, an objective's standing, a supplier's review date, an unanswered concern — all
+  are derived from the underlying records every time they are read, by pure functions in
+  `app/core/*_tracking.py` and friends. A status therefore cannot outlive the thing it
+  depends on, and it reopens by itself when a record is deleted, retired or goes stale.
+  There is no "mark as done" box to get out of step.
+- **Default deny.** Every business route requires a signed-in internal user
+  (`get_internal_user`, applied to the router in `main.py`); a router added later is
+  closed to employees automatically. Employees reach only the staff portal, built from an
+  allow-list of fields.
+- **Segregation of duties in the service layer.** Nobody approves their own submission;
+  the Chief AI Governance Officer (CAIGO) must be an administrator; two approvers racing
+  on one record cannot both win (transitions restate the status they checked in the
+  `WHERE` clause).
+- **AI can read and propose, never act.** Every model call goes through one service. The
+  assistant's tools are read-only by construction — no function exists that writes.
+  Drafts are held on the server for a person to accept or discard.
+- **Untrusted content stays untrusted.** Anything a person typed or uploaded is delivered
+  to a model inside a tagged envelope with a per-request nonce, never concatenated into
+  instructions (OWASP LLM01).
+- **Privacy by construction.** The extension evaluates rules in the browser and reports
+  counts only: no text, no URLs, no times, and only for sites in the tool catalogue.
+  The server's schema refuses any other field.
+- **Failures leave a record.** Indexing a document, drafting, extension sync: each ends in
+  a recorded outcome rather than an exception that loses the source.
+- **One place for each rule.** Reference data (controls, roles, impact factors), scoring,
+  schedules and the approval chain each live in one module that everything else imports.
 
-  The data model below is designed so that a "Risk Assessment" record can carry
-  **framework tags** (e.g. `ISO42001:8.4`, `EU_AI_ACT:Art.9`) — a lightweight
-  mapping table rather than hardcoded regulatory logic, so new frameworks (NIST AI
-  RMF, etc.) can be added without schema changes.
-
-  Both frameworks also expect **documented information / evidence** as proof that
-  a control, policy, or assessment was actually carried out (ISO 42001 Clause 7.5;
-  EU AI Act technical documentation and logging obligations). The MVP treats
-  evidence as a first-class entity rather than a bolt-on so this is covered from
-  day one, using local filesystem storage (no cloud dependency needed to run
-  locally).
-
-## 3. High-Level Architecture
+## 3. Architecture
 
 ```
-┌──────────────────────────────┐        ┌───────────────────────────────────┐
-│           Frontend            │  HTTP  │              Backend               │
-│  React + TypeScript + Vite    │ <────> │  FastAPI (Python)                  │
-│  TanStack Query (server state)│  JSON  │  routers → services → repositories │
-│  Feature-based folders        │        │  Pydantic schemas / SQLAlchemy ORM │
-└──────────────────────────────┘        └───────────────┬─────────────────────┘
-                                                          │
-                                                   ┌──────▼──────┐
-                                                   │   SQLite     │
-                                                   │  (file-based)│
-                                                   └──────────────┘
+ Browser (staff)              Browser (admin/contributor)
+ ┌──────────────────┐         ┌───────────────────────────────────────┐
+ │ Chrome / Edge     │         │  React + TypeScript + Vite             │
+ │ extension (MV3)   │         │  TanStack Query · feature folders      │
+ │ DLP checks, blocks│         │  Employee app (staff home) · main app  │
+ └─────────┬────────┘         └──────────────────┬────────────────────┘
+           │ Bearer key (counts,                 │ session cookie (JSON)
+           │ policy via ETag)                    │
+ ┌─────────▼─────────────────────────────────────▼────────────────────┐
+ │ FastAPI                                                              │
+ │ security headers · origin check · CORS · routers → services →        │
+ │ repositories → SQLAlchemy models · Alembic migrations                │
+ └───────┬──────────────────────┬──────────────────────┬──────────────┘
+         │                      │                      │
+   ┌─────▼──────┐        ┌──────▼───────┐       ┌──────▼─────────────┐
+   │ SQLite      │        │ Evidence      │       │ Local ML models     │
+   │ + FTS5      │        │ files on disk │       │ embeddings, rerank, │
+   │ + sqlite-vec│        │ (UUID names)  │       │ OCR (ONNX, CPU)     │
+   └────────────┘        └──────────────┘       └─────────────────────┘
+                                                        │ optional
+                                                 ┌──────▼──────────────┐
+                                                 │ AI provider (LiteLLM)│
+                                                 └─────────────────────┘
 ```
 
-Both processes run locally (`uvicorn` on e.g. :8000, Vite dev server on :5173),
-communicating over HTTP with CORS enabled for local dev. No Docker required for
-MVP, though a `docker-compose.yml` can be added later without changing the
-architecture.
+- **Two kinds of caller.** People use a session cookie; the extension has no session and
+  presents the organization's enrollment key as a bearer token on `/api/v1/agent/*`,
+  which sits outside the signed-in router and is excluded from the employee route walk by
+  its own test.
+- **Single process.** The API runs as one process; in-memory state (rate limits) assumes
+  that. Sync endpoints run in FastAPI's threadpool, which is why `core/concurrency.py`
+  exists (see §4.3).
+- **Why SQLite.** One file holds records, the full-text index (FTS5) and the vector index
+  (sqlite-vec), so a backup is one file and search needs no second service. The cost is
+  no concurrent writers and no managed backups. Repositories isolate the engine, and
+  Alembic is used from the start, so moving to PostgreSQL is a configuration and
+  migration exercise rather than a rewrite (it is the first thing to do for real data).
 
-## 4. Backend Design (FastAPI)
+## 4. Backend
 
-### 4.1 Directory structure
+### 4.1 Layers
 
-```
-backend/
-├── app/
-│   ├── main.py                 # FastAPI app factory, router registration, CORS
-│   ├── core/
-│   │   ├── config.py           # Settings (pydantic-settings), env vars
-│   │   ├── database.py         # SQLAlchemy engine/session, Base
-│   │   └── security.py         # Password hashing, simple auth (MVP)
-│   ├── models/                 # SQLAlchemy ORM models (one file per aggregate)
-│   │   ├── user.py
-│   │   ├── policy.py
-│   │   ├── procedure.py
-│   │   ├── folder.py
-│   │   ├── evidence.py
-│   │   ├── sheet.py             # Sheet + SheetRow
-│   │   ├── risk_assessment.py   # RiskAssessment header only; rows live in Sheet/SheetRow
-│   │   └── audit_log.py
-│   ├── schemas/                # Pydantic request/response models (mirrors models/)
-│   │   ├── policy.py
-│   │   ├── procedure.py
-│   │   ├── folder.py
-│   │   ├── evidence.py
-│   │   ├── sheet.py
-│   │   └── risk_assessment.py
-│   ├── repositories/           # DB access only, no business rules
-│   │   ├── policy_repository.py
-│   │   ├── procedure_repository.py
-│   │   ├── folder_repository.py
-│   │   ├── evidence_repository.py
-│   │   ├── sheet_repository.py
-│   │   └── risk_assessment_repository.py
-│   ├── services/                # Business logic, orchestration, validation rules
-│   │   ├── policy_service.py
-│   │   ├── procedure_service.py
-│   │   ├── folder_service.py
-│   │   ├── evidence_service.py   # validates file type/size, writes to storage, bumps Policy/Procedure version
-│   │   ├── sheet_service.py       # column/row CRUD, xlsx/csv parse+export, risk-score computed column
-│   │   ├── risk_assessment_service.py
-│   │   └── audit_service.py
-│   ├── routers/                 # HTTP layer only: parse request, call service, return
-│   │   ├── policies.py
-│   │   ├── procedures.py
-│   │   ├── evidence.py
-│   │   ├── ai_system_inventory.py
-│   │   └── risk_assessments.py
-│   ├── dependencies.py          # shared Depends() providers (db session, current_user)
-│   └── seed.py                  # optional demo data seeding script
-├── tests/
-│   ├── conftest.py              # test DB fixture (in-memory SQLite), TestClient fixture
-│   ├── unit/                     # service-layer tests with repositories mocked
-│   │   ├── test_policy_service.py
-│   │   ├── test_risk_assessment_service.py
-│   │   └── ...
-│   └── integration/               # router-level tests hitting a real (test) DB
-│       ├── test_policies_api.py
-│       └── ...
-├── alembic/                       # DB migrations (recommended even for SQLite MVP)
-│   └── versions/
-├── storage/
-│   └── evidence/                  # uploaded files, one subfolder per entity or UUID-named
-├── alembic.ini
-├── pyproject.toml                 # deps + ruff/black/mypy config
-└── .env.example
-```
+`routers` (HTTP only) → `services` (business rules) → `repositories` (queries) →
+`models` (SQLAlchemy), with `schemas` (Pydantic) at the edges and `core` for everything
+pure and shared.
 
-`storage/` is gitignored; its path is configurable via `EVIDENCE_STORAGE_DIR` in
-`.env` so it can later be swapped for a mounted volume or object store without
-touching `evidence_service.py`'s interface.
-
-**Rule of thumb enforced across the codebase:** routers never touch the ORM
-directly; services never import FastAPI (`Request`/`HTTPException` stay in
-routers, services raise plain domain exceptions that routers translate to HTTP
-errors). This keeps services unit-testable without spinning up FastAPI, and keeps
-repositories swappable (e.g. SQLite → Postgres later) without touching business
-logic.
-
-### 4.2 Core domain model
-
-The model splits into two families: **document entities** (Policy/Procedure, built
-on Folder + Evidence) and **sheet entities** (AI System Inventory / Risk
-Assessment, built on Sheet + SheetRow). Both share `AuditLogEntry` and
-`FrameworkControl`.
-
-#### Document family — Policy, Procedure, Folder, Evidence
-
-| Entity | Key fields | Notes |
+| Package | What lives there | Size |
 |---|---|---|
-| `User` | id, name, email, role (`admin`, `contributor`, `viewer`) | Minimal RBAC for MVP |
-| `Policy` | id, title, description, status (`draft/in_review/approved/retired`), version, owner_id, effective_date | Organization-wide; **no** AI System reference, **no** content field — a Policy is a folder of documents, not authored text |
-| `Procedure` | id, title, description, status, policy_id (FK, optional link to a Policy), owner_id | Same shape and workflow as Policy |
-| `Folder` | id, entity_type (`Policy`/`Procedure`), entity_id, parent_folder_id (FK, nullable, self-referential), name, created_at | Lets a Policy/Procedure organize its documents into a hierarchy (e.g. "Policy X" → "Signed Versions" → `2026-approval.pdf`). Root-level documents have no folder (`Evidence.folder_id` is null) |
-| `Evidence` | id, entity_type (`Policy`/`Procedure`/`RiskAssessment`/`RiskItem`), entity_id, folder_id (FK, nullable), filename, content_type, size_bytes, storage_path, description, uploaded_by, uploaded_at | Polymorphic file attachment — the same entity now serves both "the documents that make up a Policy" and "supporting evidence attached to a Risk Item"; `folder_id` only meaningful where Folder is used |
+| `app/routers` | Parse the request, call a service, return. Translate nothing: domain errors become HTTP statuses in one set of handlers in `main.py`. | 48 modules, ~320 operations |
+| `app/services` | Business rules, orchestration, approvals, auditing. Never imports FastAPI. | 55 modules |
+| `app/repositories` | Database access only; no rules. | 36 modules |
+| `app/models` | ORM tables, one module per aggregate. | 50 modules |
+| `app/schemas` | Request/response models; the extension's schemas refuse unknown fields. | 40 modules |
+| `app/core` | Config, database, security primitives, and the **pure functions**: scoring, schedules, tracking, DLP rule validation, TOTP, passwords, prompts, chunking. | 43 modules |
+| `alembic/versions` | Migrations; every migration is round-tripped (up, down, up) before it ships. | 54 |
+| `app/seed.py` | Fictional demo data, written through the real service layer so audit history and computed values come out right. Refuses to run in production without `--allow-production`. | |
+| `app/cli` | `python -m app.cli.index_documents` — drains the indexing queue. | |
 
-**Policy/Procedure versioning, reworked**: since there's no text content to diff,
-`version` is a simple counter that increments whenever the document set changes
-(a file is added, replaced, or removed) while status is `draft`. There's no
-separate `PolicyVersion` table — full history is just the `AuditLogEntry` rows for
-that Policy filtered to document-change actions (`document_added`,
-`document_removed`), which the audit log already captures. One less table to keep
-in sync, and it composes with the audit trail we already need for compliance
-"documented information" requirements either way.
+**Rules enforced across the code:** routers never touch the ORM; services never import
+`Request` or `HTTPException` (they raise `NotFoundError`, `ConflictError`,
+`ValidationError`, `AuthenticationError`, `AuthorizationError`, `RateLimitedError`, which
+`main.py` maps to 404/409/400/401/403/429, plus 503 for an unavailable dependency); every mutating service writes an
+`AuditLogEntry`.
 
-#### Sheet family — AI System Inventory, Risk Assessment
+### 4.2 Configuration
 
-| Entity | Key fields | Notes |
+`pydantic-settings`, from `.env`: `DATABASE_URL`, `EVIDENCE_STORAGE_DIR`, `SECRET_KEY`,
+`CORS_ORIGINS`, `COOKIE_SECURE`, `ENVIRONMENT`, `SETUP_CODE`. With `ENVIRONMENT` set to
+`production`/`staging` the app refuses to start on the example `SECRET_KEY`, on
+`COOKIE_SECURE=false`, or with a wildcard CORS origin, switches off the API docs, and
+requires a setup code for the first account.
+
+### 4.3 Concurrency and consistency
+
+Repositories commit as they write, so "read, find nothing, insert" spans two
+transactions and two simultaneous requests can both insert. Unique constraints stop the
+duplicate, and `core/concurrency.py` turns the loser's constraint violation into the row
+the winner created (or the same `ConflictError` a sequential caller would get). State
+transitions use `claim_transition`, restating the checked status in the `WHERE` clause.
+Single-use secrets (TOTP time steps, recovery codes) are spent with one atomic `UPDATE`
+whose row count says who won.
+
+### 4.4 API conventions
+
+REST under `/api/v1`, JSON in and out, OpenAPI at `/docs` in development only. Lists are
+plain arrays; every create/update returns the record. Errors are `{"detail": "..."}`
+with the status above. Uploads are multipart; exports are `.xlsx`. The session is an
+HttpOnly cookie; there are no tokens in JavaScript.
+
+## 5. Governance records
+
+### 5.1 Two families of record
+
+The original design split the records into two shapes, and both remain:
+
+- **Documents** — a Policy or Procedure is a *folder of uploaded documents* moving
+  through draft → in review → approved → retired, not text edited in the browser. `Folder`
+  and `Evidence` (a polymorphic file attachment) are the substrate; the version counter
+  bumps when the document set changes, and history is the audit log filtered to document
+  actions (no separate version table). Evidence is validated centrally (allow-listed
+  types, 25 MB cap, UUID storage names, deletion removes the file).
+- **Sheets** — the AI System Inventory, Data Inventory and each Risk Assessment are
+  spreadsheet-shaped: a `Sheet` with user-editable columns and `SheetRow`s of JSON.
+  Users can upload an `.xlsx`/`.csv` or start blank, and export `.xlsx`. The one built-in
+  formula is risk score (likelihood × impact, inherent and residual), computed by
+  `sheet_service` and read-only. Everything else is a plain value.
+
+Everything else is a small purpose-built aggregate (see 5.3).
+
+### 5.2 Roles, permissions and approvals
+
+Two separate systems decide what you can do:
+
+| | |
+|---|---|
+| **Account role** (`User.role`) | `admin`, `contributor`, `viewer` — and `employee`, which holds *no* action and reaches only the staff portal. Actions: `view`, `edit`, `approve`, `manage_users`, `manage_settings`. One flat table in `core/permissions.py`. |
+| **Governance role** (accountability) | Chief AI Governance Officer (capped at one holder, may have a time-boxed delegate, must be an admin), AI System Owner, Data Owner, Risk Owner, Implementation Team. Seed data in `core/governance_role_seed_data.py`. |
+
+Approvals: the CAIGO signs off every dataset, every policy and procedure, every AI
+system's release and retirement, and the final stage of impact and risk assessments.
+Assessments run a **two-stage chain** (`approval_chain_service`): the AI System Owner
+first (skipped if they did the assessment), then the CAIGO. No one approves their own
+submission (`audit_service.require_different_approver`), and an AI system with no owner
+cannot be submitted.
+
+### 5.3 What each area does
+
+| Area | Module(s) | Notes |
 |---|---|---|
-| `Sheet` | id, entity_type (`AISystemInventory`/`RiskAssessment`), columns (JSON list of `{key, label, data_type}`), title, created_at, updated_at | Generic spreadsheet container. Columns are user-editable (add/remove/reorder), so each org's inventory/risk register can carry the fields they actually use |
-| `SheetRow` | id, sheet_id (FK), row_index, data (JSON dict of `{column_key: value}`), created_at, updated_at | One row = one record (one AI system, or one risk item). Flexible schema via JSON keeps this generic without a column-per-field DB migration every time a user adds a column |
-| `AISystemInventory` | *(singleton)* — exactly one `Sheet` with `entity_type="AISystemInventory"` exists per install, auto-created on first run with default columns (`name`, `description`, `purpose`, `lifecycle_stage`, `risk_tier`) | The org can add/remove columns beyond the defaults |
-| `RiskAssessment` | id, ai_system_row_id (FK to `SheetRow.id` in the inventory sheet, **required**), sheet_id (FK, **required** — the assessment's own risk-item sheet), framework_tags (JSON list), status (`draft/in_progress/completed`), assessor_id, assessment_date, overall_risk_rating | Header record; always scoped to exactly **one** AI System (one row) from the inventory, same rule as before — just linked to a sheet row instead of an `AISystem` table row. Its risk items live in `sheet_id`'s rows, with default columns `category`, `description`, `likelihood`, `impact`, `mitigation`, `residual_likelihood`, `residual_impact`, `control_owner`, `status` |
-| `AuditLogEntry` | id, entity_type, entity_id, action, actor_id, timestamp, diff (JSON) | Append-only trail — now also the source of Policy/Procedure version history (see above) |
-| `FrameworkControl` (reference/lookup table) | id, framework (`ISO42001`/`EU_AI_ACT`), clause_ref, title, description | Static seed data used to populate the framework_tags picker — not user-editable in MVP |
+| Organization context (cl. 4) | `organization_context_service` | One record for the deployment; AI-drafted on request. |
+| AI system inventory & life cycle | `ai_system_inventory_service`, `ai_system_lifecycle_service`, `lifecycle_gate_service` | Seven stages (ISO/IEC 5338 order); each stage has a gate computed from existing records; advance/revert are audited. |
+| Impact assessments (cl. 8.4, A.5) | `impact_assessment_service` | Structured per ISO/IEC 42005: eight impact factors (`core/impact_factors.py`). |
+| Risk (cl. 6.1) | `risk_assessment_service`, `risk_criteria_service`, `risk_scoring` | Configurable risk appetite; severity bands and the overdue rule live in `core/risk_scoring.py` so the dashboard, tables and filters agree. |
+| Data inventory (A.7) | `data_inventory_service` | Sheet entries with a Data Owner and a review/approval step. |
+| Objectives (6.2, 9.1) | `objective_service` | Measurements; standing is computed. |
+| Changes (6.3) | `change_service` | Planned changes to the management system. |
+| Competence (7.2, 7.3) | `competence_service` | Requirements and records. |
+| Communication (7.4) | `communication_service` | Plan items and records; next-due is computed. |
+| Internal audit (9.2) | `internal_audit_service` | Programs, audits, findings; configurable recurrence. |
+| Management review (9.3) | `management_review_service` | Settings and meetings. |
+| Corrective action & improvement (10.1, 10.2) | `corrective_action_service`, `improvement_service` | Flat records with computed standing. |
+| Incidents (A.8.4, EU Art. 73) | `ai_incident_service` | Art. 73 reporting deadlines in `core/incident_reporting.py`. |
+| Concerns (A.3.3) | `concern_service`, `staff_service` | Employees report; only administrators read. Reporter and handler sides are kept apart; triage timing is computed. |
+| Suppliers (A.10.2–A.10.4) | `supplier_service` | Register, reviews, contract dates, links to AI systems. |
+| AI tools (A.9.2) | `ai_tool_service` | See §7. |
+| Statement of Applicability | `framework_service`, models `framework_soa_entry` | Per-control applicability with a justification. |
+| EU AI Act applicability | `eu_ai_act_service`, `core/eu_ai_act_scope` | Whether and which articles apply; per-article overrides. |
+| Dashboard | `dashboard_service` | One "needs attention" list grouped into areas; every count is computed. |
+| Audit log | `audit_service` | Append-only; also the source of document version history and the sign-in trail. |
 
-**Risk scoring inside a sheet**: `sheet_service` recognizes the reserved column
-keys `likelihood`/`impact` (and `residual_likelihood`/`residual_impact`) on a
-`RiskAssessment`'s sheet and auto-computes `inherent_risk_score = likelihood *
-impact` (and the residual equivalent) as a derived, read-only column whenever
-those two cells are present on a row — this is the one place "spreadsheet" gets a
-built-in formula, because it's the one calculation the compliance frameworks
-actually care about. Everything else is a plain value cell. Overall assessment
-rating rolls up from the max/average of its rows' computed scores.
+### 5.4 Framework mapping and compliance status
 
-**Upload/export**: both `AISystemInventory` and `RiskAssessment` sheets support
-`POST .../upload` (parse an `.xlsx`/`.csv` into columns + rows, replacing or
-merging into the sheet) and `GET .../export` (download the current sheet as
-`.xlsx`), via `openpyxl` on the backend. This is also the seam where a future
-"AI generates this sheet for me" feature plugs in later — it would just produce
-the same upload payload a human-edited file would.
+`FrameworkControl` holds the reference rows (24 ISO clauses, 38 Annex A controls, 24 EU AI
+Act articles; `core/framework_reference_data.py`). Records are **tagged** to controls
+(`FrameworkTag`, polymorphic by entity type and id). Suggestions come from the local
+embedding model comparing a record's text with the roughly ninety controls by brute-force
+cosine similarity — a closed-set classification, so deliberately not an LLM call and
+independent of the vector index. `compliance_status_service` then computes, per control, one
+of four states:
 
-### 4.3 API surface (MVP)
+- **not applicable** — the Statement of Applicability or the EU applicability assessment
+  excludes it, with the recorded justification (checked first);
+- **no coverage** — nothing, or only deleted records, is tagged to it;
+- **partial** — tagged, but at least one tagged record doesn't currently count (a draft or
+  in-review document, an assessment not yet through its final approval, a retired record,
+  an approved record past its review date);
+- **satisfied** — every tagged record currently counts.
 
-REST, versioned under `/api/v1`, JSON in/out, OpenAPI docs auto-generated at `/docs`.
+Each entity type has a small resolver (`_RESOLVERS`) saying what "currently counts" means.
+What it deliberately does *not* do is judge whether a document's content satisfies a
+clause: that is the human judgment made when tagging.
+
+### 5.5 Audit trail
+
+`audit_service.log(...)` is called from the service layer, never per router, so it cannot
+be forgotten. Entries carry entity, action, actor and a JSON diff. They also record
+sign-ins, failures, lockouts, password and two-step changes, changes to the extension's
+enrollment key and settings, and AI tool decisions.
+
+## 6. AI assistance
+
+Optional and provider-neutral. `ai_assist_service` is the only code that talks to a model,
+via LiteLLM, for Anthropic, OpenAI, Gemini, Groq or a local server. The organization's
+provider key is stored encrypted (Fernet, key derived from `SECRET_KEY`), a daily token
+budget is enforced and usage is accounted, and nothing here can write a record.
+
+**Search** (`document_index_service`, `retrieval_service`). Records and uploaded documents
+go through one pipeline: extract or render → scan → chunk → embed. Text lives in
+`document_chunks`, an FTS5 mirror and a sqlite-vec table, all written in one place. Search
+runs keyword (BM25) and vector retrievers and fuses their rankings, because each covers
+the other's failure (an exact control id versus a question phrased unlike the document).
+A local cross-encoder then reranks the top candidates. Embeddings are
+`BAAI/bge-small-en-v1.5` (384 dimensions) and the reranker is
+`Xenova/ms-marco-MiniLM-L-6-v2`, both ONNX on CPU; OCR (`rapidocr`) reads images and
+scans. Vector search is optional: where sqlite-vec can't load, search falls back to
+keywords alone.
+
+Two properties matter more than ranking. **Returning nothing is a valid answer:** a
+result must clear a relevance floor, so the assistant can say the record doesn't cover
+something. **What could not be searched is reported:** a document that failed to index is
+flagged, so "nothing found" is never confused with "could not look".
+
+**Keeping the index current** (`core/index_hooks.py`). A session listener queues any
+record whose text changed, in the same transaction as the change, so no future service can
+forget. `index_queue` is drained in the background or by the CLI.
+
+**The assistant** (`assistant_service`). One turn: rewrite a follow-up into a standalone
+query; retrieve (plus the record the conversation was opened on, read in full); assemble a
+cacheable system prompt, a rolling summary, recent turns and the sources, each inside a
+nonce-tagged envelope; answer, using only **read-only tools** (`core/agent_tools.py`, which
+compute exact counts the same way the dashboard does); then **verify before anyone sees
+it** — every `[S#]` citation must name a source that was supplied, with one retry, and the
+answer is checked for the turn's nonce. Nothing streams: showing an answer only after its
+citations are checked is worth the wait in a governance tool.
+
+**Prompt-injection defences, in order of how much they carry** (`core/ai_prompting.py`):
+no dangerous capability exists; untrusted text is structurally separated and nonce-tagged;
+the system prompt says envelope contents are data; and every chunk is *scanned* for text
+that reads as an instruction, recorded on the chunk and never removed (a governance tool
+legitimately holds documents *about* prompt injection).
+
+**Drafting.** Whole-record drafts (organization context, impact assessments, policy and
+procedure text, risk-item suggestions) are held server-side as `AiDraft`s for a person to
+review; accepting one goes through the normal edit permission and audit.
+
+## 7. Governing staff use of AI tools
+
+A second half of the product, added after the records. See
+[extension/README.md](extension/README.md) for the extension in full.
+
+**Register and requests** (`ai_tool_service`). A catalogue of well-known AI sites ships in
+`core/ai_tool_catalog_data.py` (twelve to start). Each tool has a status (catalogued,
+approved, restricted or revoked; a site that is not approved is treated as unapproved), the
+**most sensitive data class it may be given** (public, internal or confidential), domains,
+conditions and a review date.
+Employees request a tool from the staff home; the CAIGO approves or rejects with a note,
+and nobody decides their own request. Domain matching is by whole label
+(`chatgpt.com.evil.net` is not `chatgpt.com`), with punycode handled and the most specific
+domain winning (`core/ai_tool_domains.py` on the server, `policy.ts` in the extension).
+
+**Data rules (DLP)** (`core/dlp_rules.py`, `frontend/src/shared/dlp/detectors.ts`). Built-in
+detectors (card numbers with a Luhn check, IBANs with mod-97, SSN, NINO, CNIC, API keys,
+private keys, JWTs, password assignments), keyword lists and custom regexes, each with a
+data class and an action: monitor, warn or block. A rule applies only if its class is more
+sensitive than the tool is cleared for; unapproved tools are treated as public-only. Rules
+are *evaluated in the browser*; the same detector library powers the rule tester in the UI
+and the extension, and a backend test checks the built-in keys match. Custom regexes are
+validated for safety (no nested repeats, back-references, look-behind or empty matches).
+
+**Settings, key, usage** (`ai_usage_service`). Settings choose what happens at an
+unapproved site (**block by default**), how long counts are kept (90 days) and the notice
+staff read. One enrollment key for the organization is shown once and stored as a SHA-256
+hash; failures are rate limited. Usage events are daily aggregates
+`(user, day, domain, event type, rule, action, count)` and nothing else.
+
+**The extension** (`extension/`, Manifest V3, one build for Chrome and Edge). The service
+worker fetches the policy (with ETag), applies it as `declarativeNetRequest` redirects for
+unapproved domains, registers the checking script *only* on catalogued domains, and sends
+counts every five minutes. The content script intercepts paste, Enter-to-send, send/submit
+clicks, form submits and text-file uploads in the capture phase, runs the same detectors
+and warns, blocks or counts. It fails open until it has a first policy and then keeps the
+last good one. It is verified in real Chrome and Edge against a running platform
+(47 checks each), and its limits are documented honestly: it covers only browsers it is
+installed in, must be force-installed to be binding, checks text patterns rather than
+meaning, and replayed events are untrusted.
+
+## 8. Security architecture
+
+The headline controls; [SECURITY.md](SECURITY.md) lists limits and
+[deploy/README.md](deploy/README.md) the production settings.
+
+- **Passwords** — PBKDF2-HMAC-SHA256, 600,000 iterations, stdlib only. Twelve characters
+  minimum, refused if common (even dressed up), a keyboard run, near-constant, or built
+  from the person's name or email; last five not reusable. Admin-created and reset
+  passwords are temporary and force a change.
+- **Sessions** — opaque random token in an HttpOnly, `SameSite=Strict` cookie (`__Host-`
+  prefixed when secure); only its SHA-256 is stored; 14-day lifetime; ended everywhere on
+  password change/reset, role change or deactivation.
+- **Lockout and limits** — five wrong passwords lock an account for 15 minutes; 20 failures
+  from one address block it; wrong codes, wrong current passwords and wrong setup codes
+  are limited separately. In memory, one process.
+- **Two-step sign-in** (`totp`, `mfa_service`, `mfa_ticket`) — RFC 6238 in the standard
+  library (verified against the RFC vectors). A correct password yields only a five-minute
+  signed ticket tied to the password; a code or one of ten single-use recovery codes
+  completes it. Secrets are encrypted at rest, recovery codes hashed, codes spent
+  atomically, five wrong codes lock the codes and re-entering the password does not
+  reset that. An organization setting can require it of administrators (off by default;
+  can only be switched on by an administrator who has it).
+- **Web layer** (`core/web_security.py`) — headers on every response (nosniff, frame deny,
+  referrer, permissions, a sandboxing CSP for the API, `no-store`, HSTS when secure), a
+  cross-site request check for cookie-bearing state changes, an explicit CORS allow-list.
+- **First account** — needs a setup code printed in the server log (or `SETUP_CODE`) on a
+  real deployment.
+- **Secrets at rest** — AI provider keys and TOTP secrets under Fernet; the enrollment key
+  and session tokens as hashes.
+- **Access** — default deny, a test that walks every route as an employee, segregation of
+  duties in services. Uploaded files are served as attachments, `nosniff`, sandboxed.
+- **Supply chain** — `pip-audit`, `npm audit`, Dependabot, CodeQL and secret scanning;
+  actions pinned; the built frontend is checked in CI for a strict Content-Security-Policy.
+
+## 9. Frontend
+
+React 19, TypeScript, Vite, TanStack Query v5, react-router, react-hook-form with zod,
+plain CSS with design tokens (light and dark, following the OS unless pinned; the
+pre-paint theme script is a separate file so a strict CSP can forbid inline script).
 
 ```
-GET/POST         /api/v1/policies
-GET/PUT/DELETE   /api/v1/policies/{id}          # PUT edits title/description/effective_date only
-POST             /api/v1/policies/{id}/submit-for-review
-POST             /api/v1/policies/{id}/approve
-GET              /api/v1/policies/{id}/versions  # derived from audit log, see 4.2
-
-GET/POST         /api/v1/procedures
-GET/PUT/DELETE   /api/v1/procedures/{id}
-... (same review/approve/version pattern as policies)
-
-GET/POST         /api/v1/folders?entity_type=Policy&entity_id={id}&parent_folder_id={id?}
-GET/PUT/DELETE   /api/v1/folders/{folder_id}
-# Generic, not nested under /policies -- Procedure and any future document-bearing
-# entity reuses the same endpoints rather than duplicating a folders sub-route per entity.
-
-GET              /api/v1/ai-system-inventory                # the singleton Sheet + its rows
-PUT              /api/v1/ai-system-inventory/columns         # add/remove/reorder columns
-POST/PUT/DELETE  /api/v1/ai-system-inventory/rows[/{row_id}]
-POST             /api/v1/ai-system-inventory/upload           # multipart .xlsx/.csv
-GET              /api/v1/ai-system-inventory/export            # download .xlsx
-
-GET/POST         /api/v1/risk-assessments                     # header records
-GET/PUT/DELETE   /api/v1/risk-assessments/{id}
-PUT              /api/v1/risk-assessments/{id}/columns
-POST/PUT/DELETE  /api/v1/risk-assessments/{id}/rows[/{row_id}]
-POST             /api/v1/risk-assessments/{id}/upload
-GET              /api/v1/risk-assessments/{id}/export
-
-GET              /api/v1/framework-controls?framework=ISO42001
-GET              /api/v1/audit-log?entity_type=Policy&entity_id=...
-GET              /api/v1/dashboard/summary   # counts by status/risk tier for home page
-
-POST             /api/v1/evidence?entity_type=Policy&entity_id={id}&folder_id={id?}   # multipart upload
-GET              /api/v1/evidence?entity_type=Policy&entity_id={id}&folder_id={id?}   # list at that level
-GET              /api/v1/evidence/{id}/download
-DELETE           /api/v1/evidence/{id}
+frontend/src/
+├── app/            App.tsx (gates + app split), routes.tsx, Layout.tsx, queryClient.ts
+├── shared/         api/httpClient + readError, components/, dlp/detectors.ts, hooks, theme
+├── features/<x>/   api.ts · hooks.ts · types.ts · components/ · __tests__/   (40 features)
+└── pages/          route-level compositions (47)
 ```
 
-Every mutating endpoint writes an `AuditLogEntry` via `audit_service` — this is
-called from the service layer (not duplicated per-router) so it can never be
-forgotten. For Policy/Procedure, `evidence_service` (upload/delete) is what
-triggers the `version` counter bump and the `document_added`/`document_removed`
-audit entries — the "versioning" and "file management" concerns live in the same
-place rather than being synced between two systems.
+- **A feature owns its API.** `features/<x>/api.ts` is the only place that knows the URL
+  shape; components never call `fetch`. Tests mock one file.
+- **Server state in React Query**, UI state in components. A 401 is data ("not signed
+  in"), not an error, so a background refetch can't swap the sign-in form for a spinner.
+- **Gates before the app.** `AuthGate` decides what to show: sign-in (with the code step
+  if the account has two-step), first-run setup (with the setup code when required), and —
+  for someone signed in — a forced new password or a forced two-step set-up. Only when
+  none applies does `App` choose between the **employee app** (a separate route tree for
+  the `employee` role, so none of the platform renders for them) and the main app.
+- **Shared, cross-feature pieces** are deliberately few: `DocumentBrowser` (folders and
+  files, embedded in policies, procedures and AI system documents), `DataGrid` (the sheet
+  editor), status badges and the confirm dialog.
+- **Forms** use zod, with the server's rule text surfaced verbatim (password reasons, code
+  errors) rather than a generic failure.
+- **Accessibility and honesty in the UI.** Labels are associated, errors use `role="alert"`,
+  and screens that show something once (temporary passwords, recovery codes) cannot be
+  dismissed by accident.
 
-`evidence_service.py` enforces MVP guardrails centrally: an allow-list of file
-extensions/content-types, a max file size (e.g. 25 MB, configurable), and a
-UUID-based storage filename (the original filename is kept only as metadata) to
-avoid path-traversal or collision issues. Deleting an `Evidence` row also deletes
-the underlying file — handled in the service, not the router, so it's covered by
-unit tests without needing a running server.
+## 10. Testing and quality
 
-`sheet_service.py` centralizes: column add/remove/reorder validation (can't remove
-a reserved column like `likelihood` on a risk-assessment sheet without warning,
-since it'd silently drop the risk-score calc), row CRUD, the `.xlsx`/`.csv`
-parse-on-upload and generate-on-export logic, and the risk-score computed-column
-behavior described in §4.2.
+- **Backend** — about 2,000 pytest tests: unit tests of pure functions and services, and
+  integration tests through `TestClient` against a fresh in-memory SQLite per test.
+  Sign-in flows are tested through the real cookie flow, because the shortcut that
+  overrides the session dependency would bypass exactly what is being tested. Time-based
+  code takes an injected clock.
+- **Frontend** — about 800 Vitest + Testing Library tests. Screens that depend on how
+  data refreshes underneath them also have tests with the *real* hooks and query cache
+  against a fake server (a bug of this kind slipped past tests that mocked the hooks).
+- **Extension** — about 180 unit tests, plus a real-browser test that loads the built
+  extension into Chrome and Edge and drives a running platform and a stub chat page.
+- **Mutation testing, by hand, on the rules that matter** — deliberately change one thing
+  (a threshold, a comparison, a removed check) and confirm a test fails. Survivors become
+  tests or are explained as redundant. Used on password and lockout rules, session
+  revocation, the TOTP/ticket/recovery code, the extension's decide/sync rules, DLP and
+  the web-security middleware. It isn't in CI.
+- **Migrations** — each is run up, down and up again; `alembic check` confirms models and
+  migrations agree.
+- **Lint and types** — `ruff` for Python; `oxlint` and `tsc -b` for the frontend and
+  extension.
 
-### 4.4 Testing strategy (backend)
+## 11. CI and deployment
 
-- **Unit tests** (majority of coverage): test services with repositories replaced
-  by fakes/mocks — pure business logic (status transitions, risk scoring, version
-  bumping) with no DB or HTTP involved. Fast, run on every save.
-- **Integration tests**: `TestClient` against routers, backed by a real SQLite
-  DB created fresh per test session (file `:memory:` or temp file), verifying
-  request/response contracts, status codes, and validation errors.
-- `sheet_service` tests cover: column add/remove/reorder, row CRUD, the
-  risk-score computed-column behavior (present/missing likelihood or impact),
-  and round-tripping a small `.xlsx` through upload → parse → export to confirm
-  no data loss.
-- **Fixtures** (`conftest.py`): DB session fixture with transaction rollback per
-  test; factory fixtures (e.g. `make_policy()`) instead of hardcoded fixtures, to
-  keep tests readable as the schema grows.
-- Evidence tests use pytest's `tmp_path` fixture as the storage directory (via
-  `EVIDENCE_STORAGE_DIR` override) so upload/delete tests touch a real filesystem
-  without polluting the repo, and are cleaned up automatically per test.
-- Target: every service function and every router path has at least one test;
-  status-transition logic (draft→review→approved) and risk-scoring math get
-  exhaustive edge-case tests since those encode the compliance-relevant rules.
-- Tooling: `pytest`, `pytest-cov`, `httpx` (via TestClient), `ruff` + `mypy` in CI/
-  pre-commit.
+- **CI** (`.github/workflows/ci.yml`; Python 3.11, Node 22): three jobs on every PR and push to `main` —
+  backend (ruff, pip-audit, pytest with coverage), frontend (oxlint, npm audit, vitest,
+  production build, the CSP check on the built page), extension (oxlint, npm audit,
+  vitest, build). `main` is protected: changes arrive by pull request with those checks
+  green. Separate workflows run CodeQL and a secret scan, and tagged releases create a
+  GitHub Release.
+- **Deployment** is by hand: `deploy/` has Caddy and nginx examples (https, strict CSP,
+  HSTS, real client address forwarded), and `deploy/README.md` lists the settings and the
+  uvicorn flags. There is no container setup yet.
+- **The extension** is built with `npm run build` into `extension/dist`; rollout by
+  force-install policy (Chrome and Edge) is described in its README.
 
-## 5. Frontend Design (React)
+## 12. Where the standards are handled
 
-### 5.1 Directory structure
+**ISO/IEC 42001 clauses**
 
-```
-frontend/
-├── src/
-│   ├── app/
-│   │   ├── App.tsx                # router setup, layout shell
-│   │   ├── routes.tsx
-│   │   └── queryClient.ts         # TanStack Query client config
-│   ├── shared/                     # truly cross-feature only
-│   │   ├── api/httpClient.ts       # fetch wrapper, base URL, error handling
-│   │   ├── components/            # generic UI: Button, Table, Modal, StatusBadge
-│   │   ├── hooks/
-│   │   └── types/
-│   ├── features/
-│   │   ├── evidence/
-│   │   │   ├── api.ts               # evidenceApi.list/upload/download/delete
-│   │   │   ├── hooks.ts             # useEvidence(entityType, entityId, folderId?), useUploadEvidence()
-│   │   │   ├── components/
-│   │   │   │   └── DocumentBrowser.tsx  # folder tree + file list + upload; reused by Policy/Procedure
-│   │   │   └── __tests__/
-│   │   ├── policies/
-│   │   │   ├── api.ts              # policiesApi.list(), .get(), .create() ...
-│   │   │   ├── hooks.ts            # usePolicies(), usePolicy(id), useCreatePolicy()
-│   │   │   ├── components/         # PolicyList, PolicyForm, PolicyDetail (embeds DocumentBrowser)
-│   │   │   ├── types.ts
-│   │   │   └── __tests__/
-│   │   ├── procedures/             # mirrors policies/
-│   │   ├── sheets/
-│   │   │   ├── api.ts               # sheetsApi generic column/row/upload/export calls
-│   │   │   ├── hooks.ts
-│   │   │   ├── components/
-│   │   │   │   └── DataGrid.tsx      # editable grid: columns, rows, add/remove, upload/export buttons
-│   │   │   └── __tests__/
-│   │   ├── ai-system-inventory/
-│   │   │   ├── api.ts, hooks.ts, components/, types.ts, __tests__/   # thin wrapper around sheets/ for the singleton inventory sheet
-│   │   └── risk-assessments/
-│   │       ├── api.ts, hooks.ts
-│   │       ├── components/
-│   │       │   ├── RiskAssessmentHeader.tsx   # framework tags, status, linked AI system
-│   │       │   └── RiskMatrix.tsx              # likelihood x impact heatmap, reads the DataGrid's rows
-│   │       └── __tests__/
-│   ├── pages/                      # route-level compositions of feature components
-│   │   ├── DashboardPage.tsx
-│   │   ├── PoliciesPage.tsx
-│   │   ├── ProceduresPage.tsx
-│   │   ├── AISystemInventoryPage.tsx   # renders the singleton inventory sheet via sheets/DataGrid
-│   │   └── RiskAssessmentsPage.tsx     # always entered via an AI System's detail page
-│   └── main.tsx
-├── tests/setupTests.ts
-├── vite.config.ts
-└── package.json
-```
+| Clause | Where in the app |
+|---|---|
+| 4 Context | Organization context; AI roles (stakeholders) |
+| 5 Leadership | Policies; governance roles (the CAIGO) |
+| 6.1 Risk and opportunity | Risk assessments and risk criteria |
+| 6.2 Objectives | AI objectives and their measurements |
+| 6.3 Planning of changes | Management-system changes |
+| 7.2, 7.3 Competence, awareness | Competence requirements and records |
+| 7.4 Communication | Communication plan and records |
+| 7.5 Documented information | Policies, procedures and evidence, with approval and audit history |
+| 8 Operation | Impact assessments, the AI system life cycle and its gates, the data inventory |
+| 9.1 Monitoring | Objective measurement; the dashboard |
+| 9.2 Internal audit | Audit programs, audits and findings |
+| 9.3 Management review | Management review settings and meetings |
+| 10.1, 10.2 Improvement, nonconformity | Improvements; corrective actions |
 
-Each `features/<x>/api.ts` is the **only** place that knows the backend URL shape
-for that feature; components never call `fetch` directly. This is what lets the
-backend evolve independently and lets each feature be unit-tested by mocking one
-file.
+**Annex A topics**
 
-`DocumentBrowser` and `DataGrid` are the two deliberately shared, cross-feature
-components. `DocumentBrowser` lives in `features/evidence/` (folder tree + file
-list + upload, parameterized by `entityType`/`entityId`) and is embedded in both
-`PolicyDetail` and `ProcedureDetail` — it *is* the Policy/Procedure editing
-experience for MVP, not a side panel. `DataGrid` lives in `features/sheets/` and
-is embedded in both the AI System Inventory page and each Risk Assessment's
-detail page — same component, different `Sheet` behind it.
+| Annex A topic | Where in the app |
+|---|---|
+| A.2 Policies related to AI | Policies and procedures |
+| A.3 Internal organization (reporting concerns, A.3.3) | Governance roles; concerns |
+| A.5 Assessing impacts of AI systems | Impact assessments |
+| A.6 AI system life cycle | Life cycle stages and gates |
+| A.7 Data for AI systems | Data inventory |
+| A.8 Information for interested parties (incident reporting, A.8.4) | AI incidents |
+| A.9 Use of AI systems (A.9.2) | The AI tool register, DLP rules and the extension |
+| A.10 Third-party relationships (A.10.2–A.10.4) | Suppliers |
 
-### 5.2 State management
+**EU AI Act.** The applicability assessment decides which articles apply to the
+organization, with per-article overrides and a recorded reason. Serious-incident reporting
+deadlines (Art. 73) are built into incidents. All 24 articles ship as controls that records
+are tagged against.
 
-- **Server state** (everything from the API): TanStack Query — handles caching,
-  loading/error states, refetch-on-mutation invalidation. No Redux needed for MVP.
-- **Local/UI state**: component-local `useState`/`useReducer` (e.g. form drafts,
-  modal open/closed).
-- **Forms**: `react-hook-form` + `zod` schema validation, with the zod schema
-  shared/mirrored against backend Pydantic validation rules to avoid drift.
+**Coverage is whatever the records are tagged to**, judged current by the rules in §5.4 —
+the app does not claim a clause is met because a feature exists.
 
-### 5.3 Testing strategy (frontend)
+## 13. Not built yet
 
-- **Unit tests**: Vitest + React Testing Library, one `__tests__` folder per
-  feature, colocated. Test hooks with mocked `api.ts` (via `msw` — Mock Service
-  Worker — for realistic HTTP mocking), and test components for rendering/
-  interaction (e.g. "submitting the risk item form calls the mutation with correct
-  payload").
-- **Integration/E2E** (light for MVP): a small Playwright smoke suite covering the
-  golden paths — create policy → approve it; create AI system → run risk
-  assessment → see it on dashboard. Not exhaustive; expand as features grow.
+- A coverage view of which laptops have the extension, and alerts when someone overrides
+  a warning (counts are currently reviewed on the Usage page).
+- Packaged extension rollout files; a hardware-key (WebAuthn) second factor.
+- Evidence packs (PDF/Word/ZIP) for auditors; more tagging so the compliance numbers
+  reflect work done.
+- Employee import from CSV; a dedicated concerns-officer role; single sign-on; email.
+- PostgreSQL, automated backups, a container setup, encryption at rest, a session idle
+  timeout, a sandboxed document parser, and an independent security review.
+- In-app spreadsheet formulas beyond the risk score; multi-tenancy.
 
-## 6. Cross-Cutting Concerns
+## 14. Decision log
 
-- **Config**: `.env` files for both frontend (`VITE_API_BASE_URL`) and backend
-  (`DATABASE_URL`, `SECRET_KEY`), loaded via `pydantic-settings` / Vite's built-in
-  env handling. `.env.example` checked in, `.env` gitignored.
-- **Migrations**: Alembic from day one, even though SQLite is the MVP store —
-  this is what makes "swap SQLite for Postgres later" a config change rather than
-  a rewrite.
-- **Audit trail**: centralized in `audit_service`, called from every service
-  mutation — directly supports ISO 42001's "documented information" and EU AI
-  Act logging expectations without being a compliance feature bolted on later.
-- **Framework tagging**: `FrameworkControl` lookup table + `framework_tags` on
-  `RiskAssessment`/`Policy`/`Procedure` — lets the UI show "this policy covers
-  ISO 42001 clause 5.2" without hardcoding regulatory text into application logic.
-- **Error handling**: services raise typed domain exceptions
-  (`NotFoundError`, `InvalidStatusTransitionError`); a single FastAPI exception
-  handler maps these to HTTP status codes, so routers stay thin.
-
-## 7. MVP Feature Checklist
-
-- [x] Policy CRUD + draft/review/approve workflow *(built with a text `content`
-      field — needs reworking to drop content/PolicyVersion and add Folder, per
-      §4.2's revised model)*
-- [ ] Rework Policy to the folder/document model; wire `Folder` + `Evidence`
-- [ ] Procedure CRUD, same folder/document model as Policy, optionally linked to
-      a Policy
-- [ ] `Evidence` model/service/router (polymorphic file storage) — needed by both
-      the document family and as attachments on risk assessments/items
-- [ ] `Folder` model/service/router + `DocumentBrowser` frontend component
-- [ ] `Sheet`/`SheetRow` model/service/router: column CRUD, row CRUD, `.xlsx`/
-      `.csv` upload-parse and export
-- [ ] AI System Inventory: singleton `Sheet`, auto-created with default columns
-- [ ] Risk Assessment: header record linked to one inventory row + its own
-      `Sheet`; risk-score computed column (likelihood × impact, inherent +
-      residual)
-- [ ] `DataGrid` frontend component (shared by AI System Inventory and Risk
-      Assessments) with inline edit, add/remove row & column, upload/export
-- [ ] Risk matrix visualization (heatmap) reading a Risk Assessment's sheet rows
-- [ ] Framework tag reference data (seeded ISO 42001 clauses + EU AI Act articles)
-      and tagging UI on policies/procedures/assessments
-- [ ] Audit log viewer (read-only) per entity, including document add/remove and
-      evidence upload/delete events
-- [ ] Dashboard: counts by status/risk tier, items needing review
-- [ ] Basic single-user auth (username/password, local only)
-- [ ] Unit + integration test suites for backend and frontend as described above
-- [ ] Seed script with realistic demo data
-
-## 8. Suggested Build Order
-
-1. Backend skeleton (`core/`, `main.py`, Alembic, health-check route) + CI test
-   run — **done**
-2. `Policy` vertical slice, text-content version — **done**, now superseded
-3. `Folder` + `Evidence` models/service/router (the shared file-storage
-   substrate everything else in this list depends on)
-4. Rework `Policy` onto Folder + Evidence: drop `content`/`PolicyVersion`, wire
-   version-counter bump + audit-derived history, update the frontend to embed
-   `DocumentBrowser` instead of a content textarea — this becomes the corrected
-   template
-5. `Procedure` (copy the reworked Policy pattern)
-6. `Sheet`/`SheetRow` + `sheet_service` (column/row CRUD, upload/export, the
-   risk-score computed column) — the most novel new subsystem
-7. AI System Inventory (singleton sheet wrapper) + Risk Assessment (header +
-   linked sheet)
-8. `AuditLogEntry` wired into all services (already true for Policy/Evidence;
-   extend to Folder/Sheet/RiskAssessment)
-9. `FrameworkControl` seed data + tagging
-10. Frontend: `DocumentBrowser` (Policies/Procedures) → `DataGrid` (AI System
-    Inventory) → Risk Assessments (header UI + `DataGrid` + `RiskMatrix`)
-11. Dashboard page last, once other data exists to summarize
-
-## 9. Future Extensions (post-MVP, enabled by this design)
-
-- **AI-assisted policy/procedure drafting and editing** — an in-app writing
-  assistant that helps produce a document (not just store one). Natural next
-  step once consolidation (this MVP) is in daily use
-- **AI-assisted sheet generation** — "draft me a risk register for this AI
-  system" producing a pre-filled `Sheet`. The upload/parse pipeline built for
-  MVP is the same seam this would plug into
-- Spreadsheet formulas beyond the built-in risk-score computed column
-- Additional frameworks (NIST AI RMF, SOC 2) — just more `FrameworkControl` seed
-  rows + tags, no schema change
-- Vendor/third-party AI risk module — new domain folder on both sides
-- Evidence/document versioning (re-upload a corrected file while keeping prior
-  versions, not just replacing) and virus/malware scanning on upload
-- Multi-user roles beyond admin/contributor/viewer, real auth (OAuth)
-- Postgres swap (Alembic + repository pattern already isolate this)
-- Notifications/reminders for policy review due-dates
-- Export to PDF/Word for audit packages
+| Decision | Why | Cost |
+|---|---|---|
+| Layered FastAPI (routers → services → repositories) | Services are unit-testable without HTTP; repositories isolate the engine. | More files than a flat app. |
+| Documents as folders of uploads; sheets as JSON rows | Organizations already have documents and spreadsheets; the app consolidates them instead of replacing them. | No in-app authoring or formulas. |
+| Status computed live, not stored | Cannot drift from the records it depends on. | Every read does the work; fine at this scale. |
+| SQLite + FTS5 + sqlite-vec | One file, one backup, no extra service. | Single writer; PostgreSQL is the step for real use. |
+| Local embeddings, reranker and OCR | Nothing leaves the machine to search evidence. | A larger install and a CPU cost at indexing. |
+| No streaming answers | Citations are verified first; streaming would show unverified text. | A short wait. |
+| Read-only AI tools | A successful prompt injection yields a wrong sentence, not a governance decision. | The assistant cannot take an action for you. |
+| DLP evaluated in the browser, counts only | Text never reaches the server; the extension cannot become a browsing log. | The server cannot audit what was caught beyond counts. |
+| Block-by-default for unapproved AI sites | An override should be a decision, not the default. | More requests to the CAIGO. |
+| Standard-library crypto for passwords and TOTP | Few dependencies to audit; both are small, well-specified algorithms. | PBKDF2 rather than argon2id. |
+| One deployment, one organization | Keeps access control simple and auditable. | No hosted multi-customer mode. |
 
 ---
 
-Sources consulted for architecture guidance:
+Sources consulted for the original architecture guidance:
 - [FastAPI Project Structure: Production Guide 2026](https://www.zestminds.com/blog/fastapi-project-structure/)
 - [FastAPI Best Practices — Auth0](https://auth0.com/blog/fastapi-best-practices/)
 - [How to Structure a Scalable FastAPI Project](https://fastlaunchapi.dev/blog/how-to-structure-fastapi)
