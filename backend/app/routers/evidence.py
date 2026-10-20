@@ -2,6 +2,7 @@ from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, Query, Uplo
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 
+from app.core import evidence_files
 from app.core.database import get_db
 from app.dependencies import get_current_actor_id
 from app.schemas.evidence import EvidenceRead
@@ -47,7 +48,7 @@ def upload_evidence(
 def download_evidence(evidence_id: int, db: Session = Depends(get_db)) -> FileResponse:
     evidence = evidence_service.get_evidence(db, evidence_id)
     return FileResponse(
-        path=evidence.storage_path,
+        path=evidence_files.path_for(evidence.storage_path),
         filename=evidence.filename,
         media_type=evidence.content_type,
     )

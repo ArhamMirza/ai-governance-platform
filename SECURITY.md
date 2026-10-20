@@ -43,7 +43,7 @@ The details are in the *Accounts and sign-in* and *Two-step sign-in* sections of
 This is a portfolio project. It has had no independent security review or penetration test,
 and it is **not ready to hold a real organization's data** without more work:
 
-- the database is a single SQLite file, with no automated backups and no encryption at rest;
+- the database is a single SQLite file with no encryption at rest, and backups (`python -m app.backup`, see deploy/README.md) are an unencrypted archive you must schedule, copy off the machine and protect yourself;
 - sign-in rate limits are kept in memory, so they reset on restart and assume one API process;
 - uploaded evidence is parsed on the server by PDF, Word and OCR libraries, with no sandbox;
 - authenticator codes can be phished (hardware keys are not supported);

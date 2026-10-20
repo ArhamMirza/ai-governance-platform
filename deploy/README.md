@@ -54,6 +54,57 @@ typefaces are loaded from there. Self-hosting the fonts would let you remove bot
    temporary password that is shown to you once, that the person must replace at first
    sign-in, and that stops working after seven days if it is not used.
 
+## Backups
+
+Everything the platform holds is in two places: the SQLite database and the folder of
+uploaded files (`EVIDENCE_STORAGE_DIR`). One command takes both, while the API keeps running:
+
+```bash
+cd backend
+python -m app.backup create --to /var/backups/governance --keep 14
+```
+
+That writes `ai-governance-backup-YYYYMMDD-HHMMSS.tar.gz` (a consistent copy of the
+database, every upload and a manifest of checksums), checks it straight away, and then
+deletes all but the 14 newest. It exits non-zero if anything is wrong, so a scheduler
+can tell you. The search index is in the database, so it comes along.
+
+**Run it on a schedule.** For example, nightly from cron:
+
+```
+15 2 * * *  cd /srv/governance/backend && .venv/bin/python -m app.backup create --to /var/backups/governance --keep 14
+```
+
+or from a systemd timer, or on Windows from Task Scheduler (run `python -m app.backup create
+--to D:\Backups\governance --keep 14` in the `backend` folder). Make sure the job's output or
+exit status reaches someone.
+
+**Three things a backup does not do for you**
+
+1. **It is on the same machine.** Copy the archives off it (another server, object storage,
+   a drive that is not plugged in): a backup that dies with the server is not a backup.
+2. **It is not encrypted.** It holds everything the platform does: people, records, hashed
+   passwords and the encrypted AI provider keys. Store it with the same care as the server,
+   and encrypt it where it is kept.
+3. **It does not hold `SECRET_KEY`.** Stored AI provider keys and two-step sign-in secrets
+   are encrypted under it, so a restore needs the same key. Keep it in a password manager,
+   not only on the server.
+
+**Prove you can restore, before you need to.** A restore unpacks into a folder that does
+not exist yet and never writes over anything:
+
+```bash
+python -m app.backup verify /var/backups/governance/ai-governance-backup-20261020-021500.tar.gz
+python -m app.backup restore /var/backups/governance/ai-governance-backup-20261020-021500.tar.gz --to /srv/restore-test
+```
+
+It checks the archive first, then prints the `DATABASE_URL` and `EVIDENCE_STORAGE_DIR` to
+start the app with. Start it on those with the original `SECRET_KEY`, run
+`alembic upgrade head` if the archive is from an older version, sign in, and open an
+uploaded document. Do this once now and again after any big change.
+
+If you ever replace the server, that is also how you move: restore on the new one.
+
 ## Check it
 
 ```bash
@@ -66,4 +117,5 @@ curl -s -o /dev/null -w "%{http_code}\n" https://governance.example.com/docs   #
 
 - Rate limits for sign-in are kept in memory and reset when the API restarts. They also
   assume one API process; behind several, each counts separately.
-- Backups, patching the host, and certificate renewal are yours to run.
+- Patching the host and certificate renewal are yours to run. So is *running* the backup
+  below on a schedule: nothing in the app does it for you, and nothing tells you if it stops.

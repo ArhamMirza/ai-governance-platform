@@ -47,6 +47,17 @@ alembic upgrade head && alembic downgrade -1 && alembic upgrade head
 alembic check            # "No new upgrade operations detected."
 ```
 
+## Backups
+
+```bash
+python -m app.backup create --to ./backups --keep 14   # database + uploads, verified
+python -m app.backup verify ./backups/ai-governance-backup-<stamp>.tar.gz
+python -m app.backup restore ./backups/ai-governance-backup-<stamp>.tar.gz --to ../restore-test
+```
+
+See [deploy/README.md](../deploy/README.md#backups) for scheduling, what a backup does not
+cover, and how to test a restore.
+
 ## Tests and checks
 
 ```bash
