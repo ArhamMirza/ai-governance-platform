@@ -23,9 +23,12 @@ Nothing here streams. In a governance tool, showing an answer only once its
 citations have been checked is worth the wait; streaming unverified text and
 correcting it afterwards would show people the fabrication first.
 
-There are no tools. The model reads what this code retrieved and writes
-text. It has no way to change a record, which is what makes a successful
-prompt injection a wrong sentence rather than a governance decision.
+The model reads what this code retrieved and writes text. It may also call a
+small set of tools (core/agent_tools.py) for an exact answer where retrieval
+is the wrong instrument -- a count over every row, say -- but every one of
+them is read-only by construction: no tool writes anything, and none exists
+that could. That is what makes a successful prompt injection a wrong sentence
+rather than a governance decision.
 """
 
 import json

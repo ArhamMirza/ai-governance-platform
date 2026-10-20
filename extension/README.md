@@ -8,12 +8,13 @@ it out.
 What it does, on the AI sites the platform has catalogued:
 
 - **Unapproved site** — counts the visit, warns first, or blocks it, as the
-  platform's *AI use settings* say. A blocked page offers **Request this tool**,
-  which opens the employee portal with the tool filled in.
+  platform's *AI use settings* say (**block is the default**). The page it shows
+  offers **Request this tool**, which opens the employee portal with the tool
+  filled in; in warn mode it also offers **Continue anyway** for an hour.
 - **What goes in** — checks text that is pasted, sent (Enter, a send button, a
   form) or attached/dropped as a plain-text file against the **data rules**.
   A rule can *monitor* (count it), *warn* (the person confirms or cancels) or
-  *block*. A tool approved for a class of data isn't held to rules about that
+  *block* (new rules start on *block*). A tool approved for a class of data isn't held to rules about that
   class or lower.
 - **Reports counts** — one number per day, site, kind of event, rule and
   action. Nothing else.
@@ -42,7 +43,9 @@ What it does, on the AI sites the platform has catalogued:
 
 ## Read this before rolling it out
 
-**It only covers browsers it is installed in.** It does not see other
+**It only covers browsers it is installed in.** The extension is installed per
+browser *profile*, and it only runs in private windows if that is allowed for it
+(force-installing it and disabling private windows closes both gaps). It does not see other
 browsers, desktop apps (the ChatGPT app, Copilot inside Office), mobile, or API
 and command-line use. IT must block other browsers if that matters to you.
 
@@ -109,7 +112,9 @@ The simplest way, on your own laptop with no system policy changes:
    storage: `DEV_CONFIG=1 npm run build`. (Never deploy this build; production
    builds don't read that setting.)
 3. Chrome: open `chrome://extensions`, switch on **Developer mode**, **Load
-   unpacked**, choose `dist/`. Edge: the same at `edge://extensions`.
+   unpacked**, choose `dist/`. Edge: the same at `edge://extensions`. To try it in a
+   private window, open the extension's **Details** and turn on **Allow in Incognito**
+   (it is off by default, which is why a real rollout disables private windows).
 4. Click **service worker** on the extension's card to open its console and run:
 
    ```js
@@ -169,8 +174,9 @@ With the extension connected and a seeded or real platform:
 5. **Block.** On an unapproved site, paste a test card number
    (`4111 1111 1111 1111`): the paste is refused and a box names the rule.
    Type one and press Enter, or click send: also refused.
-6. **Warn rule.** Paste text matching a *warn* rule: a box offers **Cancel** or
-   **Send anyway**. Both are counted (*warned* / *overridden*).
+6. **Warn rule.** Set a rule to *warn* (rules start on *block*), then paste text
+   matching it: a box offers **Cancel** or **Send anyway**. Both are counted
+   (*warned* / *overridden*). A *block* rule has no **Send anyway**.
 7. **Approval honoured.** The same card number into a tool approved for
    confidential data: allowed.
 8. **Files.** Attach a `.txt` with a test card number: refused. Attach a clean
@@ -295,7 +301,7 @@ without a restart.
 | `src/events.ts`, `sync.ts`, `config.ts` | Counting, talking to the platform, managed settings. |
 | `src/guard.ts`, `dialog.ts`, `content.ts` | The checking on the page. |
 | `src/background.ts` | The service worker that ties it together. |
-| `src/blocked.ts`, `popup.ts`, `public/` | The *not approved* page and the toolbar popup. |
+| `src/blocked.ts`, `popup.ts`, `messages.ts`, `public/` | The *not approved* page, the toolbar popup, and the messages between pages and the service worker. |
 | `src/configSource.ts` | Where settings come from: managed policy only, plus a development-only override. |
 | `e2e/` | The real-browser test (Chrome and Edge). |
 | `../frontend/src/shared/dlp/detectors.ts` | The rule engine, shared with the platform's rule tester so both agree. |

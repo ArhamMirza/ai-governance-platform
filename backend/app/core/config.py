@@ -68,15 +68,16 @@ class Settings(BaseSettings):
     def _refuse_the_example_secret(self) -> "Settings":
         """Refuse to start a real deployment on the published secret.
 
-        secret_key signs session cookies and derives the key that encrypts
-        stored AI provider credentials. Left at the example value, both are
-        recoverable by anyone who can read this repository -- so this is an
-        error at startup rather than a line in a README nobody reads.
+        secret_key derives the key that encrypts stored AI provider credentials
+        and two-step sign-in secrets, and keys the signature on two-step
+        sign-in tickets. Left at the example value, all of that is recoverable
+        by anyone who can read this repository -- so this is an error at
+        startup rather than a line in a README nobody reads.
         """
         if self.is_real_deployment and self.secret_key == DEFAULT_SECRET_KEY:
             raise ValueError(
-                "SECRET_KEY is still the example value from .env.example. It signs session "
-                "cookies and encrypts stored AI provider keys, so a real deployment needs its "
+                "SECRET_KEY is still the example value from .env.example. It encrypts stored "
+                "AI provider keys and two-step sign-in secrets, so a real deployment needs its "
                 "own. Generate one with:\n"
                 '  python -c "import secrets; print(secrets.token_urlsafe(48))"'
             )

@@ -3,8 +3,10 @@
 An AI provider's API key can't be hashed the way a password is -- the app
 needs the original to make a call -- so it's encrypted at rest instead, with
 a key derived from the deployment's own ``secret_key``. That means rotating
-``secret_key`` invalidates stored provider keys (they have to be re-entered),
-which is the same trade-off session cookies already make.
+``secret_key`` makes what was stored unreadable: provider keys have to be
+re-entered, and people with two-step sign-in must use a recovery code (or be
+reset by an administrator), because their authenticator secret can no longer
+be decrypted.
 """
 
 import base64
