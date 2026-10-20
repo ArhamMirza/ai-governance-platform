@@ -34,7 +34,7 @@ What it does, on the AI sites the platform has catalogued:
   uploads, and the dialog.
 - **A real-browser test** (`e2e/`) loads the built extension into **real Chrome
   and real Edge** against a running platform and drives it with a real keyboard
-  and mouse: 49 checks in each. See [e2e/README.md](e2e/README.md).
+  and mouse: 51 checks pass in each. See [e2e/README.md](e2e/README.md).
 - **Not tested here:** force-install by enterprise policy and managed storage
   (they need a managed machine), Chrome Web Store / Edge Add-ons packaging, or
   any real AI site: the test uses a stand-in chat page, so it shows the
