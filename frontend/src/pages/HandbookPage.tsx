@@ -7,7 +7,11 @@ const SECTIONS = [
   { id: "archive", label: "Retiring a system" },
   { id: "evidence", label: "Evidence & documents" },
   { id: "frameworks", label: "Frameworks & the SoA" },
+  { id: "management-system", label: "The rest of the management system" },
+  { id: "ai-use", label: "Governing staff use of AI" },
+  { id: "assistant", label: "The assistant" },
   { id: "dashboard", label: "Reading the dashboard" },
+  { id: "account", label: "Your account & signing in" },
   { id: "bulk", label: "Editing in bulk, safely" },
   { id: "reference", label: "Quick reference" },
 ];
@@ -85,8 +89,8 @@ export function HandbookPage() {
           <h1>Governance Handbook</h1>
           <p className="handbook-lede">
             The operating manual for this platform: what each role is accountable for, what has
-            to happen before an AI system can move to its next stage, and how a dataset, an
-            assessment, or a policy earns its sign-off. It follows ISO/IEC 42001&rsquo;s own
+            to happen before an AI system can move to its next stage, how a dataset, an
+            assessment, or a policy earns its sign-off, and how staff use of AI tools is governed. It follows ISO/IEC 42001&rsquo;s own
             structure &mdash; nothing here is enforced by convention alone; every rule below is a
             gate the platform actually checks.
           </p>
@@ -117,6 +121,7 @@ export function HandbookPage() {
               <tr><td>Viewer</td><td>Read everything. Can&rsquo;t create, edit, or approve anything.</td></tr>
               <tr><td>Contributor</td><td>Everything Viewer can, plus create and edit records &mdash; rows, documents, draft assessments, folders. Cannot approve anything gated on Chief AI Governance Officer, and cannot manage users or org-wide settings.</td></tr>
               <tr><td>Admin</td><td>Everything, including approving as Chief AI Governance Officer (if assigned that governance role), managing user accounts, and setting the organization&rsquo;s risk appetite.</td></tr>
+              <tr><td>Employee</td><td>Not an internal user: a login for staff who use AI tools but not this platform. It reaches only the <strong>staff home</strong> &mdash; the policies and procedures shared with staff, a way to report a concern, and a way to ask for an AI tool. Every other page is closed to it.</td></tr>
             </tbody>
           </table>
         </div>
@@ -513,6 +518,85 @@ export function HandbookPage() {
         </p>
       </section>
 
+      <section id="management-system">
+        <h2>The rest of the management system</h2>
+        <p>
+          Beyond the AI systems themselves, ISO/IEC 42001 asks for the machinery that runs
+          them. Each of these is an ordinary record that anyone who can edit may create, and
+          each one&rsquo;s standing &mdash; overdue, due soon, open &mdash; is worked out from its
+          own dates, never ticked by hand. Overdue items reach the dashboard.
+        </p>
+        <div className="table-scroll">
+          <table>
+            <thead><tr><th>Area</th><th>What it holds</th><th>ISO/IEC 42001</th></tr></thead>
+            <tbody>
+              <tr><td><a href="/organization-context">Organization context</a></td><td>One record for the whole organization: what it does, how it uses AI, and who has an interest in it. The assistant can draft it for review.</td><td>4</td></tr>
+              <tr><td><a href="/objectives">AI Objectives</a></td><td>What you want your use of AI to achieve, measured over time. Whether an objective is on track, off track or achieved is computed from its measurements and target date.</td><td>6.2, 9.1</td></tr>
+              <tr><td><a href="/changes">Changes</a></td><td>Planned changes to the AI management system, with a target date.</td><td>6.3</td></tr>
+              <tr><td><a href="/competence">Competence</a></td><td>What people need to know to carry out their AI roles, and a record of who has it.</td><td>7.2, 7.3</td></tr>
+              <tr><td><a href="/communications">Communication</a></td><td>What the organization says about its AI management system, to whom and when. The next due date is computed.</td><td>7.4</td></tr>
+              <tr><td><a href="/audit-programs">Internal audits</a></td><td>A program of audits on a schedule you set, with findings.</td><td>9.2</td></tr>
+              <tr><td><a href="/management-review">Management review</a></td><td>Leadership&rsquo;s periodic review of the system: its settings and its meetings.</td><td>9.3</td></tr>
+              <tr><td><a href="/corrective-actions">Corrective actions</a></td><td>Nonconformities and what was done about them.</td><td>10.2</td></tr>
+              <tr><td><a href="/improvements">Improvements</a></td><td>Opportunities to improve, tracked to completion.</td><td>10.1</td></tr>
+              <tr><td><a href="/incidents">Incidents</a></td><td>Anything that went wrong with an AI system. For a serious incident the EU AI Act sets reporting deadlines (Article 73), which the record counts down.</td><td>A.8.4</td></tr>
+              <tr><td><a href="/suppliers">Suppliers</a></td><td>The third parties behind your AI systems: reviews, contract dates, and which systems depend on them.</td><td>A.10.2&ndash;A.10.4</td></tr>
+              <tr><td><a href="/concerns">Concerns</a></td><td>Staff raise a concern from their staff home and can follow it with a tracking code. Only administrators can read concerns, and each has to be acknowledged within the number of days set in the concerns settings.</td><td>A.3.3</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section id="ai-use">
+        <h2>Governing staff use of AI</h2>
+        <p>
+          The platform also governs how people use AI day to day, in four parts that work
+          together. It is the practical side of ISO/IEC 42001 A.9.2 (use of AI systems).
+        </p>
+
+        <dl className="handbook-deflist">
+          <div><dt>The register</dt><dd><a href="/ai-tools">AI Tools</a> lists the third-party tools staff might use. Each is approved, restricted, revoked or still only catalogued, with the <strong>most sensitive data it may be given</strong> (public, internal or confidential), the conditions of use, and a review date. A tool that isn&rsquo;t approved is treated as unapproved.</dd></div>
+          <div><dt>Requests</dt><dd>An employee asks for a tool from their staff home and says why. The Chief AI Governance Officer approves or says no, and a refusal needs a note to the employee. Nobody decides their own request.</dd></div>
+          <div><dt>Data rules</dt><dd><a href="/ai-tools/rules">Data rules</a> say what must not be pasted or typed into AI tools: card numbers, keys, personal identifiers, your own keywords or patterns. Each is set to <em>monitor</em> (count it), <em>warn</em> (the person confirms or cancels) or <em>block</em>; new rules start on block. A rule only applies to data more sensitive than the tool is cleared for, so a tool approved for confidential data is not stopped by a rule about internal data. The rule tester shows what a rule would catch.</dd></div>
+          <div><dt>The browser extension</dt><dd>Installed by IT on Chrome and Edge, it carries the policy out: an unapproved site shows a page that offers <strong>Request this tool</strong> (blocked by default, or warn or monitor if you choose), and the data rules are checked in the browser before anything is sent. Only counts leave the browser &mdash; never what was typed, never a page address.</dd></div>
+        </dl>
+
+        <div className="handbook-callout rule">
+          <div className="handbook-callout-icon">🔒</div>
+          <div>
+            <div className="handbook-callout-title">What is and isn&rsquo;t seen</div>
+            <p>
+              <a href="/ai-tools/usage">Usage</a> shows counts: visits to unapproved sites,
+              sites blocked, and sensitive data stopped, per site and per rule. There is no text
+              and no page address behind them. The extension covers only the browsers it is
+              installed in; desktop apps, other browsers and mobile are outside it. In{" "}
+              <a href="/ai-tools/settings">Settings</a> you choose what happens at an unapproved
+              site, write the notice staff read, and create or replace the key the extension uses.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section id="assistant">
+        <h2>The assistant</h2>
+        <p>
+          The assistant panel answers questions from your own records and documents, and the
+          &ldquo;Draft with AI&rdquo; buttons write a first version of a record for you to
+          review. It needs an AI provider and key, set in <a href="/settings">Settings</a>;
+          without one, everything else works as normal.
+        </p>
+        <dl className="handbook-deflist">
+          <div><dt>It cites its sources</dt><dd>Every answer points to the passages it came from, and a citation to something it was never given is removed before you see the answer.</dd></div>
+          <div><dt>It can say &ldquo;the record doesn&rsquo;t cover that&rdquo;</dt><dd>If nothing relevant is found, it says so rather than guessing. A document that couldn&rsquo;t be read is flagged, so &ldquo;not found&rdquo; is never confused with &ldquo;couldn&rsquo;t look&rdquo;.</dd></div>
+          <div><dt>Exact counts</dt><dd>For questions like &ldquo;how many AI systems have no impact assessment&rdquo; it counts the same way the dashboard does, so the two never disagree.</dd></div>
+          <div><dt>It never changes anything</dt><dd>It can read and propose; it cannot save, submit, approve or delete. A draft waits for you to accept it, and accepting it goes through the normal permissions and is recorded like any other edit.</dd></div>
+        </dl>
+        <p>
+          Text in a document is treated as data, not as instructions, so a document that tells a
+          model to ignore its rules is read as the content it is.
+        </p>
+      </section>
+
       <section id="dashboard">
         <h2>Reading the dashboard</h2>
         <p>
@@ -532,7 +616,19 @@ export function HandbookPage() {
           <div><dt><span className="handbook-attn-dot warning" />Vacant governance roles</dt><dd>A role with zero holders.</dd></div>
           <div><dt><span className="handbook-attn-dot danger" />AI systems without an owner</dt><dd>Blocks the Inception gate.</dd></div>
           <div><dt><span className="handbook-attn-dot warning" />Owner isn't a real account</dt><dd>A Risk or Data Owner field that doesn't resolve to an actual user.</dd></div>
+          <div><dt><span className="handbook-attn-dot danger" />Corrective actions overdue</dt><dd>Nonconformities past their due date.</dd></div>
+          <div><dt><span className="handbook-attn-dot danger" />Concerns not yet acknowledged</dt><dd>Raised by staff and waiting longer than the concerns settings allow.</dd></div>
+          <div><dt><span className="handbook-attn-dot danger" />Supplier reviews overdue</dt><dd>Past the date each supplier is next due a review.</dd></div>
+          <div><dt><span className="handbook-attn-dot warning" />Requests for AI tools awaiting a decision</dt><dd>Employees waiting for the Chief AI Governance Officer.</dd></div>
+          <div><dt><span className="handbook-attn-dot warning" />Visits to unapproved AI sites; sensitive data stopped</dt><dd>The last seven days of counts from the browser extension.</dd></div>
+          <div><dt><span className="handbook-attn-dot danger" />Framework controls with no coverage</dt><dd>Nothing is tagged to them yet; &ldquo;tagged but no longer current&rdquo; counts the ones whose records have gone stale.</dd></div>
         </dl>
+        <p>
+          That is a selection: the panel groups everything that needs attention by area &mdash;
+          incidents and corrective actions, risk and assessments, AI systems, data and suppliers,
+          objectives, management-system planning and framework coverage &mdash; and each count
+          links to the records behind it.
+        </p>
 
         <p id="delegate" style={{ marginTop: 20 }}>
           <strong>When the Chief AI Governance Officer is away:</strong> from Roles &amp;
@@ -540,6 +636,30 @@ export function HandbookPage() {
           approve everything CAIGO-gated for the window set, and shows up everywhere with the same
           badge &mdash; nothing else needs to change.
         </p>
+      </section>
+
+      <section id="account">
+        <h2>Your account &amp; signing in</h2>
+        <p>
+          Everyone manages their own sign-in from <a href="/account">Your account</a> (in the
+          sidebar).
+        </p>
+        <dl className="handbook-deflist">
+          <div><dt>Passwords</dt><dd>At least 12 characters. A password is refused if it is a common word, even a disguised one (<code>P@ssw0rd2024!</code>), a keyboard or number run, almost all one character, or built from your own name or email. Your last five can&rsquo;t be reused. A few unrelated words works well.</dd></div>
+          <div><dt>A temporary password</dt><dd>If an admin created your account, or reset your password, the one you were given is temporary: you can do nothing else until you choose your own.</dd></div>
+          <div><dt>Two-step sign-in</dt><dd>Turn it on with an authenticator app (Google or Microsoft Authenticator, Authy, 1Password): scan the code, enter one code to prove it works, then save your <strong>ten recovery codes</strong>. They are shown once, each works once, and they are for when your phone isn&rsquo;t to hand. After that, signing in needs your password and a code.</dd></div>
+          <div><dt>Turning it off, or new recovery codes</dt><dd>Both need your password and a current code, so someone at an unlocked laptop can&rsquo;t do either.</dd></div>
+          <div><dt>Other devices</dt><dd><em>Sign out of other devices</em> ends every session except this one. Changing your password does the same.</dd></div>
+          <div><dt>Too many wrong attempts</dt><dd>Five wrong passwords lock the account for 15 minutes, and five wrong codes lock the codes for 15 minutes.</dd></div>
+        </dl>
+
+        <h3 style={{ marginTop: 22 }}>For administrators</h3>
+        <ul>
+          <li><strong>Reset password</strong> (in <a href="/users">Users</a>) gives a person a one-time password, shown to you once, and signs them out everywhere.</li>
+          <li><strong>Reset two-step</strong> is for someone who has lost both their phone and their recovery codes. It signs them out everywhere, and you can&rsquo;t do it for yourself &mdash; ask another administrator.</li>
+          <li><strong>Sign-in security</strong> (also in Users) can <em>require two-step sign-in for administrators</em>. It starts off. You can only switch it on once you have two-step sign-in yourself, and from then on an administrator without it can do nothing but set it up.</li>
+          <li>Sign-ins, failed attempts, lockouts and password or two-step changes are all recorded against the account in the audit log.</li>
+        </ul>
       </section>
 
       <section id="bulk">
@@ -586,9 +706,16 @@ export function HandbookPage() {
               <tr><td>Approve (as CAIGO, if assigned)</td><td>&mdash;</td><td>&mdash;</td><td>Yes</td></tr>
               <tr><td>Manage user accounts</td><td>&mdash;</td><td>&mdash;</td><td>Yes</td></tr>
               <tr><td>Set organization risk criteria</td><td>&mdash;</td><td>&mdash;</td><td>Yes</td></tr>
+              <tr><td>Decide AI tool requests (as CAIGO)</td><td>&mdash;</td><td>&mdash;</td><td>Yes</td></tr>
+              <tr><td>AI use settings and the extension key</td><td>&mdash;</td><td>&mdash;</td><td>Yes</td></tr>
+              <tr><td>Read and handle concerns</td><td>&mdash;</td><td>&mdash;</td><td>Yes</td></tr>
             </tbody>
           </table>
         </div>
+        <p style={{ marginTop: 8 }}>
+          The <strong>Employee</strong> login isn&rsquo;t in this table: it holds none of these
+          actions and reaches only the staff home.
+        </p>
 
         <h3 style={{ marginTop: 26 }}>Where to find things</h3>
         <div className="handbook-pagemap">
@@ -600,8 +727,19 @@ export function HandbookPage() {
           <div className="handbook-pagemap-item"><a href="/policies">Policies</a><span /></div>
           <div className="handbook-pagemap-item"><a href="/procedures">Procedures</a><span /></div>
           <div className="handbook-pagemap-item"><a href="/frameworks">Frameworks</a><span>Clauses, controls &amp; the SoA</span></div>
+          <div className="handbook-pagemap-item"><a href="/organization-context">Organization Context</a><span>Clause 4</span></div>
+          <div className="handbook-pagemap-item"><a href="/ai-tools">AI Tools</a><span>Register, requests, rules, usage</span></div>
+          <div className="handbook-pagemap-item"><a href="/suppliers">Suppliers</a><span>Third parties</span></div>
+          <div className="handbook-pagemap-item"><a href="/objectives">AI Objectives</a><span>Targets &amp; measurements</span></div>
+          <div className="handbook-pagemap-item"><a href="/audit-programs">Internal Audits</a><span>Programs &amp; findings</span></div>
+          <div className="handbook-pagemap-item"><a href="/management-review">Management Review</a><span>Meetings</span></div>
+          <div className="handbook-pagemap-item"><a href="/corrective-actions">Corrective Actions</a><span>Nonconformities</span></div>
+          <div className="handbook-pagemap-item"><a href="/incidents">Incidents</a><span>Including Article 73 deadlines</span></div>
+          <div className="handbook-pagemap-item"><a href="/concerns">Concerns</a><span>Raised by staff</span></div>
           <div className="handbook-pagemap-item"><a href="/governance">Roles &amp; Responsibilities</a><span>Governance roles &amp; delegation</span></div>
-          <div className="handbook-pagemap-item"><a href="/users">Users</a><span>Account roles (admin)</span></div>
+          <div className="handbook-pagemap-item"><a href="/users">Users</a><span>Accounts and sign-in security (admin)</span></div>
+          <div className="handbook-pagemap-item"><a href="/account">Your account</a><span>Password &amp; two-step sign-in</span></div>
+          <div className="handbook-pagemap-item"><a href="/settings">Settings</a><span>AI provider &amp; assistant</span></div>
         </div>
       </section>
     </section>
