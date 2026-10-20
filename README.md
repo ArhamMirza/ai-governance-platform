@@ -32,7 +32,8 @@ a React frontend, a FastAPI backend, and a single SQLite file.
 - A **compliance view** that computes, live, how well each ISO 42001 clause, Annex A control
   and EU AI Act article is covered. Nothing is a tick-box: status follows the records.
 
-**Governing staff use of AI.** A register of approved AI tools that employees request and
+**Governing staff use of AI.** A register of approved AI tools (websites, desktop apps,
+locally run models, editor plugins, browser extensions) that employees request and
 the Chief AI Governance Officer decides, data-loss-prevention rules, and a **Chrome/Edge
 extension** that blocks or warns on unapproved AI sites and stops sensitive text being
 pasted into AI chats. It reports daily counts only (never the text), and a Usage page

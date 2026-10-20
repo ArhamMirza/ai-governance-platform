@@ -124,12 +124,33 @@ describe("AIToolForm", () => {
     expect(aiToolsApi.create).toHaveBeenCalledWith({
       name: "Claude",
       vendor: "Anthropic",
+      kind: "web",
       domains: ["claude.ai", "https://console.claude.ai/path", "api.claude.ai"],
       description: null,
       owner_id: null,
       supplier_id: null,
     });
     expect(onCreated).toHaveBeenCalledWith(9);
+  });
+
+  it("adds a tool that isn't a website with no addresses at all", async () => {
+    vi.mocked(aiToolsApi.create).mockResolvedValue(makeTool({ id: 4, kind: "local_model" }));
+    const user = userEvent.setup();
+    renderWithProviders(<AIToolForm />);
+
+    await user.type(screen.getByLabelText("Tool"), "Ollama");
+    await user.selectOptions(
+      screen.getByLabelText("What kind of tool"),
+      "Model run on our own machines",
+    );
+    // There is nothing for the browser to watch, so no address to ask for.
+    expect(screen.queryByLabelText("Addresses")).not.toBeInTheDocument();
+    expect(screen.getByText(/can't see this kind of tool/)).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Add Tool" }));
+
+    expect(aiToolsApi.create).toHaveBeenCalledWith(
+      expect.objectContaining({ name: "Ollama", kind: "local_model", domains: [] }),
+    );
   });
 
   it("needs a name and at least one address", async () => {

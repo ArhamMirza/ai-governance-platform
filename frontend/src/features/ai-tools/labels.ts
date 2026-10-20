@@ -1,4 +1,4 @@
-import type { AITool, AIToolAction, AIToolStatus, DataClassification } from "./types";
+import type { AITool, AIToolAction, AIToolKind, AIToolStatus, DataClassification } from "./types";
 
 export const CLASSIFICATION_OPTIONS: { value: DataClassification; label: string; hint: string }[] =
   [
@@ -9,6 +9,23 @@ export const CLASSIFICATION_OPTIONS: { value: DataClassification; label: string;
 
 export function classificationLabel(value: DataClassification): string {
   return CLASSIFICATION_OPTIONS.find((option) => option.value === value)?.label ?? value;
+}
+
+export const KIND_OPTIONS: { value: AIToolKind; label: string; hint: string }[] = [
+  { value: "web", label: "Website or web app", hint: "Used in the browser, at an address" },
+  { value: "desktop_app", label: "Desktop app", hint: "Installed on the computer" },
+  { value: "local_model", label: "Model run on our own machines", hint: "For example Ollama or LM Studio" },
+  { value: "editor_plugin", label: "Plugin for a code editor", hint: "For example a coding assistant" },
+  { value: "browser_extension", label: "Browser extension", hint: "An add-on that uses AI" },
+];
+
+export function kindLabel(kind: AIToolKind): string {
+  return KIND_OPTIONS.find((option) => option.value === kind)?.label ?? kind;
+}
+
+/** Only a web tool has addresses the browser can watch. */
+export function isWeb(kind: AIToolKind): boolean {
+  return kind === "web";
 }
 
 /** What each status means, in the words the people using it would. */

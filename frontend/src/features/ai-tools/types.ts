@@ -2,6 +2,9 @@ import type { FrameworkControl } from "../framework-controls/types";
 
 /** `catalogued` is a known AI site nobody has approved -- where every tool starts. */
 export type AIToolStatus = "catalogued" | "approved" | "restricted" | "revoked";
+/** Only a `web` tool has addresses, and only those are watched by the browser
+ * extension. The rest are governed by being on the register. */
+export type AIToolKind = "web" | "desktop_app" | "local_model" | "editor_plugin" | "browser_extension";
 export type DataClassification = "public" | "internal" | "confidential";
 export type AIToolAction = "approve" | "restrict" | "revoke";
 export type AIToolRequestStatus = "requested" | "approved" | "rejected";
@@ -15,6 +18,7 @@ export interface AITool {
   id: number;
   name: string;
   vendor: string | null;
+  kind: AIToolKind;
   domains: string[];
   description: string | null;
   status: AIToolStatus;
@@ -35,6 +39,7 @@ export interface AITool {
 export interface AIToolInput {
   name: string;
   vendor: string | null;
+  kind: AIToolKind;
   domains: string[];
   description: string | null;
   owner_id: number | null;
@@ -63,6 +68,7 @@ export interface AIToolRequest {
   requester_id: number;
   tool_id: number | null;
   tool_name: string;
+  kind: AIToolKind;
   domain: string | null;
   purpose: string;
   data_involved: string | null;
@@ -87,6 +93,7 @@ export interface StaffAITool {
   id: number;
   name: string;
   vendor: string | null;
+  kind: AIToolKind;
   domains: string[];
   status: "approved" | "restricted";
   max_data_classification: DataClassification;
@@ -98,11 +105,13 @@ export interface StaffRequestableTool {
   id: number;
   name: string;
   vendor: string | null;
+  kind: AIToolKind;
 }
 
 export interface StaffAIToolRequestInput {
   tool_id: number | null;
   tool_name: string;
+  kind: AIToolKind;
   domain: string | null;
   purpose: string;
   data_involved: string | null;
@@ -112,6 +121,7 @@ export interface StaffAIToolRequestInput {
 export interface StaffAIToolRequest {
   id: number;
   tool_name: string;
+  kind: AIToolKind;
   domain: string | null;
   purpose: string;
   requested_on: string;

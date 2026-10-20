@@ -77,6 +77,7 @@ describe("RequestAIToolForm", () => {
     expect(staffAiToolsApi.request).toHaveBeenCalledWith({
       tool_id: null,
       tool_name: "Mystery AI",
+      kind: "web",
       domain: "mystery.ai",
       purpose: PURPOSE,
       data_involved: "Public web pages",
@@ -86,7 +87,7 @@ describe("RequestAIToolForm", () => {
 
   it("asks for a known tool from the list, without typing its name or address", async () => {
     vi.mocked(staffAiToolsApi.requestable).mockResolvedValue([
-      { id: 7, name: "Claude", vendor: "Anthropic" },
+      { id: 7, name: "Claude", vendor: "Anthropic", kind: "web" },
     ]);
     vi.mocked(staffAiToolsApi.request).mockResolvedValue({} as never);
     const user = userEvent.setup();
@@ -103,6 +104,7 @@ describe("RequestAIToolForm", () => {
     expect(staffAiToolsApi.request).toHaveBeenCalledWith({
       tool_id: 7,
       tool_name: "Claude",
+      kind: "web",
       domain: null,
       purpose: PURPOSE,
       data_involved: null,
@@ -127,8 +129,8 @@ describe("RequestAIToolForm", () => {
 
   it("starts from a link: a tool the platform knows is selected, whatever the case", async () => {
     vi.mocked(staffAiToolsApi.requestable).mockResolvedValue([
-      { id: 7, name: "Claude", vendor: "Anthropic" },
-      { id: 8, name: "Gemini", vendor: "Google" },
+      { id: 7, name: "Claude", vendor: "Anthropic", kind: "web" },
+      { id: 8, name: "Gemini", vendor: "Google", kind: "web" },
     ]);
     vi.mocked(staffAiToolsApi.request).mockResolvedValue({} as never);
     const user = userEvent.setup();
@@ -145,7 +147,7 @@ describe("RequestAIToolForm", () => {
   });
 
   it("starts from a link naming a tool that isn't known, and leaves the choice open", async () => {
-    vi.mocked(staffAiToolsApi.requestable).mockResolvedValue([{ id: 7, name: "Claude", vendor: null }]);
+    vi.mocked(staffAiToolsApi.requestable).mockResolvedValue([{ id: 7, name: "Claude", vendor: null, kind: "web" }]);
     renderWithProviders(<RequestAIToolForm initial={{ name: "Other", domain: "other.ai" }} />);
 
     await screen.findByRole("option", { name: "Claude" });
@@ -191,12 +193,54 @@ describe("RequestAIToolForm", () => {
   });
 });
 
+describe("RequestAIToolForm, for a tool that isn't a website", () => {
+  it("asks what kind of tool it is, and drops the website question for one that has none", async () => {
+    vi.mocked(staffAiToolsApi.requestable).mockResolvedValue([]);
+    vi.mocked(staffAiToolsApi.request).mockResolvedValue({} as never);
+    const user = userEvent.setup();
+    renderWithProviders(<RequestAIToolForm />);
+    expect(screen.getByLabelText("Its website, if you know it")).toBeInTheDocument();
+
+    await user.selectOptions(
+      screen.getByLabelText("What kind of tool is it?"),
+      "Model run on our own machines",
+    );
+    expect(screen.queryByLabelText("Its website, if you know it")).not.toBeInTheDocument();
+    await user.type(screen.getByLabelText("Name of the tool"), "Ollama");
+    await user.type(screen.getByLabelText("What would you use it for?"), PURPOSE);
+    await user.click(screen.getByRole("button", { name: "Send request" }));
+
+    expect(staffAiToolsApi.request).toHaveBeenCalledWith(
+      expect.objectContaining({ tool_name: "Ollama", kind: "local_model", domain: null }),
+    );
+  });
+
+  it("sends a known tool's own kind", async () => {
+    vi.mocked(staffAiToolsApi.requestable).mockResolvedValue([
+      { id: 5, name: "LM Studio", vendor: null, kind: "desktop_app" },
+    ]);
+    vi.mocked(staffAiToolsApi.request).mockResolvedValue({} as never);
+    const user = userEvent.setup();
+    renderWithProviders(<RequestAIToolForm />);
+
+    await screen.findByRole("option", { name: "LM Studio" });
+    await user.selectOptions(screen.getByLabelText("Which tool?"), "5");
+    await user.type(screen.getByLabelText("What would you use it for?"), PURPOSE);
+    await user.click(screen.getByRole("button", { name: "Send request" }));
+
+    expect(staffAiToolsApi.request).toHaveBeenCalledWith(
+      expect.objectContaining({ tool_id: 5, kind: "desktop_app", domain: null }),
+    );
+  });
+});
+
 describe("MyAIToolRequests", () => {
   it("shows each request and how it was answered", async () => {
     vi.mocked(staffAiToolsApi.mine).mockResolvedValue([
       {
         id: 1,
         tool_name: "Character.AI",
+        kind: "web",
         domain: null,
         purpose: "Practising difficult conversations.",
         requested_on: "2026-05-01",
@@ -207,6 +251,7 @@ describe("MyAIToolRequests", () => {
       {
         id: 2,
         tool_name: "Claude",
+        kind: "web",
         domain: null,
         purpose: "Drafting policies.",
         requested_on: "2026-06-01",

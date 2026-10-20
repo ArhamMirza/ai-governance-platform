@@ -27,6 +27,7 @@ from app.models.ai_dlp import (
     AIUseSettings,
     DLPAction,
 )
+from app.models.ai_tool import AIToolKind
 from app.repositories import ai_use_repository, user_repository
 from app.schemas.ai_use import (
     AgentCheckin,
@@ -171,6 +172,7 @@ def build_policy(db: Session) -> AgentPolicy:
                 max_data_classification=tool.max_data_classification,
             )
             for tool in ai_tool_service.list_tools(db)
+            if tool.kind == AIToolKind.WEB
         ],
         rules=[
             AgentRule.model_validate(rule, from_attributes=True)

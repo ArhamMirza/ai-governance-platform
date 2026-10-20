@@ -68,10 +68,9 @@ def test_a_tool_needs_a_real_domain_and_one_nobody_else_has(
 ) -> None:
     create_tool(client)
 
-    assert (
-        client.post("/api/v1/ai-tools", json={"name": "No domain", "domains": []}).status_code
-        == 422
-    )
+    no_domain = client.post("/api/v1/ai-tools", json={"name": "No domain", "domains": []})
+    assert no_domain.status_code == 400
+    assert "at least one address" in no_domain.json()["detail"]
     bad = client.post("/api/v1/ai-tools", json={"name": "Bad", "domains": ["not a domain"]})
     assert bad.status_code == 400
     clash = client.post("/api/v1/ai-tools", json={"name": "Copy", "domains": ["Claude.ai"]})
@@ -250,6 +249,7 @@ def test_staff_see_approved_and_restricted_tools_with_their_rules_and_nothing_el
         "id": approved["id"],
         "name": "Claude",
         "vendor": "Anthropic",
+        "kind": "web",
         "domains": ["claude.ai"],
         "status": "approved",
         "max_data_classification": "internal",
@@ -269,7 +269,7 @@ def test_staff_can_pick_a_known_tool_that_isnt_allowed_yet(
     requestable = client.get("/api/v1/staff/ai-tools/requestable").json()
 
     assert [t["name"] for t in requestable] == ["Claude"]
-    assert set(requestable[0]) == {"id", "name", "vendor"}
+    assert set(requestable[0]) == {"id", "name", "vendor", "kind"}
 
 
 # ---------- requests ----------
@@ -293,6 +293,7 @@ def test_an_employee_asks_for_a_tool_and_sees_it_waiting(
     assert set(body) == {
         "id",
         "tool_name",
+        "kind",
         "domain",
         "purpose",
         "requested_on",
@@ -614,3 +615,124 @@ def test_an_employee_cant_reach_the_register_or_its_queue(
         client.post("/api/v1/ai-tools/requests/1/decision", json={"action": "reject"}).status_code
         == 403
     )
+
+
+# ---------- kinds: web, desktop app, local model, ... ----------
+
+
+def test_a_tool_is_a_web_tool_unless_it_says_otherwise(client: TestClient, test_user: User) -> None:
+    assert create_tool(client)["kind"] == "web"
+
+
+def test_a_tool_that_is_not_on_the_web_has_no_addresses(
+    client: TestClient, test_user: User
+) -> None:
+    for kind in ("desktop_app", "local_model", "editor_plugin", "browser_extension"):
+        body = create_tool(client, name=f"A {kind}", kind=kind, domains=[])
+        assert (body["kind"], body["domains"], body["status"]) == (kind, [], "catalogued")
+
+
+def test_only_a_web_tool_may_have_addresses_and_it_must_have_one(
+    client: TestClient, test_user: User
+) -> None:
+    with_address = client.post(
+        "/api/v1/ai-tools", json={"name": "Ollama", "kind": "local_model", "domains": ["x.ai"]}
+    )
+    assert with_address.status_code == 400
+    assert "Only a web tool has addresses" in with_address.json()["detail"]
+    assert (
+        client.post("/api/v1/ai-tools", json={"name": "W", "kind": "nonsense"}).status_code == 422
+    )
+
+
+def test_changing_a_tools_kind_keeps_the_rule_about_addresses(
+    client: TestClient, test_user: User
+) -> None:
+    web = create_tool(client)
+    url = f"/api/v1/ai-tools/{web['id']}"
+
+    # Still has an address, so it can't become something with none...
+    assert client.put(url, json={"kind": "desktop_app"}).status_code == 400
+    # ...unless they go together.
+    done = client.put(url, json={"kind": "desktop_app", "domains": []})
+    assert done.status_code == 200 and done.json()["domains"] == []
+    # And back: it needs an address again.
+    assert client.put(url, json={"kind": "web"}).status_code == 400
+    assert client.put(url, json={"kind": "web", "domains": ["claude.ai"]}).status_code == 200
+    assert client.put(url, json={"kind": None}).status_code == 400
+
+
+def test_a_local_model_is_approved_with_conditions_like_any_other_tool(
+    client: TestClient, test_user: User, caigo_admin: User, login_as, employee: User
+) -> None:
+    tool = create_tool(client, name="Ollama", kind="local_model", domains=[])
+    login_as(caigo_admin)
+
+    approved = decide(
+        client,
+        tool["id"],
+        max_data_classification="confidential",
+        conditions_of_use="Only llama3.3 8B, installed by IT, bound to localhost.",
+    )
+
+    assert approved.status_code == 200, approved.text
+    login_as(employee)
+    listed = client.get("/api/v1/staff/ai-tools").json()
+    assert [(t["name"], t["kind"], t["domains"]) for t in listed] == [("Ollama", "local_model", [])]
+    assert "llama3.3" in listed[0]["conditions_of_use"]
+
+
+def test_an_employee_can_ask_for_a_local_tool_and_needs_no_address(
+    client: TestClient, test_user: User, caigo_admin: User, login_as, employee: User
+) -> None:
+    login_as(employee)
+    # An address makes no sense for it, so one given is dropped rather than kept.
+    request = ask(client, tool_name="LM Studio", kind="desktop_app", domain="lmstudio.ai").json()
+    assert (request["kind"], request["domain"]) == ("desktop_app", None)
+
+    login_as(caigo_admin)
+    response = client.post(
+        f"/api/v1/ai-tools/requests/{request['id']}/decision",
+        json={"action": "approve", "max_data_classification": "internal"},
+    )
+
+    assert response.status_code == 200, response.text
+    tool = client.get(f"/api/v1/ai-tools/{response.json()['tool_id']}").json()
+    assert (tool["name"], tool["kind"], tool["domains"], tool["status"]) == (
+        "LM Studio",
+        "desktop_app",
+        [],
+        "approved",
+    )
+    login_as(employee)
+    mine = client.get("/api/v1/staff/ai-tool-requests/mine").json()[0]
+    assert mine["kind"] == "desktop_app"
+
+
+def test_a_request_for_a_known_tool_takes_that_tools_kind(
+    client: TestClient, test_user: User, login_as, employee: User
+) -> None:
+    tool = create_tool(client, name="Ollama", kind="local_model", domains=[])
+    login_as(employee)
+
+    request = ask(client, tool_id=tool["id"], tool_name="Ollama", domain=None).json()
+
+    assert request["kind"] == "local_model"
+    picker = client.get("/api/v1/staff/ai-tools/requestable").json()
+    assert [(t["name"], t["kind"]) for t in picker] == [("Ollama", "local_model")]
+
+
+def test_a_request_for_a_web_tool_still_needs_an_address_to_be_approved(
+    client: TestClient, test_user: User, caigo_admin: User, login_as, employee: User
+) -> None:
+    login_as(employee)
+    request = ask(client, domain=None).json()
+    assert request["kind"] == "web"
+    login_as(caigo_admin)
+
+    response = client.post(
+        f"/api/v1/ai-tools/requests/{request['id']}/decision",
+        json={"action": "approve", "max_data_classification": "public"},
+    )
+
+    assert response.status_code == 400

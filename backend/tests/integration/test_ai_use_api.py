@@ -977,3 +977,14 @@ def test_the_dashboard_flags_recent_overrides_and_people_who_have_not_reported(
     assert items["ai_overrides_week"]["count"] == 3
     # Everyone else with an account (the admin the tests sign in as) hasn't reported.
     assert items["ai_coverage_gap"]["count"] >= 1
+
+
+def test_the_browser_is_only_told_about_web_tools(client: TestClient, test_user: User) -> None:
+    key = issue_key(client)
+    client.post("/api/v1/ai-tools", json={"name": "Claude", "domains": ["claude.ai"]})
+    client.post("/api/v1/ai-tools", json={"name": "Ollama", "kind": "local_model"})
+    client.post("/api/v1/ai-tools", json={"name": "LM Studio", "kind": "desktop_app"})
+
+    policy = client.get("/api/v1/agent/policy", headers=bearer(key)).json()
+
+    assert [t["name"] for t in policy["tools"]] == ["Claude"]
