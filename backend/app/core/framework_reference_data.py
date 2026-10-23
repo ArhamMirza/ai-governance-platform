@@ -10,13 +10,15 @@ ISO_42001_ANNEX_A_CONTROLS covers all 38 Annex A controls -- these are the
 rows a Statement of Applicability is built over. EU_AI_ACT_CONTROLS covers
 Chapter III (Articles 6-27: classification of high-risk systems, the
 requirements they must meet, and the obligations of providers, importers,
-distributors and deployers) plus Article 72 (post-market monitoring) -- the
-substantive, organization-facing obligations a governance program tags its
-own records against. It deliberately excludes Chapter III's Sections 4-5
-(Articles 28-49: notifying authorities, notified bodies, conformity
-assessment infrastructure) -- obligations on regulators and certification
-bodies, not on the organization deploying or providing the AI system, so
-not something this platform's records would ever be tagged against.
+distributors and deployers) plus Articles 72 (post-market monitoring) and 73
+(serious incident reporting) -- the substantive, organization-facing
+obligations a governance program tags its own records against.
+
+It leaves out Chapter III's Sections 4-5 (Articles 28-49). That is right for
+the notifying-authority and notified-body articles, but NOT for Articles 43,
+47, 48 and 49 (conformity assessment, declaration of conformity, CE marking,
+registration), which are duties of providers, nor for Articles 4, 5 and 50,
+which fall outside Chapter III. See docs/reference-data-audit.md.
 """
 
 ISO_42001_CLAUSES: list[tuple[str, str, str]] = [
