@@ -1,4 +1,5 @@
 import { AiSettingsForm } from "../features/ai-assist/components/AiSettingsForm";
+import { AiSpendPanel } from "../features/ai-assist/components/AiSpendPanel";
 
 export function SettingsPage() {
   return (
@@ -11,6 +12,7 @@ export function SettingsPage() {
       </div>
 
       <AiSettingsForm />
+      <AiSpendPanel />
     </section>
   );
 }

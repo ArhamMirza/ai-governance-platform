@@ -58,6 +58,17 @@ python -m app.backup restore ./backups/ai-governance-backup-<stamp>.tar.gz --to 
 See [deploy/README.md](../deploy/README.md#backups) for scheduling, what a backup does not
 cover, and how to test a restore.
 
+## What the AI costs
+
+*Settings → Where the AI tokens go* (admins) shows tokens by kind of call. To see what the
+assistant would send, without spending anything:
+
+```bash
+python -m app.prompt_report                      # a few sample questions
+python -m app.prompt_report --questions q.txt    # your own, one per line
+python -m app.prompt_report --json > before.json # save a run, change something, compare
+```
+
 ## Tests and checks
 
 ```bash

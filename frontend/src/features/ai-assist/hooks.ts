@@ -21,6 +21,14 @@ export function useAiSettings() {
   return useQuery({ queryKey: aiSettingsKey, queryFn: aiAssistApi.getSettings });
 }
 
+export function useAiSpend(days: number, enabled = true) {
+  return useQuery({
+    queryKey: ["ai-assist-spend", days],
+    queryFn: () => aiAssistApi.spend(days),
+    enabled,
+  });
+}
+
 export function useUpdateAiSettings() {
   const queryClient = useQueryClient();
   return useMutation({
