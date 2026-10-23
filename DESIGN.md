@@ -266,6 +266,16 @@ via LiteLLM, for Anthropic, OpenAI, Gemini, Groq or a local server. The organiza
 provider key is stored encrypted (Fernet, key derived from `SECRET_KEY`), a daily token
 budget is enforced and usage is accounted, and nothing here can write a record.
 
+**Measuring what it costs** (`ai_spend_service`, `core/token_usage.py`). Every model call is
+one row in the usage log: feature, model, tokens sent and written, and how many of the sent
+tokens a provider served from its cache (read differently by each provider, and zero where
+a provider does not say). *Settings → Where the AI tokens go* adds the log up by kind of
+call (chat, each draft, each retry) and by day, for administrators only and never by person
+or topic. `python -m app.prompt_report` sizes each part of the assistant's prompt for a set
+of questions and lists the records found, with no model call, so a change that makes a
+prompt smaller can be checked against whether it still finds the right records. The
+estimates are characters / 4, for comparing two versions rather than for billing.
+
 **Search** (`document_index_service`, `retrieval_service`). Records and uploaded documents
 go through one pipeline: extract or render → scan → chunk → embed. Text lives in
 `document_chunks`, an FTS5 mirror and a sqlite-vec table, all written in one place. Search

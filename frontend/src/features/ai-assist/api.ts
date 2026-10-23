@@ -44,7 +44,34 @@ export interface DraftResponse {
   injection_findings: string[];
 }
 
+/** What one kind of model call has cost: chat, a draft, a retry. */
+export interface AiSpendFeature {
+  feature: string;
+  calls: number;
+  prompt_tokens: number;
+  completion_tokens: number;
+  average_prompt_tokens: number;
+  average_completion_tokens: number;
+  cache_read_tokens: number;
+  cache_write_tokens: number;
+  /** Share of the prompt that came from a cache, 0 to 1. */
+  cache_hit_rate: number;
+}
+
+export interface AiSpendReport {
+  days: number;
+  calls: number;
+  prompt_tokens: number;
+  completion_tokens: number;
+  cache_read_tokens: number;
+  cache_write_tokens: number;
+  cache_hit_rate: number;
+  by_feature: AiSpendFeature[];
+  by_day: { day: string; calls: number; tokens: number }[];
+}
+
 export const aiAssistApi = {
+  spend: (days: number) => httpClient.get<AiSpendReport>(`/ai-assist/spend?days=${days}`),
   status: () => httpClient.get<AiAssistStatus>("/ai-assist/status"),
   getSettings: () => httpClient.get<AiAssistSettings>("/ai-assist/settings"),
   updateSettings: (data: AiAssistSettingsUpdate) =>

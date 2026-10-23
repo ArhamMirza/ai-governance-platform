@@ -84,6 +84,10 @@ class AiUsage(Base):
     model: Mapped[str] = mapped_column(String(120))
     prompt_tokens: Mapped[int] = mapped_column(Integer, default=0)
     completion_tokens: Mapped[int] = mapped_column(Integer, default=0)
+    # Of the prompt: how much a provider served from its cache, and how much it
+    # was asked to write to one. Zero where a provider does not say.
+    cache_read_tokens: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    cache_write_tokens: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(UTC), index=True
     )

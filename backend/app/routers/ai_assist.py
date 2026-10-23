@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
@@ -7,10 +7,11 @@ from app.schemas.ai_assist import (
     AiAssistSettingsRead,
     AiAssistSettingsUpdate,
     AiAssistStatus,
+    AiSpendReport,
     DraftRequest,
     DraftResponse,
 )
-from app.services import ai_assist_service
+from app.services import ai_assist_service, ai_spend_service
 
 router = APIRouter(prefix="/ai-assist", tags=["ai-assist"])
 
@@ -41,6 +42,17 @@ def update_ai_settings(
     actor_id: int = Depends(get_current_settings_actor_id),
 ) -> AiAssistSettingsRead:
     return ai_assist_service.update_settings(db, data, actor_id)
+
+
+@router.get("/spend", response_model=AiSpendReport)
+def spend(
+    days: int = Query(default=30, ge=1, le=365),
+    db: Session = Depends(get_db),
+    actor_id: int = Depends(get_current_settings_actor_id),
+) -> AiSpendReport:
+    """Where this deployment's AI tokens go, by kind of call and by day. Admins
+    only: it is part of how the AI is configured and paid for."""
+    return ai_spend_service.report(db, days)
 
 
 @router.post("/draft", response_model=DraftResponse)

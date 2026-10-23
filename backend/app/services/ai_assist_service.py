@@ -17,7 +17,7 @@ from urllib.parse import urlparse
 
 from sqlalchemy.orm import Session
 
-from app.core import ai_prompting
+from app.core import ai_prompting, token_usage
 from app.core.crypto import decrypt, encrypt
 from app.core.exceptions import ServiceUnavailableError, ValidationError
 from app.core.impact_factors import IMPACT_FACTORS
@@ -365,7 +365,7 @@ def _complete_message(
         kwargs.pop("api_key", None)
         api_key = None
 
-    usage = getattr(response, "usage", None)
+    counts = token_usage.read(getattr(response, "usage", None))
     ai_assist_repository.record_usage(
         db,
         AiUsage(
@@ -373,8 +373,10 @@ def _complete_message(
             feature=feature,
             provider=row.provider,
             model=(row.fast_model if fast and row.fast_model else row.model),
-            prompt_tokens=int(getattr(usage, "prompt_tokens", 0) or 0),
-            completion_tokens=int(getattr(usage, "completion_tokens", 0) or 0),
+            prompt_tokens=counts.prompt,
+            completion_tokens=counts.completion,
+            cache_read_tokens=counts.cache_read,
+            cache_write_tokens=counts.cache_write,
             created_at=datetime.now(UTC),
         ),
     )

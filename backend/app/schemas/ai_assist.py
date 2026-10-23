@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import date, datetime
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -52,3 +52,39 @@ class DraftResponse(BaseModel):
     # Surfaced to the user when record content contained text that reads as
     # an instruction to a model -- a finding, not a silent event.
     injection_findings: list[str] = []
+
+
+class AiSpendFeature(BaseModel):
+    """What one kind of call has cost: chat, a draft, its retry."""
+
+    feature: str
+    calls: int
+    prompt_tokens: int
+    completion_tokens: int
+    average_prompt_tokens: int
+    average_completion_tokens: int
+    cache_read_tokens: int
+    cache_write_tokens: int
+    # Share of this feature's prompt tokens that came from a cache, 0 to 1.
+    cache_hit_rate: float
+
+
+class AiSpendDay(BaseModel):
+    day: date
+    calls: int
+    tokens: int
+
+
+class AiSpendReport(BaseModel):
+    """Where this deployment's AI tokens go. Totals only: it says what was spent
+    on what, never by whom or about what."""
+
+    days: int
+    calls: int
+    prompt_tokens: int
+    completion_tokens: int
+    cache_read_tokens: int
+    cache_write_tokens: int
+    cache_hit_rate: float
+    by_feature: list[AiSpendFeature]
+    by_day: list[AiSpendDay]
