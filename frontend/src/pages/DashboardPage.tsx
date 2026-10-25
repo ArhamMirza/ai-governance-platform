@@ -1,3 +1,4 @@
+import { GettingStartedPanel } from "../features/dashboard/components/GettingStartedPanel";
 import { DashboardSummaryView } from "../features/dashboard/components/DashboardSummaryView";
 import { useHealthCheck } from "../shared/hooks/useHealthCheck";
 
@@ -15,6 +16,8 @@ export function DashboardPage() {
           </p>
         </div>
       </div>
+
+      <GettingStartedPanel />
 
       <DashboardSummaryView />
     </section>

@@ -440,6 +440,15 @@ The headline controls; [SECURITY.md](SECURITY.md) lists limits and
 
 ## 9. Frontend
 
+**Getting started** (`getting_started_service`, shown at the top of the dashboard). A checklist
+for a new installation, worked out from the records and never stored: a step is done when the
+records it asks for exist (a retired policy, an inactive supplier or a merely catalogued tool
+does not count), so it cannot disagree with the platform. The order is the answer to "what
+first": the organization and its roles before the AI systems, because the AI roles chosen there
+flow through to the systems and the EU AI Act assessment, and the records the assessments draw
+on before the assessments. It is shown to people who can edit, disappears when every required
+step is done, and can be hidden for now (remembered per browser).
+
 React 19, TypeScript, Vite, TanStack Query v5, react-router, react-hook-form with zod,
 plain CSS with design tokens (light and dark, following the OS unless pinned; the
 pre-paint theme script is a separate file so a strict CSP can forbid inline script).

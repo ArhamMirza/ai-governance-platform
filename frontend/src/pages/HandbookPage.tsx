@@ -600,6 +600,14 @@ export function HandbookPage() {
       <section id="dashboard">
         <h2>Reading the dashboard</h2>
         <p>
+          On a new installation the top of the dashboard is a <strong>Getting started</strong>{" "}
+          checklist, in the order to do things: describe the organization and assign the Chief AI
+          Governance Officer first, then add people, your AI systems, the EU AI Act assessment,
+          policies, tools and suppliers, and finally a first impact assessment. A step is ticked
+          only when the records for it exist, so it can&rsquo;t disagree with the platform; it
+          goes away by itself when the required steps are done, and you can hide it meanwhile.
+        </p>
+        <p>
           Coverage rings and portfolio charts summarize the whole estate at a glance; the{" "}
           <strong>Needs attention</strong> panel is the actionable part &mdash; every item links
           straight to the record behind it.

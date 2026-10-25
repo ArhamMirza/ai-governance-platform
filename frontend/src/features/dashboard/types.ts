@@ -106,3 +106,23 @@ export interface DashboardSummary {
   my_training: MyTrainingItem[];
   pending_approvals: PendingApprovalItem[];
 }
+
+/** One thing to do when setting the platform up, and whether the records say it is done. */
+export interface GettingStartedStep {
+  key: string;
+  title: string;
+  why: string;
+  href: string;
+  done: boolean;
+  optional: boolean;
+}
+
+export interface GettingStarted {
+  steps: GettingStartedStep[];
+  done_count: number;
+  total: number;
+  /** Every step that isn't optional is done. */
+  complete: boolean;
+  /** The first step still to do, in the order a person should take them. */
+  next_key: string | null;
+}

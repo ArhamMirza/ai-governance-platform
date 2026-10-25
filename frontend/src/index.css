@@ -5495,3 +5495,111 @@ select {
   gap: 10px;
   margin: 14px 0;
 }
+
+/* ---------- Getting started ---------- */
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.getting-started {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--primary);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--card-shadow);
+  padding: 18px 22px;
+  margin: 0 0 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.getting-started-head {
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+}
+
+.getting-started-head h2 {
+  margin: 0;
+}
+
+.getting-started-count {
+  color: var(--text-muted);
+  font-size: 13px;
+  margin-right: auto;
+}
+
+.getting-started-steps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.getting-started-steps li {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 8px 10px;
+  border-radius: var(--radius-md, 8px);
+}
+
+.getting-started-steps li[data-next="true"] {
+  background: var(--primary-subtle);
+}
+
+.getting-started-steps p {
+  margin: 0;
+}
+
+.getting-started-mark {
+  flex: none;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 1.5px solid var(--border-strong);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.getting-started-steps li[data-done="true"] .getting-started-mark {
+  background: var(--success-subtle);
+  border-color: var(--success-line);
+  color: var(--success-text);
+}
+
+.getting-started-steps li[data-done="true"] .getting-started-title a {
+  color: var(--text-muted);
+}
+
+.getting-started-title {
+  font-weight: 600;
+}
+
+.getting-started-next {
+  color: var(--primary);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.getting-started-collapsed {
+  margin: 0 0 20px;
+  color: var(--text-muted);
+  font-size: 13px;
+}

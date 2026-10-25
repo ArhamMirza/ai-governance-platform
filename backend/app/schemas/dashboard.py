@@ -126,3 +126,25 @@ class DashboardSummary(BaseModel):
     my_corrective_actions: list[MyCorrectiveActionItem]
     my_training: list[MyTrainingItem]
     pending_approvals: list[PendingApprovalItem]
+
+
+class GettingStartedStep(BaseModel):
+    """One thing to do when setting the platform up, and whether the records say
+    it has been done."""
+
+    key: str
+    title: str
+    why: str
+    href: str
+    done: bool
+    optional: bool = False
+
+
+class GettingStarted(BaseModel):
+    steps: list[GettingStartedStep]
+    done_count: int
+    total: int
+    # Every step that is not optional is done.
+    complete: bool
+    # The first step still to do, in the order a person would take them.
+    next_key: str | None
