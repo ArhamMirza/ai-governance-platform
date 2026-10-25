@@ -10,6 +10,6 @@
     "test:edge": "node run.mjs edge"
   },
   "dependencies": {
-    "puppeteer-core": "^25.14.0"
+    "puppeteer-core": "^25.16.0"
   }
 }
