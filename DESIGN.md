@@ -502,7 +502,12 @@ frontend/src/
   GitHub Release.
 - **Deployment** is by hand: `deploy/` has Caddy and nginx examples (https, strict CSP,
   HSTS, real client address forwarded), and `deploy/README.md` lists the settings and the
-  uvicorn flags. There is no container setup yet.
+  uvicorn flags. A `docker-compose.yml` runs the API (one volume under `/data` holds the
+  database, uploads and downloaded search models) and an unprivileged nginx that serves the
+  built app and forwards `/api/` to it, so both share one address; a CI job
+  (`.github/workflows/docker.yml`) builds and exercises it. The default is a trial: development
+  mode with demo data, published on `127.0.0.1` only, and the API's entrypoint refuses to
+  start in development mode when published anywhere else. TLS is the operator's.
 - **The extension** is built with `npm run build` into `extension/dist`; rollout by
   force-install policy (Chrome and Edge) is described in its README.
 
@@ -555,7 +560,7 @@ the app does not claim a clause is met because a feature exists.
 - A dedicated concerns-officer role; single sign-on; email (so new accounts get starting
   passwords handed over rather than a set-up link).
 - PostgreSQL, backups the app schedules and monitors itself (the command exists; see §8),
-  a container setup, encryption at rest, a session idle
+  a managed or high-availability container setup, encryption at rest, a session idle
   timeout, a sandboxed document parser, and an independent security review.
 - In-app spreadsheet formulas beyond the risk score; multi-tenancy.
 

@@ -63,3 +63,14 @@ updates:
     groups:
       actions-minor-and-patch:
         update-types: ["minor", "patch"]
+
+  # The container images the compose file builds from.
+  - package-ecosystem: "docker"
+    directory: "/backend"
+    schedule:
+      interval: "weekly"
+
+  - package-ecosystem: "docker"
+    directory: "/frontend"
+    schedule:
+      interval: "weekly"

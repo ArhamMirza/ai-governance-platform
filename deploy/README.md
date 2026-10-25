@@ -3,6 +3,37 @@
 These are the settings that matter when the platform is used by more than one
 person on a network. None of it is needed on your own laptop.
 
+## Running it with Docker
+
+`docker-compose.yml` at the root runs the API and a web server in front of it:
+
+```bash
+docker compose up --build        # a trial: http://127.0.0.1:8080, demo data, this machine only
+```
+
+To run it for other people, copy `.env.example` to `.env` and set:
+
+| Variable | For a real deployment |
+|---|---|
+| `ENVIRONMENT` | `production` |
+| `SECRET_KEY` | your own long random value (see the table below) |
+| `COOKIE_SECURE` | `true`, and serve it over https |
+| `DEMO_DATA` | `false` |
+| `WEB_BIND` | `127.0.0.1` if your own https proxy runs on the same host and forwards to it; another address only if you mean to publish it |
+
+- **TLS is yours.** The web container speaks plain http on port 8080. Put Caddy or nginx
+  (examples below) in front, forwarding to `127.0.0.1:8080`, and add Strict-Transport-Security there.
+- **Keep `WEB_BIND` on `127.0.0.1`** unless you have a reason. The app will not start in
+  development mode when published elsewhere, because anyone who could reach it could create the
+  first administrator account.
+- **Data** is one Docker volume, `data` (database, uploaded files, downloaded search models).
+  Back it up with `docker compose exec backend python -m app.backup create --to /data/backups`
+  and copy the archive off the machine; see *Backups* below. The search models are downloaded the first
+  time search or the assistant needs them, so that first use needs internet access.
+- **Upgrading:** pull the new code, `docker compose up --build -d`. The API runs any new
+  database migrations on start. Take a backup first.
+- **The first account in production** needs a setup code: see `docker compose logs backend`, or set `SETUP_CODE`.
+
 ## What to set
 
 | Setting | Value | Why |
