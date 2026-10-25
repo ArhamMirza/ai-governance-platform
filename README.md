@@ -84,7 +84,8 @@ docker compose up --build
 ```
 
 Then open <http://127.0.0.1:8080> and create the first account: whoever does becomes the
-administrator. It starts with made-up demo records so there is something to look at. This
+administrator. It starts with made-up demo records so there is something to look at, and a
+**Getting started** checklist on the dashboard walks through what to fill in, in order. This
 is a **trial setup**: development mode, demo data, published on this machine only. To run
 it for other people, see [deploy/README.md](deploy/README.md#running-it-with-docker); the
 app will refuse to start in trial mode if you publish it beyond your own machine.
