@@ -1,0 +1,113 @@
+name: Docker
+
+# Builds the images and starts the whole thing the way `docker compose up` does,
+# then checks it behaves: the page and the API answer, the security headers are
+# there, the first account can be made, demo data was loaded, and a restart keeps
+# the account. Run only when something it depends on changes.
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "docker-compose.yml"
+      - ".env.example"
+      - "backend/Dockerfile"
+      - "backend/docker-entrypoint.sh"
+      - "backend/pyproject.toml"
+      - "frontend/Dockerfile"
+      - "frontend/nginx/**"
+      - "frontend/package.json"
+      - "frontend/package-lock.json"
+      - ".github/workflows/docker.yml"
+  push:
+    branches: [main]
+    paths:
+      - "docker-compose.yml"
+      - "backend/Dockerfile"
+      - "frontend/Dockerfile"
+      - ".github/workflows/docker.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  compose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Build the images
+        run: docker compose build
+
+      - name: Start it
+        run: docker compose up -d
+
+      - name: Wait until the page and the API answer
+        run: |
+          for i in $(seq 1 90); do
+            if curl -sf http://127.0.0.1:8080/api/v1/health >/dev/null; then echo "up after ${i} tries"; exit 0; fi
+            sleep 5
+          done
+          echo "did not come up" >&2
+          docker compose ps
+          docker compose logs --no-color
+          exit 1
+
+      - name: The page is served with its protective headers
+        run: |
+          headers=$(curl -sf -D - -o /dev/null http://127.0.0.1:8080/)
+          echo "$headers"
+          echo "$headers" | grep -qi "content-security-policy"
+          echo "$headers" | grep -qi "x-content-type-options: nosniff"
+          echo "$headers" | grep -qi "x-frame-options: DENY"
+          if echo "$headers" | grep -qi "server: nginx/"; then echo "the server announces its version" >&2; exit 1; fi
+          curl -sf http://127.0.0.1:8080/some/page/in/the/app | grep -q '<div id="root">'   # the app's own routes
+
+      - name: The API answers through the proxy, with its own headers
+        run: |
+          headers=$(curl -sf -D - -o /dev/null http://127.0.0.1:8080/api/v1/health)
+          echo "$headers"
+          echo "$headers" | grep -qi "x-content-type-options: nosniff"
+
+      - name: The first account can be created and signed in, from a browser's address
+        run: |
+          # An Origin header with the port, as a browser sends: the API's cross-site
+          # check compares it with the Host header it was given.
+          code=$(curl -s -o register.json -w "%{http_code}" -c jar.txt \
+            -H "Origin: http://127.0.0.1:8080" -H "Content-Type: application/json" \
+            -d '{"name":"Docker Check","email":"check@example.com","password":"tangerine-lantern-47"}' \
+            http://127.0.0.1:8080/api/v1/auth/register)
+          cat register.json; echo
+          test "$code" = "201"
+          curl -sf -b jar.txt http://127.0.0.1:8080/api/v1/auth/me | grep -q "check@example.com"
+
+      - name: Demo data was loaded
+        run: |
+          curl -sf -b jar.txt http://127.0.0.1:8080/api/v1/policies | python3 -c "import json,sys; d=json.load(sys.stdin); print(len(d), 'policies'); sys.exit(0 if d else 1)"
+
+      - name: A restart keeps the account and the data
+        run: |
+          docker compose restart backend
+          for i in $(seq 1 60); do
+            if curl -sf http://127.0.0.1:8080/api/v1/health >/dev/null; then break; fi
+            sleep 5
+          done
+          curl -sf -b jar.txt http://127.0.0.1:8080/api/v1/auth/me | grep -q "check@example.com"
+          curl -sf -b jar.txt http://127.0.0.1:8080/api/v1/policies | python3 -c "import json,sys; sys.exit(0 if json.load(sys.stdin) else 1)"
+
+      - name: It refuses to run in development mode where others could reach it
+        run: |
+          docker compose down -v
+          WEB_BIND=0.0.0.0 docker compose up -d backend || true
+          sleep 20
+          docker compose logs --no-color backend | grep -q "Refusing to start"
+
+      - name: Logs, if anything failed
+        if: failure()
+        run: docker compose logs --no-color
+
+      - name: Clean up
+        if: always()
+        run: docker compose down -v

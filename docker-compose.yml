@@ -1,0 +1,45 @@
+# Try it, or run it:   docker compose up --build   then open http://127.0.0.1:8080
+#
+# Out of the box this is a TRIAL: development mode, demo data, and published on
+# this machine only. For anything other people can reach, read deploy/README.md
+# and set the variables in .env (copy .env.example).
+
+services:
+  backend:
+    build: ./backend
+    restart: unless-stopped
+    environment:
+      ENVIRONMENT: ${ENVIRONMENT:-development}
+      SECRET_KEY: ${SECRET_KEY:-change-me-in-a-real-deployment}
+      COOKIE_SECURE: ${COOKIE_SECURE:-false}
+      SETUP_CODE: ${SETUP_CODE:-}
+      DEMO_DATA: ${DEMO_DATA:-true}
+      # Passed on so the API can refuse to start in development mode when the
+      # app is published beyond this machine.
+      WEB_BIND: ${WEB_BIND:-127.0.0.1}
+    volumes:
+      - data:/data
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/v1/health', timeout=4)"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 60s
+
+  web:
+    build: ./frontend
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "${WEB_BIND:-127.0.0.1}:${WEB_PORT:-8080}:8080"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+
+volumes:
+  # The database, the uploaded files and the downloaded search models.
+  data:

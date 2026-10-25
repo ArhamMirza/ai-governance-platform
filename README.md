@@ -75,6 +75,24 @@ anything. Search runs on this machine; a model provider is only called if you co
 
 ## Getting started
 
+### With Docker (the quickest way to try it)
+
+```bash
+git clone https://github.com/ArhamMirza/ai-governance-platform.git
+cd ai-governance-platform
+docker compose up --build
+```
+
+Then open <http://127.0.0.1:8080> and create the first account: whoever does becomes the
+administrator. It starts with made-up demo records so there is something to look at. This
+is a **trial setup**: development mode, demo data, published on this machine only. To run
+it for other people, see [deploy/README.md](deploy/README.md#running-it-with-docker); the
+app will refuse to start in trial mode if you publish it beyond your own machine.
+Everything it keeps (database, uploaded files, downloaded search models) is in one Docker
+volume.
+
+### Without Docker
+
 You need Python 3.11+ and Node 22+.
 
 ### Backend
@@ -266,9 +284,14 @@ DESIGN.md    Architecture and decisions        SECURITY.md   Reporting and known
   git push origin v0.1.0
   ```
   There's no separate deployment step — this is a locally-run app, so a
-  "release" just marks a known-good, tagged snapshot of the code. A container
-  setup and a managed database are listed under *Not built yet* in
+  "release" just marks a known-good, tagged snapshot of the code. A managed
+  database is listed under *Not built yet* in
   [DESIGN.md](DESIGN.md#13-not-built-yet).
+- **Docker** (`.github/workflows/docker.yml`): when the Dockerfiles, the compose file or
+  the dependencies change, CI builds both images, starts them with `docker compose`, and
+  checks that the page and API answer, the security headers are present, the first account
+  can be created, demo data loaded, a restart keeps the data, and development mode refuses
+  to start where others could reach it.
 
 ## License
 
