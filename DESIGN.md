@@ -537,6 +537,7 @@ frontend/src/
 |---|---|
 | A.2 Policies related to AI | Policies and procedures |
 | A.3 Internal organization (reporting concerns, A.3.3) | Governance roles; concerns |
+| A.4 Resources for AI systems | Tagged from the AI system inventory and the data inventory; no feature of its own |
 | A.5 Assessing impacts of AI systems | Impact assessments |
 | A.6 AI system life cycle | Life cycle stages and gates |
 | A.7 Data for AI systems | Data inventory |
@@ -554,6 +555,9 @@ the app does not claim a clause is met because a feature exists.
 
 ## 13. Not built yet
 
+- EU AI Act articles the list leaves out (Art. 4, 5, 43, 47, 48, 49, 50, 86) and the
+  correction of a few descriptions, from the audit in
+  [docs/reference-data-audit.md](docs/reference-data-audit.md), pending expert review.
 - Packaged extension rollout files; a hardware-key (WebAuthn) second factor.
 - Evidence packs (PDF/Word/ZIP) for auditors; more tagging so the compliance numbers
   reflect work done.
