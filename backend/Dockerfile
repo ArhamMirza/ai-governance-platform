@@ -2,7 +2,7 @@
 #
 # bookworm, not the newest Debian: the OCR package pulls in OpenCV, which needs
 # libGL and glib by their bookworm names.
-FROM python:3.11-slim-bookworm
+FROM python:3.15-slim-bookworm
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
